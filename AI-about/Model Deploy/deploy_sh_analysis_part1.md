@@ -1,0 +1,396 @@
+# P节点脚本示例_P0.sh 深度分析（Part 1）
+
+## 【代码区】完整脚本逐行注释
+
+```bash
+#!/usr/bin/bash
+# Bash脚本入口，声明解释器路径
+
+# ==================== 日志初始化 ====================
+LOG_TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
+# 生成时间戳（格式：20250130_153045），用于唯一标识本次部署日志
+# 避免多次启动覆盖日志，便于问题追溯
+
+mkdir -p /home/gandalf/images/glm5.2-8pd-logs
+# 创建日志目录（-p防止已存在报错）
+# 路径命名体现部署架构：glm5.2模型 + 8PD（8个P节点做Prefill）
+
+# ==================== 清理编译缓存 ====================
+# 清理编译缓存，不删除模型权重（权重文件单独存储，清理仅移除临时编译产物）
+# [→ Inference & Memory Fundamentals.md#三层架构] 编译产物在模型层与硬件层之间
+
+rm -rf /root/atc_data 2>/dev/null || true
+# 清理昇腾ATC编译缓存（ATC=Ascend Tensor Compiler）
+# ATC将计算图编译为NPU可执行二进制，缓存占用磁盘空间
+
+rm -rf /root/ascend 2>/dev/null || true
+# 清理昇腾框架运行时缓存
+# 包含算子编译结果、图优化中间产物等
+
+rm -rf /root/.cache/vllm/torch_compile_cache/* 2>/dev/null || true
+# 清理vLLM的PyTorch编译缓存
+# [→ 模型术语速查.md#AclGraph] vLLM支持AclGraph图编译，需清理旧版缓存
+
+rm -rf ./.torchair_cache/ 2>/dev/null || true
+# 清理TorchAir缓存（TorchAir是PyTorch在昇腾NPU的适配层）
+
+rm -rf ./dynamo_* 2>/dev/null || true
+# 清理PyTorch Dynamo编译器缓存（Dynamo是PyTorch 2.0的动态编译器）
+
+# ==================== 网络接口配置 ====================
+# 配置分布式训练/推理的通信网络接口
+# [→ 模型术语速查.md#TP/DP] TP/DP需要在NPU间高频通信，必须指定高速网卡
+
+nic_name="enp189s0f0"   
+# 宿主机网卡名称（通过 ip addr 命令查询获得）
+# NPU集群通过以太网/RoCE网卡进行集合通信
+
+local_ip="85.25.15.101"   
+# 宿主机IP地址（P0节点的网络标识）
+# 用于DP跨节点通信和协调
+
+export HCCL_IF_IP=$local_ip
+# 设置华为集合通信库（HCCL）使用的IP地址
+# HCCL是昇腾NPU的集合通信库（类似NCCL），用于AllReduce等操作
+# [→ 模型术语速查.md#TP] TP需要AllReduce同步矩阵分片结果
+
+export GLOO_SOCKET_IFNAME=$nic_name
+# 设置Gloo通信框架的网卡接口名
+# Gloo是PyTorch分布式通信后端，用于初始化进程组
+
+export TP_SOCKET_IFNAME=$nic_name
+# 设置张量并行专用socket接口
+# [→ 模型术语速查.md#TP] TP通信路径专用，确保低延迟
+
+export HCCL_SOCKET_IFNAME=$nic_name
+# 设置HCCL socket接口名
+# HCCL控制平面通信使用此接口
+
+export VLLM_HOST_IP=$local_ip
+# 设置vLLM服务器的主机IP
+# 用于API服务监听和分布式协调
+
+# ==================== 系统优化参数 ====================
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
+# 添加动态库搜索路径
+# 确保昇腾框架动态库（.so文件）可被正确加载
+
+export HCCL_OP_EXPANSION_MODE="AIV"
+# HCCL算子展开模式：AIV（AI Vector，AI向量单元）
+# 昇腾NPU有AI Core和AI Vector两种计算单元，AIV模式优化通信算子
+
+export OMP_PROC_BIND=false
+# OpenMP线程不绑定到固定CPU核心
+# 分布式场景下避免多进程争抢同一CPU核心
+
+export OMP_NUM_THREADS=1
+# 每个OpenMP并行区使用1个线程
+# NPU上计算栈通常单线程驱动，减少CPU开销
+
+export HCCL_BUFFSIZE=256
+# HCCL通信缓冲区大小（单位：MB）= 256MB
+# 较大缓冲区减少通信次数，提升TP通信效率
+# [→ 模型术语速查.md#TP] TP每次通信传输矩阵分片，需要足够缓冲
+
+export PYTORCH_NPU_ALLOC_CONF=expandable_segments:True
+# PyTorch NPU内存分配策略：可扩展段
+# 允许内存段动态扩展，减少碎片化，类似vLLM的PagedAttention思想
+# [→ Why Efficient LLM Deployment Matters.md#推理优化] 内存池化管理
+
+export ASCEND_AGGREGATE_ENABLE=1
+# 启用昇腾聚合功能
+# 将多个小算子合并执行，减少内核启动开销
+
+export ASCEND_TRANSPORT_PRINT=1
+# 启用昇腾传输打印（调试用）
+# 打印HCCL通信详情，便于排查分布式问题
+
+export ACL_OP_INIT_MODE=1
+# ACL算子初始化模式：1=延迟初始化
+# 延迟加载算子，加速启动时间
+
+export VLLM_NIXL_ABORT_REQUEST_TIMEOUT=300000
+# vLLM NIXL请求超时时间（单位：ms）= 5分钟
+# NIXL是Mooncake传输库的底层，用于KV传输
+# [→ 模型术语速查.md#PD分离] P→D传输KV可能耗时较长
+
+export VLLM_VERSION=0.21.0
+# 声明vLLM版本号
+# 某些功能兼容性检查使用此变量
+
+export VLLM_ASCEND_ENABLE_FLASHCOMM1=1
+# 启用昇腾FlashComm1优化
+# FlashComm是一种通信融合优化技术，将多个集合通信合并
+
+# ==================== NPU设备可见性 ====================
+export ASCEND_RT_VISIBLE_DEVICES=0,1,2,3,4,5,6,7   
+# 设置可见的NPU设备编号（P实例启用的8个NPU）
+# [→ 模型术语速查.md#TP] 一个TP组需要8个NPU协同
+# 物理连接：P0节点的8个NPU通过HCCS/HB总线互联（高带宽低延迟）
+# 每个NPU编号对应一个物理芯片（如Ascend 910B）
+
+# ==================== vLLM服务启动 ====================
+vllm serve /home/gandalf/images/GLM-5.2-w8a8 \
+    # 启动vLLM推理服务，模型路径：GLM-5.2-w8a8
+    # [→ 模型术语速查.md#W8A8] W8A8量化：权重8位+激活值8位
+    # W8A8将模型体积压缩到FP16的50%，牺牲少量精度换取双倍吞吐
+    
+    --host 0.0.0.0 \
+    # API服务监听地址：0.0.0.0（所有网络接口）
+    # 允许外部客户端访问
+    
+    --port 9081 \
+    # API服务端口：9081
+    # P节点暴露API端口供负载均衡器调度
+    
+    --data-parallel-size 4 \   
+    # 数据并行规模：DP=4
+    # [→ 模型术语速查.md#DP] 将P节点复制4份（P0-P3），每份处理不同请求批次
+    # Prefill阶段 DP=4 意味着4个P节点并行处理4批Prompt
+    
+    --data-parallel-rank 0 \   
+    # 本实例在DP组中的编号（rank 0表示P0节点）
+    # rank用于分布式协调，区分P0/P1/P2/P3
+    
+    --data-parallel-address 85.25.15.101 \   
+    # DP协调节点地址（P0的IP）
+    # P0作为DP组的master，协调其他P节点
+    
+    --data-parallel-rpc-port 13389 \
+    # DP组RPC通信端口
+    # 用于DP节点间的控制通信（同步、协调等）
+    
+    --tensor-parallel-size 8 \   
+    # 张量并行规模：TP=8
+    # [→ 模型术语速查.md#TP] 将模型矩阵拆分到8个NPU并行计算
+    # Prefill计算密集，高TP利用8个NPU算力
+    # 单节点内8 NPU通过HCCS互联，TP通信延迟低
+    
+    --enable-expert-parallel \
+    # 启用专家并行（EP）
+    # [→ 模型术语速查.md#EP] MoE模型中，不同专家分布在不同NPU
+    # GLM-5.2是MoE架构，EP优化专家路由开销
+    
+    --enable-chunked-prefill \
+    # 启用分块预填充
+    # [→ 模型术语速查.md#Chunked Prefill] 将长Prompt切成小块分批计算
+    # 避免单个超长Prompt独占资源，提升并发能力
+    # 分块后可在Prefill与Decode间交替执行，平衡资源利用
+    
+    --enable-prefix-caching \
+    # 启用前缀缓存
+    # [→ 模型术语速查.md#APC] 缓存系统提示词的KV，跨请求复用
+    # 多用户相同system prompt时零拷贝复用，大幅降低重复计算
+    # 配合PagedAttention，前缀KV固化在显存中
+    
+    --seed 1024 \
+    # 随机种子：1024
+    # 确保采样结果可复现（用于测试/调试）
+    
+    --served-model-name glm5.2 \
+    # API返回的模型名称：glm5.2
+    # 客户端通过此名称调用模型
+    
+    --max-model-len 115168 \
+    # 最大上下文长度：115,168 tokens
+    # [→ 模型术语速查.md#max-model-len] 决定能处理的Prompt+生成长度
+    # 此值直接决定显存分配（KV Cache大小）和QPS
+    # 计算公式：KV ≈ 2×L×H×d×S×P （L=层数，H=头数，d=头维度，S=序列长度，P=精度字节数）
+    # 115K tokens为超长上下文，需要足够显存和稀疏优化
+    
+    --max-num-batched-tokens 4096 \
+    # 单批次最大token数：4096
+    # 连续批处理的上限，平衡吞吐与延迟
+    # 太小浪费并行能力，太大导致TTFT增加
+    
+    --trust-remote-code \
+    # 信任远程代码（允许执行模型仓库中的自定义代码）
+    # GLM模型可能包含自定义算子实现
+    
+    --max-num-seqs 64 \
+    # 最大并发序列数：64
+    # 同时处理的请求数上限，影响服务并发能力
+    
+    --gpu-memory-utilization 0.95 \
+    # GPU显存利用率：95%
+    # [→ 映射指南步骤二] vLLM用PagedAttention将显存格式化为动态虚拟页池
+    # 预留5%给CUDA上下文、框架开销；KV Cache占满95%
+    # 过高可能导致OOM，过低浪费资源
+    
+    --quantization ascend \
+    # 量化方案：昇腾专用
+    # 使用昇腾NPU优化过的量化算子（而非通用方案）
+    
+    --async-scheduling \
+    # 启用异步调度
+    # [→ 模型术语速查.md#异步调度] 网络I/O与GPU计算解耦并行
+    # 在等待网络传输时，GPU继续计算其他任务
+    
+    --enforce-eager \
+    # 强制eager模式（禁用图编译）
+    # 动态shape或调试时使用，牺牲性能换取灵活性
+    # 与AclGraph图编译互斥，可能出现这个参数用于某些场景的fallback
+    
+    --enable-auto-tool-choice \
+    # 启用自动工具选择（Function Calling支持）
+    # 模型可自动决定是否调用外部工具
+    
+    --tool-call-parser glm47 \
+    # 工具调用解析器：glm47格式
+    # GLM-4.7的工具调用格式解析
+    
+    --reasoning-parser glm45 \
+    # 推理解析器：glm45格式
+    # GLM-4.5的推理链（Chain-of-Thought）格式解析
+    
+    --kv-transfer-config \
+    '{
+        "kv_connector": "MooncakeConnectorV1",
+        # KV传输连接器：MooncakeConnector V1版本
+        # Mooncake是字节跳动开源的KV传输框架，优化的跨节点内存传输
+        
+        "kv_role": "kv_producer",
+        # KV角色：生产者
+        # [→ 模型术语速查.md#PD分离] P节点计算KV后传输给D节点
+        # P=kv_producer, D=kv_consumer
+        
+        "kv_port": "30000",
+        # KV传输端口：30000
+        # Mooncake监听此端口接收/发送KV Cache
+        
+        "engine_id": "0",
+        # 引擎ID：0
+        # 区分多个vLLM实例，此处P0为引擎0
+        
+        "kv_connector_extra_config": {
+            "use_ascend_direct": true,
+            # 使用昇腾直连传输
+            # 利用昇腾NPU的DMA直连传输，绕过CPU拷贝
+            # [→ 模型术语速查.md#三层异构内存分级] HBM与网络直接传输
+            
+            "prefill": {
+                "dp_size": 4,
+                # Prefill阶段的DP规模：4
+                "tp_size": 8
+                # Prefill阶段的TP规模：8
+                # Prefill计算密集，高TP（8）利用单节点8 NPU算力
+            },
+            "decode": {
+                "dp_size": 8,
+                # Decode阶段的DP规模：8（对应8个D节点）
+                "tp_size": 4
+                # Decode阶段的TP规模：4
+                # Decode访存密集，高DP（8）扩并发，低TP（4）减少通信
+                # [→ 模型术语速查.md#Decode] Decode每token独立性高，适合高并发
+            }
+        }
+    }' \
+    --additional-config \
+    '{
+        "enable_sparse_c8": false,
+        # 禁用C8稀疏化（保留稠密计算）
+        # 如启用会激活稀疏MoE计算优化
+        
+        "fuse_muls_add": true,
+        # 启用乘加融合
+        # 将 y = a*x + b 融合为单算子，减少内核启动开销
+        
+        "multistream_overlap_shared_expert": true,
+        # 启用多流重叠共享专家计算
+        # [→ 模型术语速查.md#EP] MoE的共享专家与其他计算并行
+        
+        "recompute_scheduler_enable": true,
+        # 启用重计算调度器
+        # 在显存紧张时选择性重计算（不保存中间结果），降低峰值显存
+        
+        "ascend_compilation_config": {
+            "enable_npugraph_ex": true
+            # 启用NPU图扩展（AclGraph增强版）
+            # [→ 模型术语速查.md#AclGraph] 图编译缓存，加速重复计算路径
+        },
+        "enable_dsa_cp": true
+        # 启用DSA（DeepSeek Attention）跨节点流水线
+        # [→ 模型术语速查.md#DSA] DSA稀疏注意力，O(L²)→O(L·k)
+        # 降低超长上下文（115K）的注意力开销
+    }' \
+    --speculative-config '{"num_speculative_tokens": 3, "method":"deepseek_mtp"}' \
+    # 猜测解码配置
+    # [→ 模型术语速查.md#猜测解码] 小模型先盲猜3个token，大模型批改
+    # method=deepseek_mtp：使用DeepSeek的多token预测方法
+    # 猜测正确则加速3倍，错误则回退（开销小）
+    # 适合有规律的文本（代码、格式化输出）
+    
+    --api-key ce5e457d-0a12-4180-a7c4-cc7aafe062a9 \
+    # API认证密钥
+    # 客户端请求时需携带此密钥（Bearer Token）
+    
+    > /home/gandalf/images/glm5.2-8pd-logs/vllm-glm5.2-8pd-p0-rank0-${local_ip}-${LOG_TIMESTAMP}.log 2>&1 &
+    # 重定向stdout和stderr到日志文件
+    # 文件名包含：模型名、架构（8pd）、节点标识（p0-rank0）、IP、时间戳
+    # 后台运行（&符号），服务持续监听端口9081
+```
+
+---
+
+## 【流程解释】单节点内NPU拓扑与并行策略
+
+![【流程解释】单节点内NPU拓扑与并行策略](data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQwMCIgaGVpZ2h0PSIxMDgwIiB2aWV3Qm94PSIwIDAgMjQwMCAxMDgwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8IS0tID09PT09PT09PT3lupXlsYLlm7rlrprniYjlvI89PT09PT09PT09IC0tPgo8IS0tIOaXp+e6uOW8oOW6leiJsu+8muWKoOa3seS9hueojeW+ruaYjuS6ruS4gOeCueeCuSAtLT4KPHJlY3Qgd2lkdGg9IjI0MDAiIGhlaWdodD0iMTA4MCIgZmlsbD0iI2U4ZTJkNSIvPgoKPCEtLSDmt6HnvZHmoLzvvJrnqLPlrproibLlgLzvvIzkuI3kvb/nlKhvcGFjaXR5IC0tPgo8ZyBzdHJva2U9IiNjNmMwYjQiIHN0cm9rZS13aWR0aD0iMC40Ij4KICA8IS0tIOerlue6vyAtLT4KICA8bGluZSB4MT0iMTIwIiB5MT0iODAiIHgyPSIxMjAiIHkyPSIxMDAwIi8+CiAgPGxpbmUgeDE9IjI0MCIgeTE9IjgwIiB4Mj0iMjQwIiB5Mj0iMTAwMCIvPgogIDxsaW5lIHgxPSIzNjAiIHkxPSI4MCIgeDI9IjM2MCIgeTI9IjEwMDAiLz4KICA8bGluZSB4MT0iNDgwIiB5MT0iODAiIHgyPSI0ODAiIHkyPSIxMDAwIi8+CiAgPGxpbmUgeDE9IjYwMCIgeTE9IjgwIiB4Mj0iNjAwIiB5Mj0iMTAwMCIvPgogIDxsaW5lIHgxPSI3MjAiIHkxPSI4MCIgeDI9IjcyMCIgeTI9IjEwMDAiLz4KICA8bGluZSB4MT0iODQwIiB5MT0iODAiIHgyPSI4NDAiIHkyPSIxMDAwIi8+CiAgPGxpbmUgeDE9Ijk2MCIgeTE9IjgwIiB4Mj0iOTYwIiB5Mj0iMTAwMCIvPgogIDxsaW5lIHgxPSIxMDgwIiB5MT0iODAiIHgyPSIxMDgwIiB5Mj0iMTAwMCIvPgogIDxsaW5lIHgxPSIxMjAwIiB5MT0iODAiIHgyPSIxMjAwIiB5Mj0iMTAwMCIvPgogIDxsaW5lIHgxPSIxMzIwIiB5MT0iODAiIHgyPSIxMzIwIiB5Mj0iMTAwMCIvPgogIDxsaW5lIHgxPSIxNDQwIiB5MT0iODAiIHgyPSIxNDQwIiB5Mj0iMTAwMCIvPgogIDxsaW5lIHgxPSIxNTYwIiB5MT0iODAiIHgyPSIxNTYwIiB5Mj0iMTAwMCIvPgogIDxsaW5lIHgxPSIxNjgwIiB5MT0iODAiIHgyPSIxNjgwIiB5Mj0iMTAwMCIvPgogIDxsaW5lIHgxPSIxODAwIiB5MT0iODAiIHgyPSIxODAwIiB5Mj0iMTAwMCIvPgogIDxsaW5lIHgxPSIxOTIwIiB5MT0iODAiIHgyPSIxOTIwIiB5Mj0iMTAwMCIvPgogIDxsaW5lIHgxPSIyMDQwIiB5MT0iODAiIHgyPSIyMDQwIiB5Mj0iMTAwMCIvPgogIDxsaW5lIHgxPSIyMTYwIiB5MT0iODAiIHgyPSIyMTYwIiB5Mj0iMTAwMCIvPgogIDxsaW5lIHgxPSIyMjgwIiB5MT0iODAiIHgyPSIyMjgwIiB5Mj0iMTAwMCIvPgoKICA8IS0tIOaoque6vyAtLT4KICA8bGluZSB4MT0iMTIwIiB5MT0iODAiIHgyPSIyMjgwIiB5Mj0iODAiLz4KICA8bGluZSB4MT0iMTIwIiB5MT0iMTYwIiB4Mj0iMjI4MCIgeTI9IjE2MCIvPgogIDxsaW5lIHgxPSIxMjAiIHkxPSIyNDAiIHgyPSIyMjgwIiB5Mj0iMjQwIi8+CiAgPGxpbmUgeDE9IjEyMCIgeTE9IjMyMCIgeDI9IjIyODAiIHkyPSIzMjAiLz4KICA8bGluZSB4MT0iMTIwIiB5MT0iNDAwIiB4Mj0iMjI4MCIgeTI9IjQwMCIvPgogIDxsaW5lIHgxPSIxMjAiIHkxPSI0ODAiIHgyPSIyMjgwIiB5Mj0iNDgwIi8+CiAgPGxpbmUgeDE9IjEyMCIgeTE9IjU2MCIgeDI9IjIyODAiIHkyPSI1NjAiLz4KICA8bGluZSB4MT0iMTIwIiB5MT0iNjQwIiB4Mj0iMjI4MCIgeTI9IjY0MCIvPgogIDxsaW5lIHgxPSIxMjAiIHkxPSI3MjAiIHgyPSIyMjgwIiB5Mj0iNzIwIi8+CiAgPGxpbmUgeDE9IjEyMCIgeTE9IjgwMCIgeDI9IjIyODAiIHkyPSI4MDAiLz4KICA8bGluZSB4MT0iMTIwIiB5MT0iODgwIiB4Mj0iMjI4MCIgeTI9Ijg4MCIvPgogIDxsaW5lIHgxPSIxMjAiIHkxPSI5NjAiIHgyPSIyMjgwIiB5Mj0iOTYwIi8+CjwvZz4KCjwhLS0gPT09PT09PT09PeS4u+S9k+e6v+eov+WMuuWfnz09PT09PT09PT0gLS0+CjxkZWZzPgogICAgPG1hcmtlciBpZD0iYXJyb3doZWFkLXJlZCIgbWFya2VyV2lkdGg9IjgiIG1hcmtlckhlaWdodD0iNiIgcmVmWD0iOCIgcmVmWT0iMyIgb3JpZW50PSJhdXRvIj4KICAgICAgPHBvbHlnb24gcG9pbnRzPSIwIDAsIDggMywgMCA2IiBmaWxsPSIjZDMyZjJmIi8+CiAgICA8L21hcmtlcj4KICAgIDxtYXJrZXIgaWQ9ImFycm93aGVhZC1ibHVlIiBtYXJrZXJXaWR0aD0iOCIgbWFya2VySGVpZ2h0PSI2IiByZWZYPSI4IiByZWZZPSIzIiBvcmllbnQ9ImF1dG8iPgogICAgICA8cG9seWdvbiBwb2ludHM9IjAgMCwgOCAzLCAwIDYiIGZpbGw9IiMxOTc2ZDIiLz4KICAgIDwvbWFya2VyPgogIDwvZGVmcz4KCiAgPGcgaWQ9Im1haW4tZHJhd2luZyI+CjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQxMy40MCwgMTAzLjAwKSBzY2FsZSgxLjc0ODApIj4KPCEtLSDmoIfpopggLS0+CiAgPHRleHQgeD0iNDUwIiB5PSIzNSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIyMCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IiMxYTFhMWEiPlAw5Y2V6IqC54K55YaFTlBV5ouT5omR5LiOVFA9OOW8oOmHj+W5tuihjDwvdGV4dD4KICA8dGV4dCB4PSI0NTAiIHk9IjU1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjEzIiBmaWxsPSIjNjY2Ij5BU0NFTkRfUlRfVklTSUJMRV9ERVZJQ0VTPTAsMSwyLDMsNCw1LDYsNzwvdGV4dD4KICAKICA8IS0tIFAw6IqC54K56L655qGGIC0tPgogIDxyZWN0IHg9IjUwIiB5PSI4MCIgd2lkdGg9IjcwMCIgaGVpZ2h0PSIzNTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIiByeD0iMTAiLz4KICA8dGV4dCB4PSI4MCIgeT0iMTA1IiBmb250LXNpemU9IjE2IiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0iIzFhMWExYSI+UDAg6IqC54K5ICg4NS4yNS4xNS4xMDEpPC90ZXh0PgogIAogIDwhLS0gTlBV572R5qC8IDR4MiAtLT4KICA8IS0tIFJvdyAxIC0tPgogIDxyZWN0IHg9IjgwIiB5PSIxMzAiIHdpZHRoPSIxNDAiIGhlaWdodD0iODAiIGZpbGw9IiNmZmYiIHN0cm9rZT0iIzQ0NCIgc3Ryb2tlLXdpZHRoPSIyIiByeD0iNSIvPgogIDx0ZXh0IHg9IjE1MCIgeT0iMTY1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjE1IiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0iIzFhMWExYSI+TlBVIDA8L3RleHQ+CiAgPHRleHQgeD0iMTUwIiB5PSIxODUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMTEiIGZpbGw9IiM2NjYiPk1vRSBFeHBlcnQgMCw4LDE2Li4uPC90ZXh0PgogIDx0ZXh0IHg9IjE1MCIgeT0iMjAwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjEwIiBmaWxsPSIjODg4Ij5FUOWIhueJhzwvdGV4dD4KICAKICA8cmVjdCB4PSIyNTAiIHk9IjEzMCIgd2lkdGg9IjE0MCIgaGVpZ2h0PSI4MCIgZmlsbD0iI2ZmZiIgc3Ryb2tlPSIjNDQ0IiBzdHJva2Utd2lkdGg9IjIiIHJ4PSI1Ii8+CiAgPHRleHQgeD0iMzIwIiB5PSIxNjUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMTUiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSIjMWExYTFhIj5OUFUgMTwvdGV4dD4KICA8dGV4dCB4PSIzMjAiIHk9IjE4NSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIxMSIgZmlsbD0iIzY2NiI+TW9FIEV4cGVydCAxLDksMTcuLi48L3RleHQ+CiAgPHRleHQgeD0iMzIwIiB5PSIyMDAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IiM4ODgiPkVQ5YiG54mHPC90ZXh0PgogIAogIDxyZWN0IHg9IjQyMCIgeT0iMTMwIiB3aWR0aD0iMTQwIiBoZWlnaHQ9IjgwIiBmaWxsPSIjZmZmIiBzdHJva2U9IiM0NDQiIHN0cm9rZS13aWR0aD0iMiIgcng9IjUiLz4KICA8dGV4dCB4PSI0OTAiIHk9IjE2NSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIxNSIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IiMxYTFhMWEiPk5QVSAyPC90ZXh0PgogIDx0ZXh0IHg9IjQ5MCIgeT0iMTg1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjExIiBmaWxsPSIjNjY2Ij5Nb0UgRXhwZXJ0IDIsMTAsMTguLi48L3RleHQ+CiAgPHRleHQgeD0iNDkwIiB5PSIyMDAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IiM4ODgiPkVQ5YiG54mHPC90ZXh0PgogIAogIDxyZWN0IHg9IjU5MCIgeT0iMTMwIiB3aWR0aD0iMTQwIiBoZWlnaHQ9IjgwIiBmaWxsPSIjZmZmIiBzdHJva2U9IiM0NDQiIHN0cm9rZS13aWR0aD0iMiIgcng9IjUiLz4KICA8dGV4dCB4PSI2NjAiIHk9IjE2NSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIxNSIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IiMxYTFhMWEiPk5QVSAzPC90ZXh0PgogIDx0ZXh0IHg9IjY2MCIgeT0iMTg1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjExIiBmaWxsPSIjNjY2Ij5Nb0UgRXhwZXJ0IDMsMTEsMTkuLi48L3RleHQ+CiAgPHRleHQgeD0iNjYwIiB5PSIyMDAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IiM4ODgiPkVQ5YiG54mHPC90ZXh0PgogIAogIDwhLS0gUm93IDIgLS0+CiAgPHJlY3QgeD0iODAiIHk9IjI1MCIgd2lkdGg9IjE0MCIgaGVpZ2h0PSI4MCIgZmlsbD0iI2ZmZiIgc3Ryb2tlPSIjNDQ0IiBzdHJva2Utd2lkdGg9IjIiIHJ4PSI1Ii8+CiAgPHRleHQgeD0iMTUwIiB5PSIyODUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMTUiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSIjMWExYTFhIj5OUFUgNDwvdGV4dD4KICA8dGV4dCB4PSIxNTAiIHk9IjMwNSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIxMSIgZmlsbD0iIzY2NiI+TW9FIEV4cGVydCA0LDEyLDIwLi4uPC90ZXh0PgogIDx0ZXh0IHg9IjE1MCIgeT0iMzIwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjEwIiBmaWxsPSIjODg4Ij5FUOWIhueJhzwvdGV4dD4KICAKICA8cmVjdCB4PSIyNTAiIHk9IjI1MCIgd2lkdGg9IjE0MCIgaGVpZ2h0PSI4MCIgZmlsbD0iI2ZmZiIgc3Ryb2tlPSIjNDQ0IiBzdHJva2Utd2lkdGg9IjIiIHJ4PSI1Ii8+CiAgPHRleHQgeD0iMzIwIiB5PSIyODUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMTUiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSIjMWExYTFhIj5OUFUgNTwvdGV4dD4KICA8dGV4dCB4PSIzMjAiIHk9IjMwNSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIxMSIgZmlsbD0iIzY2NiI+TW9FIEV4cGVydCA1LDEzLDIxLi4uPC90ZXh0PgogIDx0ZXh0IHg9IjMyMCIgeT0iMzIwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjEwIiBmaWxsPSIjODg4Ij5FUOWIhueJhzwvdGV4dD4KICAKICA8cmVjdCB4PSI0MjAiIHk9IjI1MCIgd2lkdGg9IjE0MCIgaGVpZ2h0PSI4MCIgZmlsbD0iI2ZmZiIgc3Ryb2tlPSIjNDQ0IiBzdHJva2Utd2lkdGg9IjIiIHJ4PSI1Ii8+CiAgPHRleHQgeD0iNDkwIiB5PSIyODUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMTUiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSIjMWExYTFhIj5OUFUgNjwvdGV4dD4KICA8dGV4dCB4PSI0OTAiIHk9IjMwNSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIxMSIgZmlsbD0iIzY2NiI+TW9FIEV4cGVydCA2LDE0LDIyLi4uPC90ZXh0PgogIDx0ZXh0IHg9IjQ5MCIgeT0iMzIwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjEwIiBmaWxsPSIjODg4Ij5FUOWIhueJhzwvdGV4dD4KICAKICA8cmVjdCB4PSI1OTAiIHk9IjI1MCIgd2lkdGg9IjE0MCIgaGVpZ2h0PSI4MCIgZmlsbD0iI2ZmZiIgc3Ryb2tlPSIjNDQ0IiBzdHJva2Utd2lkdGg9IjIiIHJ4PSI1Ii8+CiAgPHRleHQgeD0iNjYwIiB5PSIyODUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMTUiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSIjMWExYTFhIj5OUFUgNzwvdGV4dD4KICA8dGV4dCB4PSI2NjAiIHk9IjMwNSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIxMSIgZmlsbD0iIzY2NiI+TW9FIEV4cGVydCA3LDE1LDIzLi4uPC90ZXh0PgogIDx0ZXh0IHg9IjY2MCIgeT0iMzIwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjEwIiBmaWxsPSIjODg4Ij5FUOWIhueJhzwvdGV4dD4KICAKICA8IS0tIFRQPTgg57qi6Imy566t5aS06L+e5o6l77yI5rC05bmz5pa55ZCR77yJIC0tPgogIDwhLS0gUm93IDEg566t5aS0IC0tPgogIAogIAogIDwhLS0gVFDmsLTlubPpgJrkv6EgUm93IDEgLS0+CiAgPGxpbmUgeDE9IjIyMCIgeTE9IjE3MCIgeDI9IjI0OCIgeTI9IjE3MCIgc3Ryb2tlPSIjZDMyZjJmIiBzdHJva2Utd2lkdGg9IjIiIG1hcmtlci1lbmQ9InVybCgjYXJyb3doZWFkLXJlZCkiLz4KICA8bGluZSB4MT0iMzkwIiB5MT0iMTcwIiB4Mj0iNDE4IiB5Mj0iMTcwIiBzdHJva2U9IiNkMzJmMmYiIHN0cm9rZS13aWR0aD0iMiIgbWFya2VyLWVuZD0idXJsKCNhcnJvd2hlYWQtcmVkKSIvPgogIDxsaW5lIHgxPSI1NjAiIHkxPSIxNzAiIHgyPSI1ODgiIHkyPSIxNzAiIHN0cm9rZT0iI2QzMmYyZiIgc3Ryb2tlLXdpZHRoPSIyIiBtYXJrZXItZW5kPSJ1cmwoI2Fycm93aGVhZC1yZWQpIi8+CiAgCiAgPCEtLSBUUOawtOW5s+mAmuS/oSBSb3cgMiAtLT4KICA8bGluZSB4MT0iMjIwIiB5Mj0iMjkwIiB4Mj0iMjQ4IiB5Mj0iMjkwIiBzdHJva2U9IiNkMzJmMmYiIHN0cm9rZS13aWR0aD0iMiIgbWFya2VyLWVuZD0idXJsKCNhcnJvd2hlYWQtcmVkKSIgeTE9IjI5MCIvPgogIDxsaW5lIHgxPSIzOTAiIHkxPSIyOTAiIHgyPSI0MTgiIHkyPSIyOTAiIHN0cm9rZT0iI2QzMmYyZiIgc3Ryb2tlLXdpZHRoPSIyIiBtYXJrZXItZW5kPSJ1cmwoI2Fycm93aGVhZC1yZWQpIi8+CiAgPGxpbmUgeDE9IjU2MCIgeTE9IjI5MCIgeDI9IjU4OCIgeTI9IjI5MCIgc3Ryb2tlPSIjZDMyZjJmIiBzdHJva2Utd2lkdGg9IjIiIG1hcmtlci1lbmQ9InVybCgjYXJyb3doZWFkLXJlZCkiLz4KICAKICA8IS0tIFRQ5Z6C55u06YCa5L+hIC0tPgogIDxsaW5lIHgxPSIxNTAiIHkxPSIyMTAiIHgyPSIxNTAiIHkyPSIyNDgiIHN0cm9rZT0iI2QzMmYyZiIgc3Ryb2tlLXdpZHRoPSIyIiBtYXJrZXItZW5kPSJ1cmwoI2Fycm93aGVhZC1yZWQpIi8+CiAgPGxpbmUgeDE9IjMyMCIgeTE9IjIxMCIgeDI9IjMyMCIgeTI9IjI0OCIgc3Ryb2tlPSIjZDMyZjJmIiBzdHJva2Utd2lkdGg9IjIiIG1hcmtlci1lbmQ9InVybCgjYXJyb3doZWFkLXJlZCkiLz4KICA8bGluZSB4MT0iNDkwIiB5MT0iMjEwIiB4Mj0iNDkwIiB5Mj0iMjQ4IiBzdHJva2U9IiNkMzJmMmYiIHN0cm9rZS13aWR0aD0iMiIgbWFya2VyLWVuZD0idXJsKCNhcnJvd2hlYWQtcmVkKSIvPgogIDxsaW5lIHgxPSI2NjAiIHkxPSIyMTAiIHgyPSI2NjAiIHkyPSIyNDgiIHN0cm9rZT0iI2QzMmYyZiIgc3Ryb2tlLXdpZHRoPSIyIiBtYXJrZXItZW5kPSJ1cmwoI2Fycm93aGVhZC1yZWQpIi8+CiAgPCEtLSBUUOagh+azqCAtLT4KICA8dGV4dCB4PSI3ODAiIHk9IjE3MCIgZm9udC1zaXplPSIxMiIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IiNkMzJmMmYiPlRQPTg8L3RleHQ+CiAgPHRleHQgeD0iNzgwIiB5PSIxOTAiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IiNkMzJmMmYiPuW8oOmHj+W5tuihjDwvdGV4dD4KICA8dGV4dCB4PSI3ODAiIHk9IjIxMCIgZm9udC1zaXplPSI5IiBmaWxsPSIjNjY2Ij7nn6npmLXmi4bliIY8L3RleHQ+CiAgPHRleHQgeD0iNzgwIiB5PSIyMzAiIGZvbnQtc2l6ZT0iOSIgZmlsbD0iIzY2NiI+QWxsUmVkdWNl5ZCM5q2lPC90ZXh0PgogIDxsaW5lIHgxPSI3MjAiIHkxPSIxOTAiIHgyPSI3NzUiIHkyPSIxOTAiIHN0cm9rZT0iI2QzMmYyZiIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZS1kYXNoYXJyYXk9IjQsMiIvPgogIDwhLS0g572R5Y2h6L+e5o6lIC0tPgogIDxyZWN0IHg9IjI1MCIgeT0iMzcwIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjZTNmMmZkIiBzdHJva2U9IiMxOTc2ZDIiIHN0cm9rZS13aWR0aD0iMiIgcng9IjUiLz4KICA8dGV4dCB4PSIzNTAiIHk9IjM5NSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIxMiIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IiMxOTc2ZDIiPmVucDE4OXMwZjA8L3RleHQ+CiAgPGxpbmUgeDE9IjM1MCIgeTE9IjM3MCIgeDI9IjM1MCIgeTI9IjMzMCIgc3Ryb2tlPSIjMTk3NmQyIiBzdHJva2Utd2lkdGg9IjIiIG1hcmtlci1lbmQ9InVybCgjYXJyb3doZWFkLWJsdWUpIi8+CiAgPHRleHQgeD0iMzU1IiB5PSIzNTAiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IiMxOTc2ZDIiPkhDQ0zpgJrkv6E8L3RleHQ+CiAgPCEtLSBIQ0NT5LqS6IGU5qCH5rOoIC0tPgogIDx0ZXh0IHg9IjE1MCIgeT0iMjQwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjkiIGZpbGw9IiM4ODgiPkhDQ1Ppq5jpgJ/mgLvnur88L3RleHQ+CiAgPCEtLSDlm77kvosgLS0+CiAgPHJlY3QgeD0iNjAwIiB5PSIzNzAiIHdpZHRoPSIxNDAiIGhlaWdodD0iNDAiIGZpbGw9IiNmYWZhZmEiIHN0cm9rZT0iI2NjYyIgc3Ryb2tlLXdpZHRoPSIxIiByeD0iMyIvPgogIDx0ZXh0IHg9IjY3MCIgeT0iMzg1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjEwIiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0iIzFhMWExYSI+5Zu+5L6LPC90ZXh0PgogIDxsaW5lIHgxPSI2MTAiIHkxPSI0MDAiIHgyPSI2NDAiIHkyPSI0MDAiIHN0cm9rZT0iI2QzMmYyZiIgc3Ryb2tlLXdpZHRoPSIyIiBtYXJrZXItZW5kPSJ1cmwoI2Fycm93aGVhZC1yZWQpIi8+CiAgPHRleHQgeD0iNjQ1IiB5PSI0MDQiIGZvbnQtc2l6ZT0iOSIgZmlsbD0iIzY2NiI+VFDpgJrkv6HmtYE8L3RleHQ+CjwvZz4KPC9nPgoKPCEtLSA9PT09PT09PT095qCH5rOo5byV57q/57uEPT09PT09PT09PSAtLT4KPGcgaWQ9ImFubm90YXRpb25zIiBzdHJva2U9IiM1NTU1NTUiIHN0cm9rZS13aWR0aD0iMSIgc3Ryb2tlLWRhc2hhcnJheT0iNiA0IiBmaWxsPSJub25lIj4KPC9nPgoKPC9zdmc+)
+
+**图释说明：**
+
+1. **P0节点结构**：单个物理服务器，容纳8个昇腾NPU（Ascend 910B），通过`ASCEND_RT_VISIBLE_DEVICES=0,1,2,3,4,5,6,7`声明可见。
+
+2. **TP=8张量并行**：
+   - 将模型矩阵按列切分到8个NPU，每个NPU持有1/8权重
+   - 示例：`W = [W₀|W₁|W₂|W₃|W₄|W₅|W₆|W₇]`，NPU i持有Wᵢ
+   - 前向传播：各NPU并行计算`yᵢ = x·Wᵢ`，然后AllReduce求和`y = Σyᵢ`
+   - 红色箭头表示TP通信路径（HCCS高速总线，延迟<1μs）
+
+3. **EP专家并行**：
+   - GLM-5.2是MoE架构，多个专家分布在不同NPU
+   - 每个NPU持有部分专家（如NPU 0持有Expert 0,8,16...）
+   - 路由网络根据token选择对应NPU的专家执行
+
+4. **网络接口**：
+   - `enp189s0f0`网卡承担HCCL集合通信
+   - 单节点内NPU通过HCCS互联（板内高速总线），跨节点通过以太网/RoCE
+
+---
+
+## 【流程解释】PD分离与DP跨节点数据流
+
+![【流程解释】PD分离与DP跨节点数据流](data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQwMCIgaGVpZ2h0PSIxMDgwIiB2aWV3Qm94PSIwIDAgMjQwMCAxMDgwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8IS0tID09PT09PT09PT3lupXlsYLlm7rlrprniYjlvI89PT09PT09PT09IC0tPgo8IS0tIOaXp+e6uOW8oOW6leiJsu+8muWKoOa3seS9hueojeW+ruaYjuS6ruS4gOeCueeCuSAtLT4KPHJlY3Qgd2lkdGg9IjI0MDAiIGhlaWdodD0iMTA4MCIgZmlsbD0iI2U4ZTJkNSIvPgoKPCEtLSDmt6HnvZHmoLzvvJrnqLPlrproibLlgLzvvIzkuI3kvb/nlKhvcGFjaXR5IC0tPgo8ZyBzdHJva2U9IiNjNmMwYjQiIHN0cm9rZS13aWR0aD0iMC40Ij4KICA8IS0tIOerlue6vyAtLT4KICA8bGluZSB4MT0iMTIwIiB5MT0iODAiIHgyPSIxMjAiIHkyPSIxMDAwIi8+CiAgPGxpbmUgeDE9IjI0MCIgeTE9IjgwIiB4Mj0iMjQwIiB5Mj0iMTAwMCIvPgogIDxsaW5lIHgxPSIzNjAiIHkxPSI4MCIgeDI9IjM2MCIgeTI9IjEwMDAiLz4KICA8bGluZSB4MT0iNDgwIiB5MT0iODAiIHgyPSI0ODAiIHkyPSIxMDAwIi8+CiAgPGxpbmUgeDE9IjYwMCIgeTE9IjgwIiB4Mj0iNjAwIiB5Mj0iMTAwMCIvPgogIDxsaW5lIHgxPSI3MjAiIHkxPSI4MCIgeDI9IjcyMCIgeTI9IjEwMDAiLz4KICA8bGluZSB4MT0iODQwIiB5MT0iODAiIHgyPSI4NDAiIHkyPSIxMDAwIi8+CiAgPGxpbmUgeDE9Ijk2MCIgeTE9IjgwIiB4Mj0iOTYwIiB5Mj0iMTAwMCIvPgogIDxsaW5lIHgxPSIxMDgwIiB5MT0iODAiIHgyPSIxMDgwIiB5Mj0iMTAwMCIvPgogIDxsaW5lIHgxPSIxMjAwIiB5MT0iODAiIHgyPSIxMjAwIiB5Mj0iMTAwMCIvPgogIDxsaW5lIHgxPSIxMzIwIiB5MT0iODAiIHgyPSIxMzIwIiB5Mj0iMTAwMCIvPgogIDxsaW5lIHgxPSIxNDQwIiB5MT0iODAiIHgyPSIxNDQwIiB5Mj0iMTAwMCIvPgogIDxsaW5lIHgxPSIxNTYwIiB5MT0iODAiIHgyPSIxNTYwIiB5Mj0iMTAwMCIvPgogIDxsaW5lIHgxPSIxNjgwIiB5MT0iODAiIHgyPSIxNjgwIiB5Mj0iMTAwMCIvPgogIDxsaW5lIHgxPSIxODAwIiB5MT0iODAiIHgyPSIxODAwIiB5Mj0iMTAwMCIvPgogIDxsaW5lIHgxPSIxOTIwIiB5MT0iODAiIHgyPSIxOTIwIiB5Mj0iMTAwMCIvPgogIDxsaW5lIHgxPSIyMDQwIiB5MT0iODAiIHgyPSIyMDQwIiB5Mj0iMTAwMCIvPgogIDxsaW5lIHgxPSIyMTYwIiB5MT0iODAiIHgyPSIyMTYwIiB5Mj0iMTAwMCIvPgogIDxsaW5lIHgxPSIyMjgwIiB5MT0iODAiIHgyPSIyMjgwIiB5Mj0iMTAwMCIvPgoKICA8IS0tIOaoque6vyAtLT4KICA8bGluZSB4MT0iMTIwIiB5MT0iODAiIHgyPSIyMjgwIiB5Mj0iODAiLz4KICA8bGluZSB4MT0iMTIwIiB5MT0iMTYwIiB4Mj0iMjI4MCIgeTI9IjE2MCIvPgogIDxsaW5lIHgxPSIxMjAiIHkxPSIyNDAiIHgyPSIyMjgwIiB5Mj0iMjQwIi8+CiAgPGxpbmUgeDE9IjEyMCIgeTE9IjMyMCIgeDI9IjIyODAiIHkyPSIzMjAiLz4KICA8bGluZSB4MT0iMTIwIiB5MT0iNDAwIiB4Mj0iMjI4MCIgeTI9IjQwMCIvPgogIDxsaW5lIHgxPSIxMjAiIHkxPSI0ODAiIHgyPSIyMjgwIiB5Mj0iNDgwIi8+CiAgPGxpbmUgeDE9IjEyMCIgeTE9IjU2MCIgeDI9IjIyODAiIHkyPSI1NjAiLz4KICA8bGluZSB4MT0iMTIwIiB5MT0iNjQwIiB4Mj0iMjI4MCIgeTI9IjY0MCIvPgogIDxsaW5lIHgxPSIxMjAiIHkxPSI3MjAiIHgyPSIyMjgwIiB5Mj0iNzIwIi8+CiAgPGxpbmUgeDE9IjEyMCIgeTE9IjgwMCIgeDI9IjIyODAiIHkyPSI4MDAiLz4KICA8bGluZSB4MT0iMTIwIiB5MT0iODgwIiB4Mj0iMjI4MCIgeTI9Ijg4MCIvPgogIDxsaW5lIHgxPSIxMjAiIHkxPSI5NjAiIHgyPSIyMjgwIiB5Mj0iOTYwIi8+CjwvZz4KCjwhLS0gPT09PT09PT09PeS4u+S9k+e6v+eov+WMuuWfnz09PT09PT09PT0gLS0+CjxkZWZzPgogICAgPG1hcmtlciBpZD0iYXJyb3ctZHAiIG1hcmtlcldpZHRoPSIxMCIgbWFya2VySGVpZ2h0PSI3IiByZWZYPSIxMCIgcmVmWT0iMy41IiBvcmllbnQ9ImF1dG8iPgogICAgICA8cG9seWdvbiBwb2ludHM9IjAgMCwgMTAgMy41LCAwIDciIGZpbGw9IiNmZjk4MDAiLz4KICAgIDwvbWFya2VyPgogICAgPG1hcmtlciBpZD0iYXJyb3cta3YiIG1hcmtlcldpZHRoPSIxMCIgbWFya2VySGVpZ2h0PSI3IiByZWZYPSIxMCIgcmVmWT0iMy41IiBvcmllbnQ9ImF1dG8iPgogICAgICA8cG9seWdvbiBwb2ludHM9IjAgMCwgMTAgMy41LCAwIDciIGZpbGw9IiM3YjFmYTIiLz4KICAgIDwvbWFya2VyPgogIDwvZGVmcz4KCiAgPGcgaWQ9Im1haW4tZHJhd2luZyI+CjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQ4NC45MSwgMTAzLjAwKSBzY2FsZSgxLjU4OTEpIj4KPCEtLSDmoIfpopggLS0+CiAgPHRleHQgeD0iNDUwIiB5PSIzMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIxOCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IiMxYTFhMWEiPlBE5YiG56a75p625p6E77yaUOmbhue+pO+8iFByZWZpbGzvvInihpIgROmbhue+pO+8iERlY29kZe+8iTwvdGV4dD4KICA8dGV4dCB4PSI0NTAiIHk9IjQ4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjEyIiBmaWxsPSIjNjY2Ij5EUOi3qOiKgueCueaVsOaNrua1geS4jktW5Lyg6L6T6Lev5b6EPC90ZXh0PgogIDwhLS0gUOiKgueCuembhue+pCAtLT4KICA8dGV4dCB4PSI0NTAiIHk9Ijc1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjE0IiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0iIzE1NjVjMCI+UOmbhue+pCAoUHJlZmlsbOiuoeeul+Wvhumbhikg4oaSIERQPTQsIFRQPTg8L3RleHQ+CiAgPCEtLSBQMOiKgueCuSAtLT4KICA8cmVjdCB4PSI0MCIgeT0iOTAiIHdpZHRoPSIxODAiIGhlaWdodD0iMTIwIiBmaWxsPSIjZTNmMmZkIiBzdHJva2U9IiMxNTY1YzAiIHN0cm9rZS13aWR0aD0iMiIgcng9IjUiLz4KICA8dGV4dCB4PSIxMzAiIHk9IjExMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIxMyIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IiMxNTY1YzAiPlAwIChyYW5rIDApPC90ZXh0PgogIDx0ZXh0IHg9IjEzMCIgeT0iMTI1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjEwIiBmaWxsPSIjNjY2Ij5pcDogODUuMjUuMTUuMTAxPC90ZXh0PgogIDxyZWN0IHg9IjUwIiB5PSIxMzUiIHdpZHRoPSIzMCIgaGVpZ2h0PSIyNSIgZmlsbD0iI2ZmZiIgc3Ryb2tlPSIjMTU2NWMwIiBzdHJva2Utd2lkdGg9IjEiIHJ4PSIyIi8+CiAgPHRleHQgeD0iNjUiIHk9IjE1MiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSI5IiBmaWxsPSIjMzMzIj5OUFU8L3RleHQ+CiAgPHJlY3QgeD0iODUiIHk9IjEzNSIgd2lkdGg9IjMwIiBoZWlnaHQ9IjI1IiBmaWxsPSIjZmZmIiBzdHJva2U9IiMxNTY1YzAiIHN0cm9rZS13aWR0aD0iMSIgcng9IjIiLz4KICA8dGV4dCB4PSIxMDAiIHk9IjE1MiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSI5IiBmaWxsPSIjMzMzIj5OUFU8L3RleHQ+CiAgPHJlY3QgeD0iMTIwIiB5PSIxMzUiIHdpZHRoPSIzMCIgaGVpZ2h0PSIyNSIgZmlsbD0iI2ZmZiIgc3Ryb2tlPSIjMTU2NWMwIiBzdHJva2Utd2lkdGg9IjEiIHJ4PSIyIi8+CiAgPHRleHQgeD0iMTM1IiB5PSIxNTIiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iOSIgZmlsbD0iIzMzMyI+TlBVPC90ZXh0PgogIDxyZWN0IHg9IjE1NSIgeT0iMTM1IiB3aWR0aD0iMzAiIGhlaWdodD0iMjUiIGZpbGw9IiNmZmYiIHN0cm9rZT0iIzE1NjVjMCIgc3Ryb2tlLXdpZHRoPSIxIiByeD0iMiIvPgogIDx0ZXh0IHg9IjE3MCIgeT0iMTUyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjkiIGZpbGw9IiMzMzMiPk5QVTwvdGV4dD4KICA8cmVjdCB4PSI1MCIgeT0iMTY1IiB3aWR0aD0iMzAiIGhlaWdodD0iMjUiIGZpbGw9IiNmZmYiIHN0cm9rZT0iIzE1NjVjMCIgc3Ryb2tlLXdpZHRoPSIxIiByeD0iMiIvPgogIDxyZWN0IHg9Ijg1IiB5PSIxNjUiIHdpZHRoPSIzMCIgaGVpZ2h0PSIyNSIgZmlsbD0iI2ZmZiIgc3Ryb2tlPSIjMTU2NWMwIiBzdHJva2Utd2lkdGg9IjEiIHJ4PSIyIi8+CiAgPHJlY3QgeD0iMTIwIiB5PSIxNjUiIHdpZHRoPSIzMCIgaGVpZ2h0PSIyNSIgZmlsbD0iI2ZmZiIgc3Ryb2tlPSIjMTU2NWMwIiBzdHJva2Utd2lkdGg9IjEiIHJ4PSIyIi8+CiAgPHJlY3QgeD0iMTU1IiB5PSIxNjUiIHdpZHRoPSIzMCIgaGVpZ2h0PSIyNSIgZmlsbD0iI2ZmZiIgc3Ryb2tlPSIjMTU2NWMwIiBzdHJva2Utd2lkdGg9IjEiIHJ4PSIyIi8+CiAgPHRleHQgeD0iMTMwIiB5PSIyMDUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iOSIgZmlsbD0iIzg4OCI+OCBOUFUgKFRQPTgpPC90ZXh0PgogIDwhLS0gUDHoioLngrkgLS0+CiAgPHJlY3QgeD0iMjQwIiB5PSI5MCIgd2lkdGg9IjE4MCIgaGVpZ2h0PSIxMjAiIGZpbGw9IiNlM2YyZmQiIHN0cm9rZT0iIzE1NjVjMCIgc3Ryb2tlLXdpZHRoPSIyIiByeD0iNSIvPgogIDx0ZXh0IHg9IjMzMCIgeT0iMTEwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjEzIiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0iIzE1NjVjMCI+UDEgKHJhbmsgMSk8L3RleHQ+CiAgPHRleHQgeD0iMzMwIiB5PSIxMjUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IiM2NjYiPmlwOiA4NS4yNS4xNS4xMDI8L3RleHQ+CiAgPHJlY3QgeD0iMjUwIiB5PSIxMzUiIHdpZHRoPSIxNTUiIGhlaWdodD0iNjAiIGZpbGw9IiNmZmYiIHN0cm9rZT0iIzE1NjVjMCIgc3Ryb2tlLXdpZHRoPSIxIiByeD0iMiIgc3Ryb2tlLWRhc2hhcnJheT0iMywyIi8+CiAgPHRleHQgeD0iMzI3IiB5PSIxNzAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IiM2NjYiPjggTlBVPC90ZXh0PiAKICA8IS0tIFAy6IqC54K5IC0tPgogIDxyZWN0IHg9IjQ0MCIgeT0iOTAiIHdpZHRoPSIxODAiIGhlaWdodD0iMTIwIiBmaWxsPSIjZTNmMmZkIiBzdHJva2U9IiMxNTY1YzAiIHN0cm9rZS13aWR0aD0iMiIgcng9IjUiLz4KICA8dGV4dCB4PSI1MzAiIHk9IjExMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIxMyIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IiMxNTY1YzAiPlAyIChyYW5rIDIpPC90ZXh0PgogIDx0ZXh0IHg9IjUzMCIgeT0iMTI1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjEwIiBmaWxsPSIjNjY2Ij5pcDogODUuMjUuMTUuMTAzPC90ZXh0PgogIDxyZWN0IHg9IjQ1MCIgeT0iMTM1IiB3aWR0aD0iMTU1IiBoZWlnaHQ9IjYwIiBmaWxsPSIjZmZmIiBzdHJva2U9IiMxNTY1YzAiIHN0cm9rZS13aWR0aD0iMSIgcng9IjIiIHN0cm9rZS1kYXNoYXJyYXk9IjMsMiIvPgogIDx0ZXh0IHg9IjUyNyIgeT0iMTcwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjEwIiBmaWxsPSIjNjY2Ij44IE5QVTwvdGV4dD4KICAKICA8IS0tIFAz6IqC54K5IC0tPgogIDxyZWN0IHg9IjY0MCIgeT0iOTAiIHdpZHRoPSIxODAiIGhlaWdodD0iMTIwIiBmaWxsPSIjZTNmMmZkIiBzdHJva2U9IiMxNTY1YzAiIHN0cm9rZS13aWR0aD0iMiIgcng9IjUiLz4KICA8dGV4dCB4PSI3MzAiIHk9IjExMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIxMyIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IiMxNTY1YzAiPlAzIChyYW5rIDMpPC90ZXh0PgogIDx0ZXh0IHg9IjczMCIgeT0iMTI1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjEwIiBmaWxsPSIjNjY2Ij5pcDogODUuMjUuMTUuMTA0PC90ZXh0PgogIDxyZWN0IHg9IjY1MCIgeT0iMTM1IiB3aWR0aD0iMTU1IiBoZWlnaHQ9IjYwIiBmaWxsPSIjZmZmIiBzdHJva2U9IiMxNTY1YzAiIHN0cm9rZS13aWR0aD0iMSIgcng9IjIiIHN0cm9rZS1kYXNoYXJyYXk9IjMsMiIvPgogIDx0ZXh0IHg9IjcyNyIgeT0iMTcwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjEwIiBmaWxsPSIjNjY2Ij44IE5QVTwvdGV4dD4KICAKICA8IS0tIERQ6YCa5L+h566t5aS077yIUOiKgueCuemXtO+8iSAtLT4KICAKICAKICA8bGluZSB4MT0iMjIwIiB5MT0iMTUwIiB4Mj0iMjM4IiB5Mj0iMTUwIiBzdHJva2U9IiNmZjk4MDAiIHN0cm9rZS13aWR0aD0iMiIgbWFya2VyLWVuZD0idXJsKCNhcnJvdy1kcCkiLz4KICA8bGluZSB4MT0iNDIwIiB5MT0iMTUwIiB4Mj0iNDM4IiB5Mj0iMTUwIiBzdHJva2U9IiNmZjk4MDAiIHN0cm9rZS13aWR0aD0iMiIgbWFya2VyLWVuZD0idXJsKCNhcnJvdy1kcCkiLz4KICA8bGluZSB4MT0iNjIwIiB5MT0iMTUwIiB4Mj0iNjM4IiB5Mj0iMTUwIiBzdHJva2U9IiNmZjk4MDAiIHN0cm9rZS13aWR0aD0iMiIgbWFya2VyLWVuZD0idXJsKCNhcnJvdy1kcCkiLz4KICA8dGV4dCB4PSIzMzAiIHk9Ijg1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjkiIGZpbGw9IiNmZjk4MDAiPkRQ6YCa5L+h77yISENDTOe9kee7nO+8iTwvdGV4dD4KICA8IS0tIERQPTTmoIfms6ggLS0+CiAgPHJlY3QgeD0iMzkwIiB5PSIyMTUiIHdpZHRoPSIxMjAiIGhlaWdodD0iMzAiIGZpbGw9IiNmZmYzZTAiIHN0cm9rZT0iI2ZmOTgwMCIgc3Ryb2tlLXdpZHRoPSIxLjUiIHJ4PSIzIi8+CiAgPHRleHQgeD0iNDUwIiB5PSIyMzUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMTEiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSIjZTY1MTAwIj5EUD00IOaVsOaNruW5tuihjDwvdGV4dD4KICA8dGV4dCB4PSI0NTAiIHk9IjI1NSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSI5IiBmaWxsPSIjNjY2Ij7lkIRQ6IqC54K55aSE55CG5LiN5ZCMUHJvbXB05om55qyhPC90ZXh0PgogIDwhLS0gS1bkvKDovpPljLrln58gLS0+CiAgPHRleHQgeD0iNDUwIiB5PSIyOTAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMTIiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSIjN2IxZmEyIj7ihpMgS1YgQ2FjaGXkvKDovpMg4oaTPC90ZXh0PgogIDx0ZXh0IHg9IjQ1MCIgeT0iMzA4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjEwIiBmaWxsPSIjN2IxZmEyIj5Nb29uY2FrZUNvbm5lY3RvciAvIHVzZV9hc2NlbmRfZGlyZWN0PC90ZXh0PgogIDx0ZXh0IHg9IjQ1MCIgeT0iMzI0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjkiIGZpbGw9IiM4ODgiPmt2X3Byb2R1Y2VyIChQKSDihpIga3ZfY29uc3VtZXIgKEQpPC90ZXh0PiAKICA8IS0tIEtW5Lyg6L6T566t5aS0IC0tPgogIDxsaW5lIHgxPSIxMzAiIHkxPSIyMTAiIHgyPSIxMzAiIHkyPSIzNTAiIHN0cm9rZT0iIzdiMWZhMiIgc3Ryb2tlLXdpZHRoPSIyIiBtYXJrZXItZW5kPSJ1cmwoI2Fycm93LWt2KSIgc3Ryb2tlLWRhc2hhcnJheT0iNSwzIi8+CiAgPGxpbmUgeDE9IjMzMCIgeTE9IjIxMCIgeDI9IjMzMCIgeTI9IjM1MCIgc3Ryb2tlPSIjN2IxZmEyIiBzdHJva2Utd2lkdGg9IjIiIG1hcmtlci1lbmQ9InVybCgjYXJyb3cta3YpIiBzdHJva2UtZGFzaGFycmF5PSI1LDMiLz4KICA8bGluZSB4MT0iNTMwIiB5MT0iMjEwIiB4Mj0iNTMwIiB5Mj0iMzUwIiBzdHJva2U9IiM3YjFmYTIiIHN0cm9rZS13aWR0aD0iMiIgbWFya2VyLWVuZD0idXJsKCNhcnJvdy1rdikiIHN0cm9rZS1kYXNoYXJyYXk9IjUsMyIvPgogIDxsaW5lIHgxPSI3MzAiIHkxPSIyMTAiIHgyPSI3MzAiIHkyPSIzNTAiIHN0cm9rZT0iIzdiMWZhMiIgc3Ryb2tlLXdpZHRoPSIyIiBtYXJrZXItZW5kPSJ1cmwoI2Fycm93LWt2KSIgc3Ryb2tlLWRhc2hhcnJheT0iNSwzIi8+IAogIDwhLS0gROiKgueCuembhue+pCAtLT4KICA8dGV4dCB4PSI0NTAiIHk9IjM0NSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIxNCIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IiMyZTdkMzIiPkTpm4bnvqQgKERlY29kZeiuv+WtmOWvhumbhikg4oaSIERQPTgsIFRQPTQ8L3RleHQ+CiAgPCEtLSBEMC1EM+iKgueCue+8iOS4iuWNiuaOku+8iSAtLT4KICA8cmVjdCB4PSI0MCIgeT0iMzYwIiB3aWR0aD0iOTAiIGhlaWdodD0iODAiIGZpbGw9IiNlOGY1ZTkiIHN0cm9rZT0iIzJlN2QzMiIgc3Ryb2tlLXdpZHRoPSIyIiByeD0iNSIvPgogIDx0ZXh0IHg9Ijg1IiB5PSIzODAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMTEiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSIjMmU3ZDMyIj5EMDwvdGV4dD4KICA8cmVjdCB4PSI1MCIgeT0iMzkwIiB3aWR0aD0iMzAiIGhlaWdodD0iMjAiIGZpbGw9IiNmZmYiIHN0cm9rZT0iIzJlN2QzMiIgc3Ryb2tlLXdpZHRoPSIxIiByeD0iMiIvPgogIDxyZWN0IHg9Ijg1IiB5PSIzOTAiIHdpZHRoPSIzMCIgaGVpZ2h0PSIyMCIgZmlsbD0iI2ZmZiIgc3Ryb2tlPSIjMmU3ZDMyIiBzdHJva2Utd2lkdGg9IjEiIHJ4PSIyIi8+CiAgPHRleHQgeD0iODUiIHk9IjQzMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSI4IiBmaWxsPSIjNjY2Ij40IE5QVTwvdGV4dD4gIAogIDxyZWN0IHg9IjE0NSIgeT0iMzYwIiB3aWR0aD0iOTAiIGhlaWdodD0iODAiIGZpbGw9IiNlOGY1ZTkiIHN0cm9rZT0iIzJlN2QzMiIgc3Ryb2tlLXdpZHRoPSIyIiByeD0iNSIvPgogIDx0ZXh0IHg9IjE5MCIgeT0iMzgwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjExIiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0iIzJlN2QzMiI+RDE8L3RleHQ+CiAgPHJlY3QgeD0iMTU1IiB5PSIzOTAiIHdpZHRoPSI2MCIgaGVpZ2h0PSIyMCIgZmlsbD0iI2ZmZiIgc3Ryb2tlPSIjMmU3ZDMyIiBzdHJva2Utd2lkdGg9IjEiIHJ4PSIyIiBzdHJva2UtZGFzaGFycmF5PSIyLDIiLz4KICA8dGV4dCB4PSIxOTAiIHk9IjQzMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSI4IiBmaWxsPSIjNjY2Ij40IE5QVTwvdGV4dD4KICA8cmVjdCB4PSIyNTAiIHk9IjM2MCIgd2lkdGg9IjkwIiBoZWlnaHQ9IjgwIiBmaWxsPSIjZThmNWU5IiBzdHJva2U9IiMyZTdkMzIiIHN0cm9rZS13aWR0aD0iMiIgcng9IjUiLz4KICA8dGV4dCB4PSIyOTUiIHk9IjM4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIxMSIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IiMyZTdkMzIiPkQyPC90ZXh0PgogIDxyZWN0IHg9IjI2MCIgeT0iMzkwIiB3aWR0aD0iNjAiIGhlaWdodD0iMjAiIGZpbGw9IiNmZmYiIHN0cm9rZT0iIzJlN2QzMiIgc3Ryb2tlLXdpZHRoPSIxIiByeD0iMiIgc3Ryb2tlLWRhc2hhcnJheT0iMiwyIi8+CiAgPHRleHQgeD0iMjk1IiB5PSI0MzAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iOCIgZmlsbD0iIzY2NiI+NCBOUFU8L3RleHQ+IAogIDxyZWN0IHg9IjM1NSIgeT0iMzYwIiB3aWR0aD0iOTAiIGhlaWdodD0iODAiIGZpbGw9IiNlOGY1ZTkiIHN0cm9rZT0iIzJlN2QzMiIgc3Ryb2tlLXdpZHRoPSIyIiByeD0iNSIvPgogIDx0ZXh0IHg9IjQwMCIgeT0iMzgwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjExIiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0iIzJlN2QzMiI+RDM8L3RleHQ+CiAgPHJlY3QgeD0iMzY1IiB5PSIzOTAiIHdpZHRoPSI2MCIgaGVpZ2h0PSIyMCIgZmlsbD0iI2ZmZiIgc3Ryb2tlPSIjMmU3ZDMyIiBzdHJva2Utd2lkdGg9IjEiIHJ4PSIyIiBzdHJva2UtZGFzaGFycmF5PSIyLDIiLz4KICA8dGV4dCB4PSI0MDAiIHk9IjQzMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSI4IiBmaWxsPSIjNjY2Ij40IE5QVTwvdGV4dD4KICA8IS0tIEQ0LUQ36IqC54K577yI5LiL5Y2K5o6S77yJIC0tPgogIDxyZWN0IHg9IjQ2MCIgeT0iMzYwIiB3aWR0aD0iOTAiIGhlaWdodD0iODAiIGZpbGw9IiNlOGY1ZTkiIHN0cm9rZT0iIzJlN2QzMiIgc3Ryb2tlLXdpZHRoPSIyIiByeD0iNSIvPgogIDx0ZXh0IHg9IjUwNSIgeT0iMzgwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjExIiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0iIzJlN2QzMiI+RDQ8L3RleHQ+CiAgPHJlY3QgeD0iNDcwIiB5PSIzOTAiIHdpZHRoPSI2MCIgaGVpZ2h0PSIyMCIgZmlsbD0iI2ZmZiIgc3Ryb2tlPSIjMmU3ZDMyIiBzdHJva2Utd2lkdGg9IjEiIHJ4PSIyIiBzdHJva2UtZGFzaGFycmF5PSIyLDIiLz4KICA8dGV4dCB4PSI1MDUiIHk9IjQzMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSI4IiBmaWxsPSIjNjY2Ij40IE5QVTwvdGV4dD4KICA8cmVjdCB4PSI1NjUiIHk9IjM2MCIgd2lkdGg9IjkwIiBoZWlnaHQ9IjgwIiBmaWxsPSIjZThmNWU5IiBzdHJva2U9IiMyZTdkMzIiIHN0cm9rZS13aWR0aD0iMiIgcng9IjUiLz4KICA8dGV4dCB4PSI2MTAiIHk9IjM4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIxMSIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IiMyZTdkMzIiPkQ1PC90ZXh0PgogIDxyZWN0IHg9IjU3NSIgeT0iMzkwIiB3aWR0aD0iNjAiIGhlaWdodD0iMjAiIGZpbGw9IiNmZmYiIHN0cm9rZT0iIzJlN2QzMiIgc3Ryb2tlLXdpZHRoPSIxIiByeD0iMiIgc3Ryb2tlLWRhc2hhcnJheT0iMiwyIi8+CiAgPHRleHQgeD0iNjEwIiB5PSI0MzAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iOCIgZmlsbD0iIzY2NiI+NCBOUFU8L3RleHQ+CiAgPHJlY3QgeD0iNjcwIiB5PSIzNjAiIHdpZHRoPSI5MCIgaGVpZ2h0PSI4MCIgZmlsbD0iI2U4ZjVlOSIgc3Ryb2tlPSIjMmU3ZDMyIiBzdHJva2Utd2lkdGg9IjIiIHJ4PSI1Ii8+CiAgPHRleHQgeD0iNzE1IiB5PSIzODAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMTEiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSIjMmU3ZDMyIj5ENjwvdGV4dD4KICA8cmVjdCB4PSI2ODAiIHk9IjM5MCIgd2lkdGg9IjYwIiBoZWlnaHQ9IjIwIiBmaWxsPSIjZmZmIiBzdHJva2U9IiMyZTdkMzIiIHN0cm9rZS13aWR0aD0iMSIgcng9IjIiIHN0cm9rZS1kYXNoYXJyYXk9IjIsMiIvPgogIDx0ZXh0IHg9IjcxNSIgeT0iNDMwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjgiIGZpbGw9IiM2NjYiPjQgTlBVPC90ZXh0PgogIDxyZWN0IHg9Ijc3NSIgeT0iMzYwIiB3aWR0aD0iOTAiIGhlaWdodD0iODAiIGZpbGw9IiNlOGY1ZTkiIHN0cm9rZT0iIzJlN2QzMiIgc3Ryb2tlLXdpZHRoPSIyIiByeD0iNSIvPgogIDx0ZXh0IHg9IjgyMCIgeT0iMzgwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjExIiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0iIzJlN2QzMiI+RDc8L3RleHQ+CiAgPHJlY3QgeD0iNzg1IiB5PSIzOTAiIHdpZHRoPSI2MCIgaGVpZ2h0PSIyMCIgZmlsbD0iI2ZmZiIgc3Ryb2tlPSIjMmU3ZDMyIiBzdHJva2Utd2lkdGg9IjEiIHJ4PSIyIiBzdHJva2UtZGFzaGFycmF5PSIyLDIiLz4KICA8dGV4dCB4PSI4MjAiIHk9IjQzMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSI4IiBmaWxsPSIjNjY2Ij40IE5QVTwvdGV4dD4KICA8IS0tIERQPTjmoIfms6ggLS0+CiAgPHJlY3QgeD0iMzkwIiB5PSI0NTAiIHdpZHRoPSIxMjAiIGhlaWdodD0iMzAiIGZpbGw9IiNlOGY1ZTkiIHN0cm9rZT0iIzJlN2QzMiIgc3Ryb2tlLXdpZHRoPSIxLjUiIHJ4PSIzIi8+CiAgPHRleHQgeD0iNDUwIiB5PSI0NzAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMTEiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSIjMWI1ZTIwIj5EUD04IOaVsOaNruW5tuihjDwvdGV4dD4KICA8dGV4dCB4PSI0NTAiIHk9IjQ5MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSI5IiBmaWxsPSIjNjY2Ij7lkIRE6IqC54K55aSE55CG5LiN5ZCM6K+35rGC6Kej56CBPC90ZXh0PgogIDwhLS0g6YWN572u5a+55q+U6KGoIC0tPgogIDxyZWN0IHg9IjQwIiB5PSI1MDAiIHdpZHRoPSI0MDAiIGhlaWdodD0iNDAiIGZpbGw9IiNmYWZhZmEiIHN0cm9rZT0iI2NjYyIgc3Ryb2tlLXdpZHRoPSIxIiByeD0iMyIvPgogIDx0ZXh0IHg9IjI0MCIgeT0iNTE1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjEwIiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0iIzFhMWExYSI+6YWN572u5a+55q+UPC90ZXh0PgogIDx0ZXh0IHg9IjEzMCIgeT0iNTMyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjkiIGZpbGw9IiMxNTY1YzAiPlA6IGRwPTQsIHRwPTggKOmrmFRQ5Y6L566X5YqbKTwvdGV4dD4KICA8dGV4dCB4PSIzNTAiIHk9IjUzMiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSI5IiBmaWxsPSIjMmU3ZDMyIj5EOiBkcD04LCB0cD00ICjpq5hEUOaJqeW5tuWPkSk8L3RleHQ+ICAKICA8IS0tIOWOn+eQhuivtOaYjiAtLT4KICA8cmVjdCB4PSI0NjAiIHk9IjUwMCIgd2lkdGg9IjQwMCIgaGVpZ2h0PSI0MCIgZmlsbD0iI2ZhZmFmYSIgc3Ryb2tlPSIjY2NjIiBzdHJva2Utd2lkdGg9IjEiIHJ4PSIzIi8+CiAgPHRleHQgeD0iNjYwIiB5PSI1MTUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMTAiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSIjMWExYTFhIj5QROWIhuemu+WOn+eQhjwvdGV4dD4KICA8dGV4dCB4PSI2NjAiIHk9IjUzMiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSI5IiBmaWxsPSIjNjY2Ij5QcmVmaWxs6K6h566X5a+G6ZuG4oaS6auYVFAgfCBEZWNvZGXorr/lrZjlr4bpm4bihpLpq5hEUDwvdGV4dD4KPC9nPgo8L2c+Cgo8IS0tID09PT09PT09PT3moIfms6jlvJXnur/nu4Q9PT09PT09PT09IC0tPgo8ZyBpZD0iYW5ub3RhdGlvbnMiIHN0cm9rZT0iIzU1NTU1NSIgc3Ryb2tlLXdpZHRoPSIxIiBzdHJva2UtZGFzaGFycmF5PSI2IDQiIGZpbGw9Im5vbmUiPgo8L2c+Cgo8L3N2Zz4=)
+
+**图释说明：**
+
+1. **P集群（Prefill）**：
+   - 4个P节点（P0-P3），每个节点8个NPU
+   - `DP=4`：4个P节点并行处理4批不同的Prompt
+   - `TP=8`：单节点内8个NPU张量并行，拆分矩阵计算
+   - Prefill阶段计算密集（一次性读取整个Prompt，计算所有KV Cache），需要高TP利用算力
+
+2. **D集群（Decode）**：
+   - 8个D节点（D0-D7），每个节点4个NPU
+   - `DP=8`：8个D节点并行处理8路不同的请求解码
+   - `TP=4`：单节点内4个NPU张量并行
+   - Decode阶段访存密集（每token只需读取少量KV，逐token生成），需要高DP扩大并发
+
+3. **KV传输**：
+   - `MooncakeConnector`：优化的跨节点内存传输框架
+   - `kv_producer → kv_consumer`：P计算完KV后传输给D
+   - `use_ascend_direct`：利用昇腾NPU的DMA直连传输，绕过CPU拷贝（零拷贝）
+   - 紫色虚线箭头表示KV Cache流向
+
+4. **DP通信**（橙色箭头）：
+   - P节点间通过HCCL网络（以太网/RoCE）进行DP协调
+   - P0作为DP master（`data-parallel-address 85.25.15.101`）协调P1-P3
+   - 各P节点独立处理不同Prompt批次，无需梯度同步（推理场景）
+
+5. **为什么P高TP、D高DP？**：
+   - **Prefill计算密集**：需要一次性计算整个Prompt的KV Cache，矩阵乘法密集，高TP（8个NPU协同）最大化算力利用
+   - **Decode访存密集**：每token生成只需读取已计算的KV Cache，计算量小但并发需求高，高DP（8个D节点）扩大并发吞吐
+   - 这是PD分离的核心优化：不同阶段用不同并行策略适配计算特征
+
+---
+
+*（Part 1 结束，Part 2将包含流程解释 SVG 3-5 和参数调优建议表）*
