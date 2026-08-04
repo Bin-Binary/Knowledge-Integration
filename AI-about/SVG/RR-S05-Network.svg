@@ -1,0 +1,75 @@
+<svg width="2400" height="1080" viewBox="0 0 2400 1080" xmlns="http://www.w3.org/2000/svg">
+<defs><style>text{font-family:"Microsoft YaHei","SimHei",sans-serif}</style></defs>
+
+<rect width="2400" height="1080" fill="#e8e2d5"/>
+<g stroke="#c6c0b4" stroke-width="0.5">
+<line x1="120" y1="80" x2="120" y2="1000"/><line x1="240" y1="80" x2="240" y2="1000"/>
+<line x1="360" y1="80" x2="360" y2="1000"/><line x1="480" y1="80" x2="480" y2="1000"/>
+<line x1="600" y1="80" x2="600" y2="1000"/><line x1="720" y1="80" x2="720" y2="1000"/>
+<line x1="840" y1="80" x2="840" y2="1000"/><line x1="960" y1="80" x2="960" y2="1000"/>
+<line x1="1080" y1="80" x2="1080" y2="1000"/><line x1="1200" y1="80" x2="1200" y2="1000"/>
+<line x1="1320" y1="80" x2="1320" y2="1000"/><line x1="1440" y1="80" x2="1440" y2="1000"/>
+<line x1="1560" y1="80" x2="1560" y2="1000"/><line x1="1680" y1="80" x2="1680" y2="1000"/>
+<line x1="1800" y1="80" x2="1800" y2="1000"/><line x1="1920" y1="80" x2="1920" y2="1000"/>
+<line x1="2040" y1="80" x2="2040" y2="1000"/><line x1="2160" y1="80" x2="2160" y2="1000"/>
+<line x1="2280" y1="80" x2="2280" y2="1000"/>
+<line x1="120" y1="80" x2="2280" y2="80"/><line x1="120" y1="160" x2="2280" y2="160"/>
+<line x1="120" y1="240" x2="2280" y2="240"/><line x1="120" y1="320" x2="2280" y2="320"/>
+<line x1="120" y1="400" x2="2280" y2="400"/><line x1="120" y1="480" x2="2280" y2="480"/>
+<line x1="120" y1="560" x2="2280" y2="560"/><line x1="120" y1="640" x2="2280" y2="640"/>
+<line x1="120" y1="720" x2="2280" y2="720"/><line x1="120" y1="800" x2="2280" y2="800"/>
+<line x1="120" y1="880" x2="2280" y2="880"/><line x1="120" y1="960" x2="2280" y2="960"/>
+</g>
+
+<text x="1200" y="72" text-anchor="middle" font-size="22" font-weight="bold" fill="#3a3530" font-family="KaiTi,STKaiti,serif">快照5 — 持证穿越</text>
+
+<!-- H4 -->
+<rect x="240" y="160" width="1920" height="120" fill="#f3f1f7" opacity="0.25" rx="4"/>
+<text x="1200" y="230" text-anchor="middle" font-size="13" fill="#bbbbbb">H4 · 等待响应</text>
+
+<!-- H3 -->
+<rect x="240" y="320" width="1920" height="560" fill="#e8f2e8" opacity="0.3" rx="4"/>
+<rect x="160" y="320" width="72" height="560" fill="#5B9B6B" rx="4"/>
+<text x="196" y="610" text-anchor="middle" font-size="16" font-weight="bold" fill="#ffffff" transform="rotate(-90,196,610)">H3</text>
+
+<!-- 场景A -->
+<rect x="320" y="360" width="560" height="200" fill="#ffefef" stroke="#996666" stroke-width="2" stroke-dasharray="6,4" rx="8"/>
+<text x="600" y="396" text-anchor="middle" font-size="15" font-weight="bold" fill="#996666">场景A：HIS AITeam</text>
+<text x="600" y="428" text-anchor="middle" font-size="13" fill="#666666">header_proxy:9332</text>
+<text x="600" y="460" text-anchor="middle" font-size="11" fill="#777777">① 拦截请求</text>
+<text x="600" y="488" text-anchor="middle" font-size="11" fill="#777777">② 读取OAuth2 Token</text>
+<text x="600" y="516" text-anchor="middle" font-size="11" fill="#777777">③ 注入Header: Bearer ***</text>
+<text x="600" y="544" text-anchor="middle" font-size="13" fill="#996666">耗时: ~10ms</text>
+
+<!-- 场景B -->
+<rect x="960" y="360" width="560" height="200" fill="#eff5ff" stroke="#668899" stroke-width="2" stroke-dasharray="6,4" rx="8"/>
+<text x="1240" y="396" text-anchor="middle" font-size="15" font-weight="bold" fill="#668899">场景B：绿区A3</text>
+<text x="1240" y="428" text-anchor="middle" font-size="13" fill="#666666">header_proxy:9333</text>
+<text x="1240" y="460" text-anchor="middle" font-size="11" fill="#777777">① 拦截请求</text>
+<text x="1240" y="488" text-anchor="middle" font-size="11" fill="#777777">② 注入静态API Key</text>
+<text x="1240" y="516" text-anchor="middle" font-size="11" fill="#777777">③ HTTP_PROXY网关穿越</text>
+<text x="1240" y="544" text-anchor="middle" font-size="13" fill="#668899">耗时: ~20ms</text>
+
+<!-- 场景C -->
+<rect x="1600" y="360" width="440" height="200" fill="#efffef" stroke="#669966" stroke-width="2" stroke-dasharray="6,4" rx="8"/>
+<text x="1820" y="396" text-anchor="middle" font-size="15" font-weight="bold" fill="#669966">场景C：内网</text>
+<text x="1820" y="428" text-anchor="middle" font-size="13" fill="#666666">Pod IP:9199</text>
+<text x="1820" y="460" text-anchor="middle" font-size="11" fill="#777777">① 直连</text>
+<text x="1820" y="488" text-anchor="middle" font-size="11" fill="#777777">② 无代理</text>
+<text x="1820" y="544" text-anchor="middle" font-size="13" fill="#669966">耗时: ~5ms</text>
+
+<!-- 选中场景 -->
+<rect x="940" y="590" width="600" height="80" fill="#668899" opacity="0.15" rx="8"/>
+<text x="1240" y="640" text-anchor="middle" font-size="15" font-weight="bold" fill="#668899">当前请求走场景B → 上海绿区A3</text>
+
+<!-- 配置详情 -->
+<rect x="320" y="700" width="1720" height="140" fill="#ffffff" stroke="#5B9B6B" stroke-width="1" stroke-dasharray="6,3" rx="6"/>
+<text x="1180" y="740" text-anchor="middle" font-size="13" fill="#5B9B6B">网络穿越配置：header_proxy 监听 9332/9333/9334/9335/9340/9341 端口，根据后端地址选择认证方式</text>
+<text x="1180" y="778" text-anchor="middle" font-size="12" fill="#777777">OAuth2动态刷新 / 静态API Key / DUMMY_API_KEY(内网互信) · HTTP_PROXY: ***:3128</text>
+<text x="1180" y="816" text-anchor="middle" font-size="11" fill="#999999">三种场景对应三种网络隔离形态：外部服务(需OAuth2) / 网关隔离(需代理) / 内网互通(直连)</text>
+
+<!-- H2/H1 -->
+<rect x="240" y="880" width="1920" height="120" fill="#f5f5f5" opacity="0.25" rx="4"/>
+<text x="1200" y="948" text-anchor="middle" font-size="13" fill="#cccccc">H2 · H1 · 等待vLLM推理</text>
+
+</svg>
