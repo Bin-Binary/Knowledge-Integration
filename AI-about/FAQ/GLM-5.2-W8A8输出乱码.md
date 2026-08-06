@@ -1,24 +1,10 @@
 ## 部署信息
-> 8 台机器每台 8 张 64G NPU A2 卡，采用4P4D分离部署，P节点 4DP 8TP，1个容器1个节点1个实例，D节点 8DP 4TP，1个容器1个节点2个实例
->
-> 注：经核查 `glm52_pd_oneclick.sh` 启动脚本，实际为 **4P8D** 部署（4个Prefill节点 + 4个Decode节点，每D节点2实例=8个Decode实例），与文档原描述的 4P4D 不符。
+> 8 台机器每台 8 张 64G NPU A2 卡，采用4P8D分离部署（4个Prefill节点 + 4个Decode节点，每D节点2实例=8个Decode实例）
 
 | 节点类型 | 节点数量 | 显卡类型 | 显卡数量 | DP | TP | 实例数 |
 | :---- | :---- | :---- | :---- | :---- | :---- | :---- |
 | Prefill | 4 | NPU A2 64G | 4*8 | 4 | 8 | 1节点1实例 |
 | Decode | 4 | NPU A2 64G | 4*8 | 8 | 4 | 1节点2实例 |
-
-### 节点 IP 清单
-| 角色 | 节点 | IP | 容器名 |
-| :---- | :---- | :---- | :---- |
-| Prefill | P0 (master) | 85.25.15.101 | glm-5.2-sky-pr45915 |
-| Prefill | P1 | 85.25.20.101 | glm-5.2-sky-pr45915 |
-| Prefill | P2 | 85.25.20.103 | glm-5.2-sky-pr45915 |
-| Prefill | P3 | 85.25.20.107 | glm-5.2-sky-pr45915 |
-| Decode | D0 (master) | 85.25.9.4 | glm-5.2-sky-pr45915 |
-| Decode | D1 | 85.25.9.2 | glm-5.2-sky-pr45915 |
-| Decode | D2 | 85.25.1.5 | glm-5.2-sky-pr45915 |
-| Decode | D3 | 85.25.0.110 | glm-5.2-sky-pr45915 |
 
 ### 路由层
 - 非标准 LiteLLM，实际为 vllm-ascend 提供的示例负载均衡代理：`/vllm-workspace/vllm-ascend/examples/disaggregated_prefill_v1/load_balance_proxy_server_example.py`
@@ -60,7 +46,7 @@ I0806 10:11:18.470988 10729 ascend_direct_transport.cpp:843] transfer failed and
 ```
 
 错误特征：
-- **Transfer timeout**：到 P1(85.25.20.101)、P2(85.25.20.103)、P3(85.25.20.107) 的 ascend_direct 传输超时
+- **Transfer timeout**：到 P1、P2、P3 的 ascend_direct 传输超时
 - **Mooncake transfer failed ... ret=-1**：KV 传输失败，D 节点拿不到 P 节点计算的 KV Cache
 - **Error in KVCacheTransferThread. error=unhashable type: 'list'**：KV 传输线程异常，疑似 Mooncake Connector 在处理某数据结构时将 list 用作 dict key
 - 同一请求的 4 个 TP worker 全部失败，偶有部分 worker 成功（`KV cache transfer for request ... took 176.49 ms`）—— **TP 维度 KV 部分缺失**
@@ -141,7 +127,7 @@ P0 日志 `vllm-glm5.2-8pd-p0-rank0-85.25.15.101-20260806_095703.log`：
 
 ```
                         ┌─────────────────────────────────────────────────────────────────────────┐
-                        │                   PD 负载均衡代理 (85.25.15.101:13400)                    │
+                        │                   PD 负载均衡代理 ()                    │
                         │  load_balance_proxy_server_example.py (pid 935801)                       │
                         │  流程: ① select_prefiller → ② send_request (max_tokens=1)               │
                         │        → ③ 获取 kv_transfer_params → ④ select_decoder                  │
@@ -152,7 +138,6 @@ P0 日志 `vllm-glm5.2-8pd-p0-rank0-85.25.15.101-20260806_095703.log`：
               ▼                          ▼          ▼          ▼          ▼                          ▼
       ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
       │  P0 (Prefill) │  │  P1 (Prefill) │  │  P2 (Prefill) │  │  P3 (Prefill) │
-      │ 85.25.15.101  │  │ 85.25.20.101  │  │ 85.25.20.103  │  │ 85.25.20.107  │
       │ DP=4, TP=8    │  │ DP=4, TP=8    │  │ DP=4, TP=8    │  │ DP=4, TP=8    │
       │ mooncake_port │  │ mooncake_port │  │ mooncake_port │  │ mooncake_port │
       │ =30000        │  │ =30000        │  │ =30000        │  │ =30000        │
@@ -175,7 +160,7 @@ P0 日志 `vllm-glm5.2-8pd-p0-rank0-85.25.15.101-20260806_095703.log`：
       │                       Decode 节点组 (4节点 × 2实例 = 8实例)                           │
       │                                                                                       │
       │  ┌────────────────┐  ┌────────────────┐  ┌────────────────┐  ┌────────────────┐       │
-      │  │ D0 (85.25.9.4) │  │ D1 (85.25.9.2) │  │ D2 (85.25.1.5) │  │ D3 (85.25.0.110)│       │
+      │  │ D0             │  │ D1             │  │ D2             │  │ D3             │       │
       │  │ DP=8, TP=4     │  │ DP=8, TP=4     │  │ DP=8, TP=4     │  │ DP=8, TP=4     │       │
       │  │ inst0:9081     │  │ inst0:9081     │  │ inst0:9081     │  │ inst0:9081     │       │
       │  │ inst1:9082     │  │ inst1:9082     │  │ inst1:9082     │  │ inst1:9082     │       │
@@ -244,12 +229,9 @@ ps aux | grep vllm | grep -o "kv_load_failure_policy=[^ ]*"
 
 **下一步行动**：
 ```bash
-# 在 D0 节点执行
-ssh root@85.25.9.4
-ping -c 5 85.25.15.101  # P0
-ping -c 5 85.25.20.101  # P1
-ping -c 5 85.25.20.103  # P2
-ping -c 5 85.25.20.107  # P3
+# 在 D0 节点执行 ping p0~p3
+ssh root@
+ping -c 5 x.x.x.x
 
 # 检查 RDMA/HCCS 链路（华为 NPU）
 hccn_tool -i npu_0 -link -g
@@ -266,7 +248,7 @@ hccn_tool -i npu_0 -link -g
 **下一步行动**：
 ```bash
 # 检查 P 节点的 Mooncake 发送队列（仅读操作）
-ssh root@85.25.15.101  # P0
+ssh root@  # P0
 grep "Mooncake.*queue\|kv_transfer" /path/to/vllm.log | tail -50
 ```
 
