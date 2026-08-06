@@ -21,7 +21,7 @@ type C:\Users\l60130933\.ssh\id_rsa.pub | ssh ${USER_NAME}$@${IP}$ \
 
 ```bash
 #1. 连接 K8s master 节点
-ssh root@7.212.76.8
+ssh root@
 
 #2. 检查集群节点状态
 kubectl get nodes -o wide
@@ -37,8 +37,8 @@ kubectl get ns
 
 ```
 NAME           STATUS   ROLES           AGE   VERSION   INTERNAL-IP
-7.212.76.8     Ready    control-plane   XXd   v1.31.1   7.212.76.8
-7.212.77.195   Ready    <none>          XXd   v1.31.1   7.212.77.195
+x.x.x.x        Ready    control-plane   XXd   v1.31.1   x.x.x.x
+x.x.x.x        Ready    <none>          XXd   v1.31.1   x.x.x.x
 ```
 
 ### 验证要点
@@ -71,25 +71,25 @@ kubectl exec -n litellm $POD -- env | grep -E 'KEY|BASE' | sort
 **Pod 状态**：
 ```
 NAME                                          READY   STATUS    RESTARTS   AGE   IP            NODE
-litellm-litellm-stack-litellm-xxx-yyy         1/1     Running   0          XXh   10.244.x.x    7.212.76.8
-litellm-litellm-stack-litellm-xxx-zzz         1/1     Running   0          XXh   10.244.x.x    7.212.77.195
-litellm-litellm-stack-postgres-xxx            1/1     Running   0          XXh   10.244.x.x    7.212.77.195
-litellm-litellm-stack-redis-xxx               1/1     Running   0          XXh   10.244.x.x    7.212.77.195
+litellm-litellm-stack-litellm-xxx-yyy         1/1     Running   0          XXh   10.244.x.x    x.x.x.x
+litellm-litellm-stack-litellm-xxx-zzz         1/1     Running   0          XXh   10.244.x.x    x.x.x.x
+litellm-litellm-stack-postgres-xxx            1/1     Running   0          XXh   10.244.x.x    x.x.x.x
+litellm-litellm-stack-redis-xxx               1/1     Running   0          XXh   10.244.x.x    x.x.x.x
 ```
 
 **Service 配置**：
 ```
 NAME                                  TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE
-litellm-litellm-stack-litellm         NodePort    10.96.x.x       <none>        4000:31937/TCP   XXd
-litellm-litellm-stack-postgres        ClusterIP   10.96.x.x       <none>        5432/TCP         XXd
-litellm-litellm-stack-redis           ClusterIP   10.96.x.x       <none>        6379/TCP         XXd
+litellm-litellm-stack-litellm         NodePort    10.96.x.x       <none>        ?:31937/TCP   XXd
+litellm-litellm-stack-postgres        ClusterIP   10.96.x.x       <none>        ?/TCP         XXd
+litellm-litellm-stack-redis           ClusterIP   10.96.x.x       <none>        ?/TCP         XXd
 ```
 
 ### 验证要点
 
 - ✅ LiteLLM Pod 运行 2 个副本（双节点）
-- ✅ PostgreSQL 和 Redis 运行在 node-1 (7.212.77.195)
-- ✅ NodePort 为 31937（生产入口）
+- ✅ PostgreSQL 和 Redis 运行在 node-1 (x.x.x.x)
+- ✅ NodePort 为 ?（生产入口）
 - ✅ 环境变量应包含 `LITELLM_MASTER_KEY`、`DATABASE_URL`、`REDIS_HOST` 等
 
 ---
@@ -99,7 +99,7 @@ litellm-litellm-stack-redis           ClusterIP   10.96.x.x       <none>        
 ```bash
 # 步骤 1：查询 LiteLLM 路由表（API 方式）
 curl -sf -H 'Authorization: Bearer sk-2274cb53dfe7ece2c4c1c8200e9d4a7b' \
-  'http://7.212.76.8:31937/model/info' | python3 -c '
+  'http://x.x.x.x:?/model/info' | python3 -c '
 import json,sys
 d=json.load(sys.stdin)
 for m in d.get("data",[]):
@@ -160,9 +160,9 @@ kubectl get configmap llm-monitoring-llm-monitoring-prometheus-config -n monitor
 job                            health     scrapeUrl
 prometheus                     up         http://localhost:9090/metrics
 litellm                        up         http://litellm-litellm-stack-litellm.litellm.svc.cluster.local:4000/metrics/
-green-shA3-via-proxy          up         http://7.212.77.195:9333/metrics/
-green-xA3-via-proxy           up         http://7.212.77.195:9334/metrics/
-yellow-szA2-112-glm52         up         http://10.246.99.71:7000/metrics/
+green-shA3-via-proxy          up         http://x.x.x.x:?/metrics/
+green-xA3-via-proxy           up         http://x.x.x.x:?/metrics/
+yellow-szA2-112-glm52         up         http://x.x.x.x:?/metrics/
 ```
 
 ### 验证要点
@@ -179,8 +179,8 @@ yellow-szA2-112-glm52         up         http://10.246.99.71:7000/metrics/
 
 ```bash
 # 步骤 1：构造测试请求
-curl -X POST http://7.212.76.27:32400/v1/chat/completions \
-  -H "Authorization: Bearer sk-2274cb53dfe7ece2c4c1c8200e9d4a7b" \
+curl -X POST http://x.x.x.x:?/v1/chat/completions \
+  -H "Authorization: ??? \
   -H "Content-Type: application/json" \
   -d '{
     "model": "GLM-V5.1",
@@ -190,8 +190,8 @@ curl -X POST http://7.212.76.27:32400/v1/chat/completions \
   }'
 
 # 步骤 2：流式请求测试
-curl -X POST http://7.212.76.27:32400/v1/chat/completions \
-  -H "Authorization: Bearer sk-2274cb53dfe7ece2c4c1c8200e9d4a7b" \
+curl -X POST http://x.x.x.x:?/v1/chat/completions \
+  -H "Authorization: ???" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "GLM-V5.1",
@@ -201,8 +201,8 @@ curl -X POST http://7.212.76.27:32400/v1/chat/completions \
   }'
 
 # 步骤 3：检查响应延迟（使用 time 命令）
-time curl -X POST http://7.212.76.27:32400/v1/chat/completions \
-  -H "Authorization: Bearer sk-2274cb53dfe7ece2c4c1c8200e9d4a7b" \
+time curl -X POST http://x.x.x.x:?/v1/chat/completions \
+  -H "Authorization: ???" \
   -H "Content-Type: application/json" \
   -d '{"model": "GLM-V5.1", "messages": [{"role": "user", "content": "测试"}], "max_tokens": 10}'
 ```
@@ -246,7 +246,7 @@ time curl -X POST http://7.212.76.27:32400/v1/chat/completions \
 
 ```bash
 # 步骤 1：连接 vLLM 服务器（示例：上海绿区 A3）
-ssh root@141.112.148.207
+ssh root@x.x.x.x
 
 # 步骤 2：检查 vLLM 进程
 ps aux | grep vllm
@@ -301,16 +301,13 @@ vllm:kv_cache_usage_ratio 0.45
 
 ```bash
 # 步骤 1：连接 Decode 节点（D0）
-ssh root@85.25.9.4
+ssh root@x.x.x.x
 
 # 步骤 2：查看 Mooncake 传输日志
 grep -E "Transfer timeout|Mooncake transfer failed|KVCacheTransferThread" /home/gandalf/images/glm5.2-8pd-logs/vllm-glm5.2-8pd-d0-rank0-*.log
 
 # 步骤 3：检查网络连通性（P 节点 → D 节点）
-ping -c 5 85.25.15.101  # P0
-ping -c 5 85.25.20.101  # P1
-ping -c 5 85.25.20.103  # P2
-ping -c 5 85.25.20.107  # P3
+ping -c 5 
 
 # 步骤 4：检查 RDMA/HCCS 链路（华为 NPU）
 hccn_tool -i npu_0 -link -g
@@ -335,7 +332,7 @@ SpecDecoding metrics: Mean acceptance length: 2.50, Accepted throughput: 40.20 t
 
 **KV 传输失败**：
 ```
-E0806 10:11:18 [ascend_direct_transport.cpp:831] Transfer timeout to: 85.25.20.101:20296
+E0806 10:11:18 [ascend_direct_transport.cpp:831] Transfer timeout to: x.x.x.x:?
 E0806 10:11:18 [mooncake_connector.py:774] Mooncake transfer failed for request. ret=-1
 E0806 10:11:18 [mooncake_connector.py:558] Error in KVCacheTransferThread. error=unhashable type: 'list'
 ```
@@ -422,7 +419,7 @@ kubectl exec -n litellm <pod-name> -- env | grep -E 'KEY|PASSWORD'
 curl -H "Authorization: Bearer sk-xxx" http://7.212.76.8:31937/model/info
 
 # 测试推理请求
-curl -X POST http://7.212.76.27:32400/v1/chat/completions \
+curl -X POST http://x.x.x.x:?/v1/chat/completions \
   -H "Authorization: Bearer sk-xxx" \
   -H "Content-Type: application/json" \
   -d '{"model":"GLM-V5.1","messages":[{"role":"user","content":"测试"}],"max_tokens":10}'
@@ -460,7 +457,7 @@ ping -c 5 <node-ip>
 ss -tlnp | grep <port>
 
 # 查看 header_proxy 端口
-ssh root@7.212.77.195 "ss -tlnp | grep python3 | grep -E '933[0-9]|934[0-9]'"
+ssh root@x.x.x.x:? "ss -tlnp | grep python3 | grep -E '933[0-9]|934[0-9]'"
 ```
 
 ---
