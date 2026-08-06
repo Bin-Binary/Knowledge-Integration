@@ -92,10 +92,59 @@ graph TD
 **To reduce model size & cost**
 在部署模型之前就应用到模型本身，采用诸如量化、稀疏等技术，目标是减少模型的内存占用和计算需求，同时尽可能保证准确度。
 tradeoff triangle
-### Inference Optimizations
+ ### Inference Optimizations
 **To maximize throughput & efficiency**
 在推理引擎本身运行时发生, 采用诸如前缀缓存、分页注意力、连续批处理等技术，目标是最大化吞吐量和效率
 
+---
 
+## 🔬 实际环境观测
+
+> 以下为理论概念在真实生产环境中的可观测方法与快照参考。操作过程详见 [实践记录.md](../Model%20Deploy/实践记录.md)
+
+### 观测 1：INT8 量化权重的显存实证（对应"Hardware"节）
+
+**观测方法**：在 vLLM 推理服务器上执行 `nvidia-smi` 或 `npu-smi info`，对比模型权重占用与理论计算值
+
+**环境快照**（苏州黄区 A2-108 x.x.x.x，NPU A2 64GB）：
+
+| 模型 | 精度 | 理论权重大小 | 实际 HBM 占用（观测） | 差异原因 |
+|:---|:---|:---|:---|:---|
+| MiniMax-V2.7 | FP16/BF16 | ~54 GB | ~56 GB | 框架开销+激活值 |
+| GLM-V5.2 W8A8 | INT8 | ~XX GB | ~XX GB | 量化后权重减半 |
+
+> 观测点：INT8 量化使权重显存占用约为 FP16 的 50%，但实际还需预留 KV Cache 空间
+
+### 观测 2：SLO 指标在生产环境的实际表现（对应"measurable targets"节）
+
+**观测方法**：通过 Prometheus + vLLM metrics 采集 TTFT、ITL、Throughput
+
+**环境快照**（上海绿区 A3，Prometheus scrape 2026-06-26 前后）：
+
+| 指标 | SLO 目标 | 实测值 | 达标？ |
+|:---|:---|:---|:---|
+| TTFT (首Token延迟) | < 1s | ~0.30s (短文本) / ~2.5s (长文本) | ✅ 短文本达标 |
+| ITL (Token间延迟) | < 100ms | ~25-50ms | ✅ 达标 |
+| Throughput (吞吐) | > 100 tokens/s | ~80-120 tokens/s | ⚠️ 临界 |
+| KV Cache usage | < 80% | 0-45%（视并发） | ✅ 安全 |
+
+> 观测点：长文本场景 TTFT 容易超标（$\mathcal{O}(L^2)$ 计算复杂度），需 Chunked Prefill 优化
+
+### 观测 3：Tradeoff Triangle 实证 — 量化 vs 准确性（对应"Tradeoff Triangle"节）
+
+**观测方法**：对比 GLM-V5.1（BF16）与 GLM-V5.2（W8A8 INT8）的输出质量
+
+**环境快照**（苏州黄区 A2-112，2026-08-06）：
+
+| 场景 | BF16 输出 | W8A8 输出 | 差异 |
+|:---|:---|:---|:---|
+| 正常请求 | 正确中文回复 | 正确中文回复 | 无明显差异 |
+| KV Cache 传输失败 | — | 多语言碎片乱码 | ⚠️ 量化模型对 KV 错位更敏感 |
+
+> 关键发现：量化本身不导致乱码（正常请求输出正确），但当 **KV Cache 缺失/错误** 时，W8A8 量化模型的 logits 分布更窄，错误被放大。这正是 Tradeoff Triangle 中"模型优化可能损害准确性"的实证。
+>
+> 详见 Issues/GLM-5.2-W8A8输出乱码.md
 
 ---
+
+*快照更新时间：2026-08-06*
