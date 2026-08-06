@@ -4,7 +4,7 @@
 ## 结构和生命周期
 > 鸟瞰AI基础设施建设的结构&生命周期（模型/数据为横切资源，贯穿生命周期而非独立架构层）
 
-![图](./AI-Infra-Stru-And-Life-Graph.svg)
+![图](../svgs/AI-Infra-Stru-And-Life-Graph.svg)
 ---
 
 **架构分层**

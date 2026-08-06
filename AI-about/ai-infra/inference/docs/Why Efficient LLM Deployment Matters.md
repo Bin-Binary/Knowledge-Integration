@@ -100,7 +100,7 @@ tradeoff triangle
 
 ## 🔬 实际环境观测
 
-> 以下为理论概念在真实生产环境中的可观测方法与快照参考。操作过程详见 [实践记录.md](../Model%20Deploy/实践记录.md)
+> 以下为理论概念在真实生产环境中的可观测方法与快照参考。操作过程详见 [LLM-Platform-Practice.md](../../platform/docs/LLM-Platform-Practice.md)
 
 ### 观测 1：INT8 量化权重的显存实证（对应"Hardware"节）
 
@@ -143,7 +143,7 @@ tradeoff triangle
 
 > 关键发现：量化本身不导致乱码（正常请求输出正确），但当 **KV Cache 缺失/错误** 时，W8A8 量化模型的 logits 分布更窄，错误被放大。这正是 Tradeoff Triangle 中"模型优化可能损害准确性"的实证。
 >
-> 详见 Issues/GLM-5.2-W8A8输出乱码.md
+> 详见 [GLM-5.2-W8A8-Output-Garbled.md](faq/GLM-5.2-W8A8-Output-Garbled.md)
 
 ---
 

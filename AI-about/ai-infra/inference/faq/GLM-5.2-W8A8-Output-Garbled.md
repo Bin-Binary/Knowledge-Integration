@@ -193,7 +193,7 @@ P0 日志 `vllm-glm5.2-8pd-p0-rank0-85.25.15.101-20260806_095703.log`：
 
 ## 🔬 实际环境验证记录
 
-> 本节记录问题排查建议的验证状态与实际观测结果。详细操作过程见 [../Model%20Deploy/实践记录.md](../Model%20Deploy/实践记录.md)
+> 本节记录问题排查建议的验证状态与实际观测结果。详细操作过程见 [LLM-Platform-Practice.md](../../platform/LLM-Platform-Practice.md)
 
 ### 验证项 1：Mooncake `unhashable type: 'list'` bug 定位
 
