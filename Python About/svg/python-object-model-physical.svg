@@ -1,0 +1,168 @@
+<svg width="2400" height="1080" viewBox="0 0 2400 1080" xmlns="http://www.w3.org/2000/svg">
+<!-- ==========底层版式========== -->
+<rect width="2400" height="1080" fill="#e8e2d5"/>
+<g stroke="#c6c0b4" stroke-width="0.5">
+  <line x1="120" y1="80" x2="2280" y2="80"/><line x1="120" y1="160" x2="2280" y2="160"/>
+  <line x1="120" y1="240" x2="2280" y2="240"/><line x1="120" y1="320" x2="2280" y2="320"/>
+  <line x1="120" y1="400" x2="2280" y2="400"/><line x1="120" y1="480" x2="2280" y2="480"/>
+  <line x1="120" y1="560" x2="2280" y2="560"/><line x1="120" y1="640" x2="2280" y2="640"/>
+  <line x1="120" y1="720" x2="2280" y2="720"/><line x1="120" y1="800" x2="2280" y2="800"/>
+  <line x1="120" y1="880" x2="2280" y2="880"/><line x1="120" y1="960" x2="2280" y2="960"/>
+  <line x1="120" y1="80" x2="120" y2="1000"/><line x1="240" y1="80" x2="240" y2="1000"/>
+  <line x1="360" y1="80" x2="360" y2="1000"/><line x1="480" y1="80" x2="480" y2="1000"/>
+  <line x1="600" y1="80" x2="600" y2="1000"/><line x1="720" y1="80" x2="720" y2="1000"/>
+  <line x1="840" y1="80" x2="840" y2="1000"/><line x1="960" y1="80" x2="960" y2="1000"/>
+  <line x1="1080" y1="80" x2="1080" y2="1000"/><line x1="1200" y1="80" x2="1200" y2="1000"/>
+  <line x1="1320" y1="80" x2="1320" y2="1000"/><line x1="1440" y1="80" x2="1440" y2="1000"/>
+  <line x1="1560" y1="80" x2="1560" y2="1000"/><line x1="1680" y1="80" x2="1680" y2="1000"/>
+  <line x1="1800" y1="80" x2="1800" y2="1000"/><line x1="1920" y1="80" x2="1920" y2="1000"/>
+  <line x1="2040" y1="80" x2="2040" y2="1000"/><line x1="2160" y1="80" x2="2160" y2="1000"/>
+  <line x1="2280" y1="80" x2="2280" y2="1000"/>
+</g>
+
+<g id="main-drawing" font-family="Microsoft YaHei, SimHei, sans-serif">
+
+  <!-- 标题 -->
+  <text x="1200" y="72" text-anchor="middle" font-size="26" font-weight="bold" fill="#3a3530" font-family="KaiTi,STKaiti,serif">Python对象模型：物理结构 × 生命周期</text>
+  <text x="1200" y="96" text-anchor="middle" font-size="13" fill="#999999">H1 堆栈内存 → H2 对象池 → H3 对象头 → H4 类型槽 → H5 属性区  ·  自底向上五层物理实体</text>
+
+  <!-- ==========坐标轴========== -->
+  <line x1="280" y1="140" x2="280" y2="760" stroke="#3a3530" stroke-width="2"/>
+  <line x1="280" y1="760" x2="2240" y2="760" stroke="#3a3530" stroke-width="2"/>
+  <polygon points="280,140 274,155 286,155" fill="#3a3530"/>
+  <polygon points="2240,760 2225,754 2225,766" fill="#3a3530"/>
+
+  <!-- Y轴标签 -->
+  <text x="260" y="702" text-anchor="end" font-size="14" font-weight="bold" fill="#8B7355">H1 堆栈内存</text>
+  <text x="260" y="720" text-anchor="end" font-size="11" fill="#999999">malloc / free · 虚拟内存页</text>
+  <text x="260" y="578" text-anchor="end" font-size="14" font-weight="bold" fill="#A07050">H2 对象池</text>
+  <text x="260" y="596" text-anchor="end" font-size="11" fill="#999999">obmalloc · arena→pool→block</text>
+  <text x="260" y="454" text-anchor="end" font-size="14" font-weight="bold" fill="#6B8E6B">H3 对象头</text>
+  <text x="260" y="472" text-anchor="end" font-size="11" fill="#999999">ob_refcnt + ob_type · 16B头部</text>
+  <text x="260" y="330" text-anchor="end" font-size="14" font-weight="bold" fill="#5B7BA0">H4 类型槽</text>
+  <text x="260" y="348" text-anchor="end" font-size="11" fill="#999999">PyTypeObject · tp_*函数指针</text>
+  <text x="260" y="206" text-anchor="end" font-size="14" font-weight="bold" fill="#8B6B9B">H5 属性区</text>
+  <text x="260" y="224" text-anchor="end" font-size="11" fill="#999999">__dict__指针 · __slots__内联</text>
+  <text x="90" y="450" text-anchor="middle" font-size="13" fill="#888888" transform="rotate(-90,90,450)">物理内存区（底→顶）</text>
+
+  <!-- X轴标签 -->
+  <text x="476" y="790" text-anchor="middle" font-size="15" font-weight="bold" fill="#3a3530">定义期</text>
+  <text x="868" y="790" text-anchor="middle" font-size="15" font-weight="bold" fill="#3a3530">构建期</text>
+  <text x="1260" y="790" text-anchor="middle" font-size="15" font-weight="bold" fill="#3a3530">实例化期</text>
+  <text x="1652" y="790" text-anchor="middle" font-size="15" font-weight="bold" fill="#3a3530">运行期</text>
+  <text x="2044" y="790" text-anchor="middle" font-size="15" font-weight="bold" fill="#3a3530">销毁期</text>
+  <text x="476" y="810" text-anchor="middle" font-size="11" fill="#999999">类型声明</text>
+  <text x="868" y="810" text-anchor="middle" font-size="11" fill="#999999">类构造 · slot就位</text>
+  <text x="1260" y="810" text-anchor="middle" font-size="11" fill="#999999">对象创建 · prop填充</text>
+  <text x="1652" y="810" text-anchor="middle" font-size="11" fill="#999999">属性访问 · 方法调用</text>
+  <text x="2044" y="810" text-anchor="middle" font-size="11" fill="#999999">回收 · GC扫描</text>
+  <text x="1260" y="845" text-anchor="middle" font-size="13" fill="#888888">生命周期 →</text>
+
+  <!-- ==========矩阵网格 & 行背景 & 矩阵外框 & Y轴色标========== -->
+  <g stroke="#ccc5b8" stroke-width="1" stroke-dasharray="6,4">
+    <line x1="280" y1="264" x2="2240" y2="264"/><line x1="280" y1="388" x2="2240" y2="388"/>
+    <line x1="280" y1="512" x2="2240" y2="512"/><line x1="280" y1="636" x2="2240" y2="636"/>
+    <line x1="672" y1="140" x2="672" y2="760"/><line x1="1064" y1="140" x2="1064" y2="760"/>
+    <line x1="1456" y1="140" x2="1456" y2="760"/><line x1="1848" y1="140" x2="1848" y2="760"/>
+  </g>
+  <rect x="281" y="141" width="1958" height="122" fill="#f0e8f2"/>
+  <rect x="281" y="265" width="1958" height="122" fill="#e8eef5"/>
+  <rect x="281" y="389" width="1958" height="122" fill="#eaf2ea"/>
+  <rect x="281" y="513" width="1958" height="122" fill="#f4eae4"/>
+  <rect x="281" y="637" width="1958" height="122" fill="#f5ede0"/>
+  <rect x="280" y="140" width="1960" height="620" fill="none" stroke="#3a3530" stroke-width="1.5" rx="4"/>
+  <rect x="276" y="637" width="8" height="122" fill="#8B7355" rx="2"/>
+  <rect x="276" y="513" width="8" height="122" fill="#A07050" rx="2"/>
+  <rect x="276" y="389" width="8" height="122" fill="#6B8E6B" rx="2"/>
+  <rect x="276" y="265" width="8" height="122" fill="#5B7BA0" rx="2"/>
+  <rect x="276" y="141" width="8" height="122" fill="#8B6B9B" rx="2"/>
+
+  <!-- ================================================================ -->
+  <!--  数据点：圆点 + 关键词                                              -->
+  <!-- ================================================================ -->
+
+  <!-- H5 属性区 (y=202, #8B6B9B) -->
+  <text x="476" y="206" text-anchor="middle" font-size="12" fill="#bbbbbb">—</text>
+  <circle cx="868" cy="202" r="8" fill="#8B6B9B"/>
+  <text x="883" y="206" font-size="13" font-weight="bold" fill="#8B6B9B">类dict建立</text>
+  <circle cx="1260" cy="202" r="8" fill="#8B6B9B"/>
+  <text x="1275" y="206" font-size="13" font-weight="bold" fill="#8B6B9B">实例dict</text>
+  <circle cx="1652" cy="202" r="8" fill="#8B6B9B"/>
+  <text x="1667" y="206" font-size="13" font-weight="bold" fill="#8B6B9B">属性查找/GC</text>
+  <circle cx="2044" cy="202" r="8" fill="#8B6B9B"/>
+  <text x="2059" y="206" font-size="13" font-weight="bold" fill="#8B6B9B">GC断开/释放</text>
+
+  <!-- H4 类型槽 (y=326, #5B7BA0) -->
+  <circle cx="476" cy="326" r="8" fill="#5B7BA0"/>
+  <text x="491" y="330" font-size="13" font-weight="bold" fill="#5B7BA0">tp_*定义</text>
+  <circle cx="868" cy="326" r="8" fill="#5B7BA0"/>
+  <text x="883" y="330" font-size="13" font-weight="bold" fill="#5B7BA0">PyType_Ready</text>
+  <circle cx="1260" cy="326" r="8" fill="#5B7BA0"/>
+  <text x="1275" y="330" font-size="13" font-weight="bold" fill="#5B7BA0">tp_new/tp_init</text>
+  <circle cx="1652" cy="326" r="8" fill="#5B7BA0"/>
+  <text x="1667" y="330" font-size="13" font-weight="bold" fill="#5B7BA0">tp_call/tp_getattro</text>
+  <circle cx="2044" cy="326" r="8" fill="#5B7BA0"/>
+  <text x="2059" y="330" font-size="13" font-weight="bold" fill="#5B7BA0">tp_dealloc</text>
+
+  <!-- H3 对象头 (y=450, #6B8E6B) -->
+  <circle cx="476" cy="450" r="8" fill="#6B8E6B"/>
+  <text x="491" y="454" font-size="13" font-weight="bold" fill="#6B8E6B">struct定义</text>
+  <circle cx="868" cy="450" r="8" fill="#6B8E6B"/>
+  <text x="883" y="454" font-size="13" font-weight="bold" fill="#6B8E6B">tp_basicsize</text>
+  <circle cx="1260" cy="450" r="8" fill="#6B8E6B"/>
+  <text x="1275" y="454" font-size="13" font-weight="bold" fill="#6B8E6B">ob_refcnt=1</text>
+  <circle cx="1652" cy="450" r="8" fill="#6B8E6B"/>
+  <text x="1667" y="454" font-size="13" font-weight="bold" fill="#6B8E6B">refcnt增减</text>
+  <circle cx="2044" cy="450" r="8" fill="#6B8E6B"/>
+  <text x="2059" y="454" font-size="13" font-weight="bold" fill="#6B8E6B">refcnt→0</text>
+
+  <!-- H2 对象池 (y=574, #A07050) -->
+  <text x="476" y="578" text-anchor="middle" font-size="12" fill="#bbbbbb">—</text>
+  <circle cx="868" cy="574" r="8" fill="#A07050"/>
+  <text x="883" y="578" font-size="13" font-weight="bold" fill="#A07050">池初始化</text>
+  <circle cx="1260" cy="574" r="8" fill="#A07050"/>
+  <text x="1275" y="578" font-size="13" font-weight="bold" fill="#A07050">pool分配</text>
+  <circle cx="1652" cy="574" r="8" fill="#A07050"/>
+  <text x="1667" y="578" font-size="13" font-weight="bold" fill="#A07050">freelist缓存</text>
+  <circle cx="2044" cy="574" r="8" fill="#A07050"/>
+  <text x="2059" y="578" font-size="13" font-weight="bold" fill="#A07050">归还pool</text>
+
+  <!-- H1 堆栈内存 (y=698, #8B7355) -->
+  <text x="476" y="702" text-anchor="middle" font-size="12" fill="#bbbbbb">—</text>
+  <circle cx="868" cy="698" r="8" fill="#8B7355"/>
+  <text x="883" y="702" font-size="13" font-weight="bold" fill="#8B7355">内存布局</text>
+  <circle cx="1260" cy="698" r="8" fill="#8B7355"/>
+  <text x="1275" y="702" font-size="13" font-weight="bold" fill="#8B7355">malloc</text>
+  <circle cx="1652" cy="698" r="8" fill="#8B7355"/>
+  <text x="1667" y="702" font-size="13" font-weight="bold" fill="#8B7355">内存驻留</text>
+  <circle cx="2044" cy="698" r="8" fill="#8B7355"/>
+  <text x="2059" y="702" font-size="13" font-weight="bold" fill="#8B7355">free</text>
+
+  <!-- ==========图例========== -->
+  <g transform="translate(60,870)">
+    <text x="0" y="0" font-size="15" font-weight="bold" fill="#3a3530" font-family="KaiTi,STKaiti,serif">图例</text>
+    <line x1="0" y1="10" x2="60" y2="10" stroke="#3a3530" stroke-width="0.8"/>
+
+    <circle cx="12" cy="32" r="7" fill="#8B7355"/>
+    <text x="28" y="36" font-size="12" fill="#666666"><tspan font-weight="bold" fill="#8B7355">H1 堆栈内存</tspan>  —  OS虚拟内存 · malloc从堆申请、free归还 · 栈帧存储局部变量引用</text>
+
+    <circle cx="12" cy="60" r="7" fill="#A07050"/>
+    <text x="28" y="64" font-size="12" fill="#666666"><tspan font-weight="bold" fill="#A07050">H2 对象池</tspan>  —  CPython自研obmalloc分区: arena(256KB)→pool(4KB)→block(按size class) · freelist加速复用 · 小对象免走malloc</text>
+
+    <circle cx="12" cy="88" r="7" fill="#6B8E6B"/>
+    <text x="28" y="92" font-size="12" fill="#666666"><tspan font-weight="bold" fill="#6B8E6B">H3 对象头</tspan>  —  PyObject: Py_ssize_t ob_refcnt(引用计数,8B) + PyTypeObject* ob_type(类型指针,8B) = 固定16B · PyVarObject追加ob_size</text>
+
+    <circle cx="12" cy="116" r="7" fill="#5B7BA0"/>
+    <text x="28" y="120" font-size="12" fill="#666666"><tspan font-weight="bold" fill="#5B7BA0">H4 类型槽</tspan>  —  PyTypeObject结构体持有tp_new/tp_init/tp_dealloc/tp_getattro/tp_call等函数指针 · PyType_Ready填充并继承父类槽位 · 方法绑定依赖于此</text>
+
+    <circle cx="12" cy="144" r="7" fill="#8B6B9B"/>
+    <text x="28" y="148" font-size="12" fill="#666666"><tspan font-weight="bold" fill="#8B6B9B">H5 属性区</tspan>  —  instance.__dict__: 堆上dict存储实例属性(未用__slots__时) · __slots__: 对象体内联定长数组替代__dict__ · GC通过__dict__发现引用链</text>
+
+    <text x="0" y="175" font-size="11" fill="#999999">● 圆点 = 该物理内存区在该生命阶段承担核心职责　　　— = 该阶段不参与</text>
+  </g>
+
+</g>
+
+<g id="annotations" stroke="#555555" stroke-width="1" stroke-dasharray="6 4" fill="none">
+</g>
+</svg>

@@ -1,0 +1,185 @@
+<svg width="2400" height="1080" viewBox="0 0 2400 1080" xmlns="http://www.w3.org/2000/svg">
+<!-- ==========底层固定版式========== -->
+<rect width="2400" height="1080" fill="#e8e2d5"/>
+
+<g stroke="#c6c0b4" stroke-width="0.5">
+  <line x1="120" y1="80" x2="120" y2="1000"/>
+  <line x1="240" y1="80" x2="240" y2="1000"/>
+  <line x1="360" y1="80" x2="360" y2="1000"/>
+  <line x1="480" y1="80" x2="480" y2="1000"/>
+  <line x1="600" y1="80" x2="600" y2="1000"/>
+  <line x1="720" y1="80" x2="720" y2="1000"/>
+  <line x1="840" y1="80" x2="840" y2="1000"/>
+  <line x1="960" y1="80" x2="960" y2="1000"/>
+  <line x1="1080" y1="80" x2="1080" y2="1000"/>
+  <line x1="1200" y1="80" x2="1200" y2="1000"/>
+  <line x1="1320" y1="80" x2="1320" y2="1000"/>
+  <line x1="1440" y1="80" x2="1440" y2="1000"/>
+  <line x1="1560" y1="80" x2="1560" y2="1000"/>
+  <line x1="1680" y1="80" x2="1680" y2="1000"/>
+  <line x1="1800" y1="80" x2="1800" y2="1000"/>
+  <line x1="1920" y1="80" x2="1920" y2="1000"/>
+  <line x1="2040" y1="80" x2="2040" y2="1000"/>
+  <line x1="2160" y1="80" x2="2160" y2="1000"/>
+  <line x1="2280" y1="80" x2="2280" y2="1000"/>
+  <line x1="120" y1="80" x2="2280" y2="80"/>
+  <line x1="120" y1="160" x2="2280" y2="160"/>
+  <line x1="120" y1="240" x2="2280" y2="240"/>
+  <line x1="120" y1="320" x2="2280" y2="320"/>
+  <line x1="120" y1="400" x2="2280" y2="400"/>
+  <line x1="120" y1="480" x2="2280" y2="480"/>
+  <line x1="120" y1="560" x2="2280" y2="560"/>
+  <line x1="120" y1="640" x2="2280" y2="640"/>
+  <line x1="120" y1="720" x2="2280" y2="720"/>
+  <line x1="120" y1="800" x2="2280" y2="800"/>
+  <line x1="120" y1="880" x2="2280" y2="880"/>
+  <line x1="120" y1="960" x2="2280" y2="960"/>
+</g>
+
+<!-- ==========主体线稿区域========== -->
+<defs>
+  <marker id="ab" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+    <path d="M0,0 L0,6 L7,3 z" fill="#3b7dd8"/>
+  </marker>
+  <marker id="ao" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+    <path d="M0,0 L0,6 L7,3 z" fill="#c88a3b"/>
+  </marker>
+  <marker id="ap" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+    <path d="M0,0 L0,6 L7,3 z" fill="#7b5fb5"/>
+  </marker>
+</defs>
+
+<g id="main-drawing" font-family="sans-serif">
+
+  <!-- ===== 标题 ===== -->
+  <text x="1200" y="108" text-anchor="middle" font-size="24" font-weight="bold" fill="#2D3748">知识 → 实践映射图：理论文档 · P0脚本参数</text>
+
+  <!-- ================================================================ -->
+  <!--  左栏 x:160~640  |  箭头带 x:640~880  |  右栏 x:880~2260       -->
+  <!-- ================================================================ -->
+
+  <!-- ===== 左栏：理论层 ===== -->
+  <text x="400" y="152" text-anchor="middle" font-size="16" font-weight="bold" fill="#3b7dd8">理 论 层</text>
+
+  <!-- 文档1 -->
+  <rect x="160" y="168" width="480" height="200" fill="none" stroke="#3b7dd8" stroke-width="1.5" rx="4"/>
+  <text x="400" y="195" text-anchor="middle" font-size="14" font-weight="bold" fill="#3b7dd8">Why Efficient LLM Deployment Matters</text>
+  <rect x="175" y="210" width="450" height="25" fill="#ece8db" stroke="#3b7dd8" stroke-width="0.8" rx="3"/>
+  <text x="400" y="227" text-anchor="middle" font-size="11" fill="#2D3748">Tradeoff Triangle</text>
+  <rect x="175" y="240" width="450" height="25" fill="#ece8db" stroke="#3b7dd8" stroke-width="0.8" rx="3"/>
+  <text x="400" y="257" text-anchor="middle" font-size="11" fill="#2D3748">性能指标: TTFT / ITL / TPS</text>
+  <rect x="175" y="270" width="218" height="25" fill="#ece8db" stroke="#3b7dd8" stroke-width="0.8" rx="3"/>
+  <text x="284" y="287" text-anchor="middle" font-size="11" fill="#2D3748">模型优化</text>
+  <rect x="403" y="270" width="222" height="25" fill="#ece8db" stroke="#3b7dd8" stroke-width="0.8" rx="3"/>
+  <text x="514" y="287" text-anchor="middle" font-size="11" fill="#2D3748">推理优化</text>
+
+  <!-- 文档2 -->
+  <rect x="160" y="388" width="480" height="150" fill="none" stroke="#c88a3b" stroke-width="1.5" rx="4"/>
+  <text x="400" y="415" text-anchor="middle" font-size="14" font-weight="bold" fill="#c88a3b">Inference &amp; Memory Fundamentals</text>
+  <rect x="175" y="430" width="450" height="28" fill="#ece8db" stroke="#c88a3b" stroke-width="0.8" rx="3"/>
+  <text x="400" y="449" text-anchor="middle" font-size="11" fill="#2D3748">GPU内存三级 (SRAM / HBM / DRAM)</text>
+  <rect x="175" y="463" width="450" height="28" fill="#ece8db" stroke="#c88a3b" stroke-width="0.8" rx="3"/>
+  <text x="400" y="482" text-anchor="middle" font-size="11" fill="#2D3748">三层架构 (Model / Server / Hardware)</text>
+
+  <!-- 文档3 -->
+  <rect x="160" y="558" width="480" height="250" fill="none" stroke="#7b5fb5" stroke-width="1.5" rx="4"/>
+  <text x="400" y="585" text-anchor="middle" font-size="14" font-weight="bold" fill="#7b5fb5">模型术语速查</text>
+  <rect x="175" y="600" width="450" height="25" fill="#ece8db" stroke="#7b5fb5" stroke-width="0.8" rx="3"/>
+  <text x="400" y="617" text-anchor="middle" font-size="11" fill="#2D3748">TP / DP / EP / PD分离</text>
+  <rect x="175" y="628" width="450" height="25" fill="#ece8db" stroke="#7b5fb5" stroke-width="0.8" rx="3"/>
+  <text x="400" y="645" text-anchor="middle" font-size="11" fill="#2D3748">PagedAttention / APC / ChunkedPrefill</text>
+  <rect x="175" y="656" width="450" height="25" fill="#ece8db" stroke="#7b5fb5" stroke-width="0.8" rx="3"/>
+  <text x="400" y="673" text-anchor="middle" font-size="11" fill="#2D3748">量化 W8A8</text>
+  <rect x="175" y="684" width="450" height="25" fill="#ece8db" stroke="#7b5fb5" stroke-width="0.8" rx="3"/>
+  <text x="400" y="701" text-anchor="middle" font-size="11" fill="#2D3748">投机采样 / 异步调度</text>
+  <rect x="175" y="712" width="450" height="25" fill="#ece8db" stroke="#7b5fb5" stroke-width="0.8" rx="3"/>
+  <text x="400" y="729" text-anchor="middle" font-size="11" fill="#2D3748">AclGraph / DSA / 权重预取</text>
+  <rect x="175" y="740" width="450" height="25" fill="#ece8db" stroke="#7b5fb5" stroke-width="0.8" rx="3"/>
+  <text x="400" y="757" text-anchor="middle" font-size="11" fill="#2D3748">max-model-len</text>
+
+  <!-- ===== 中间：映射箭头 ===== -->
+  <!-- 蓝：文档1 → 参数组 -->
+  <path d="M640,222 C760,222 760,205 880,205" stroke="#3b7dd8" stroke-width="1.5" stroke-dasharray="6,3" fill="none" marker-end="url(#ab)"/>
+  <path d="M640,252 C760,252 760,290 880,290" stroke="#3b7dd8" stroke-width="1.5" stroke-dasharray="6,3" fill="none" marker-end="url(#ab)"/>
+  <path d="M640,282 C760,282 760,375 880,375" stroke="#3b7dd8" stroke-width="1.5" stroke-dasharray="6,3" fill="none" marker-end="url(#ab)"/>
+
+  <!-- 橙：文档2 → 参数组 -->
+  <path d="M640,444 C760,444 760,460 880,460" stroke="#c88a3b" stroke-width="1.5" stroke-dasharray="6,3" fill="none" marker-end="url(#ao)"/>
+  <path d="M640,477 C760,477 760,545 880,545" stroke="#c88a3b" stroke-width="1.5" stroke-dasharray="6,3" fill="none" marker-end="url(#ao)"/>
+
+  <!-- 紫：文档3 → 参数组 -->
+  <path d="M640,612 C760,612 760,205 880,205" stroke="#7b5fb5" stroke-width="1.5" stroke-dasharray="6,3" fill="none" marker-end="url(#ap)"/>
+  <path d="M640,640 C760,640 760,290 880,290" stroke="#7b5fb5" stroke-width="1.5" stroke-dasharray="6,3" fill="none" marker-end="url(#ap)"/>
+  <path d="M640,668 C760,668 760,460 880,460" stroke="#7b5fb5" stroke-width="1.5" stroke-dasharray="6,3" fill="none" marker-end="url(#ap)"/>
+  <path d="M640,696 C760,696 760,545 880,545" stroke="#7b5fb5" stroke-width="1.5" stroke-dasharray="6,3" fill="none" marker-end="url(#ap)"/>
+  <path d="M640,724 C760,724 760,630 880,630" stroke="#7b5fb5" stroke-width="1.5" stroke-dasharray="6,3" fill="none" marker-end="url(#ap)"/>
+  <path d="M640,752 C760,752 760,375 880,375" stroke="#7b5fb5" stroke-width="1.5" stroke-dasharray="6,3" fill="none" marker-end="url(#ap)"/>
+
+  <!-- ===== 右栏：实践层 ===== -->
+  <text x="1500" y="152" text-anchor="middle" font-size="16" font-weight="bold" fill="#c88a3b">实 践 层</text>
+
+  <!-- 参数组1 -->
+  <rect x="880" y="168" width="580" height="75" fill="none" stroke="#3a3a3a" stroke-width="1.5" rx="4"/>
+  <text x="1170" y="196" text-anchor="middle" font-size="14" font-weight="bold" fill="#3a3a3a">并行策略组</text>
+  <text x="1170" y="218" text-anchor="middle" font-size="12" fill="#2D3748">TP=8, DP=4, EP 启用</text>
+
+  <!-- 参数组2 -->
+  <rect x="880" y="253" width="580" height="75" fill="none" stroke="#3a3a3a" stroke-width="1.5" rx="4"/>
+  <text x="1170" y="281" text-anchor="middle" font-size="14" font-weight="bold" fill="#3a3a3a">推理优化组</text>
+  <text x="1170" y="303" text-anchor="middle" font-size="12" fill="#2D3748">chunked-prefill, prefix-caching, async-scheduling</text>
+
+  <!-- 参数组3 -->
+  <rect x="880" y="338" width="580" height="75" fill="none" stroke="#3a3a3a" stroke-width="1.5" rx="4"/>
+  <text x="1170" y="366" text-anchor="middle" font-size="14" font-weight="bold" fill="#3a3a3a">显存管理组</text>
+  <text x="1170" y="388" text-anchor="middle" font-size="12" fill="#2D3748">gpu-mem-util=0.95, max-model-len=115168</text>
+
+  <!-- 参数组4 -->
+  <rect x="880" y="423" width="580" height="75" fill="none" stroke="#3a3a3a" stroke-width="1.5" rx="4"/>
+  <text x="1170" y="451" text-anchor="middle" font-size="14" font-weight="bold" fill="#3a3a3a">模型优化组</text>
+  <text x="1170" y="473" text-anchor="middle" font-size="12" fill="#2D3748">quantization=ascend (W8A8)</text>
+
+  <!-- 参数组5 -->
+  <rect x="880" y="508" width="580" height="75" fill="none" stroke="#3a3a3a" stroke-width="1.5" rx="4"/>
+  <text x="1170" y="536" text-anchor="middle" font-size="14" font-weight="bold" fill="#3a3a3a">硬件深度定制组</text>
+  <text x="1170" y="558" text-anchor="middle" font-size="12" fill="#2D3748">npugraph_ex, multistream_overlap, dsa_cp</text>
+
+  <!-- 参数组6 -->
+  <rect x="880" y="593" width="580" height="75" fill="none" stroke="#3a3a3a" stroke-width="1.5" rx="4"/>
+  <text x="1170" y="621" text-anchor="middle" font-size="14" font-weight="bold" fill="#3a3a3a">PD分离组</text>
+  <text x="1170" y="643" text-anchor="middle" font-size="12" fill="#2D3748">kv_producer, MooncakeConnector, 非对称DP/TP</text>
+
+  <!-- 投机采样 -->
+  <rect x="1540" y="168" width="520" height="75" fill="none" stroke="#3a3a3a" stroke-width="1.5" rx="4"/>
+  <text x="1800" y="196" text-anchor="middle" font-size="14" font-weight="bold" fill="#3a3a3a">投机采样</text>
+  <text x="1800" y="218" text-anchor="middle" font-size="12" fill="#2D3748">speculative-config: deepseek_mtp</text>
+
+  <!-- ===== 底部：映射说明 ===== -->
+  <text x="1200" y="838" text-anchor="middle" font-size="15" font-weight="bold" fill="#2D3748">映射关系说明</text>
+
+  <!-- 左列 -->
+  <text x="190" y="870" font-size="13" fill="#2D3748"><tspan font-weight="bold" fill="#3b7dd8">①</tspan> 模型优化→成本下降：W8A8量化使权重从FP16降到1字节/参数</text>
+  <text x="190" y="900" font-size="13" fill="#2D3748"><tspan font-weight="bold" fill="#3b7dd8">②</tspan> 推理优化→性能提升：PagedAttention + APC + ChunkedPrefill + 异步调度</text>
+  <text x="190" y="930" font-size="13" fill="#2D3748"><tspan font-weight="bold" fill="#3b7dd8">③</tspan> PD分离→消除资源抢占：Prefill高TP压算力，Decode高DP扩吞吐</text>
+
+  <!-- 右列 -->
+  <text x="1300" y="870" font-size="13" fill="#2D3748"><tspan font-weight="bold" fill="#c88a3b">④</tspan> 显存管理→QPS杠杆：max-model-len决定KV上限</text>
+  <text x="1300" y="900" font-size="13" fill="#2D3748"><tspan font-weight="bold" fill="#c88a3b">⑤</tspan> 投机采样→Token加速：deepseek_mtp辅助头猜3Token</text>
+  <text x="1300" y="930" font-size="13" fill="#2D3748"><tspan font-weight="bold" fill="#c88a3b">⑥</tspan> 硬件定制→压榨极限：AclGraph + 权重预取 + DSA</text>
+
+  <!-- 图例 -->
+  <g transform="translate(190, 960)">
+    <line x1="0" y1="0" x2="30" y2="0" stroke="#3b7dd8" stroke-width="1.5" stroke-dasharray="6,3"/>
+    <text x="38" y="5" font-size="11" fill="#718096">← 文档1 映射</text>
+    <line x1="180" y1="0" x2="210" y2="0" stroke="#c88a3b" stroke-width="1.5" stroke-dasharray="6,3"/>
+    <text x="218" y="5" font-size="11" fill="#718096">← 文档2 映射</text>
+    <line x1="360" y1="0" x2="390" y2="0" stroke="#7b5fb5" stroke-width="1.5" stroke-dasharray="6,3"/>
+    <text x="398" y="5" font-size="11" fill="#718096">← 文档3 映射</text>
+  </g>
+
+</g>
+
+<!-- ==========标注引线组========== -->
+<g id="annotations" stroke="#555555" stroke-width="1" stroke-dasharray="6 4" fill="none">
+</g>
+
+</svg>
