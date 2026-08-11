@@ -16,6 +16,14 @@ type C:\Users\l60130933\.ssh\id_rsa.pub | ssh ${USER_NAME}$@${IP}$ \
 ```
 
 ---
+### 查看systemd日志
+```bash
+# 实时输出
+journalctl -u opencode-api -f 
+
+# 最近一个小时日志
+journalctl -u opencode-api --since "1 hour ago" --no-pager 
+```
 
 ### 验证K8s集群状态
 
