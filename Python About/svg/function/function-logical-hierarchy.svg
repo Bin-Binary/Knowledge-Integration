@@ -1,0 +1,203 @@
+<svg width="2400" height="1080" viewBox="0 0 2400 1080" xmlns="http://www.w3.org/2000/svg">
+<rect width="2400" height="1080" fill="#e8e2d5"/>
+<g stroke="#c6c0b4" stroke-width="0.5">
+<line x1="120" y1="80" x2="120" y2="1000"/><line x1="240" y1="80" x2="240" y2="1000"/>
+<line x1="360" y1="80" x2="360" y2="1000"/><line x1="480" y1="80" x2="480" y2="1000"/>
+<line x1="600" y1="80" x2="600" y2="1000"/><line x1="720" y1="80" x2="720" y2="1000"/>
+<line x1="840" y1="80" x2="840" y2="1000"/><line x1="960" y1="80" x2="960" y2="1000"/>
+<line x1="1080" y1="80" x2="1080" y2="1000"/><line x1="1200" y1="80" x2="1200" y2="1000"/>
+<line x1="1320" y1="80" x2="1320" y2="1000"/><line x1="1440" y1="80" x2="1440" y2="1000"/>
+<line x1="1560" y1="80" x2="1560" y2="1000"/><line x1="1680" y1="80" x2="1680" y2="1000"/>
+<line x1="1800" y1="80" x2="1800" y2="1000"/><line x1="1920" y1="80" x2="1920" y2="1000"/>
+<line x1="2040" y1="80" x2="2040" y2="1000"/><line x1="2160" y1="80" x2="2160" y2="1000"/>
+<line x1="2280" y1="80" x2="2280" y2="1000"/>
+<line x1="120" y1="80" x2="2280" y2="80"/><line x1="120" y1="160" x2="2280" y2="160"/>
+<line x1="120" y1="240" x2="2280" y2="240"/><line x1="120" y1="320" x2="2280" y2="320"/>
+<line x1="120" y1="400" x2="2280" y2="400"/><line x1="120" y1="480" x2="2280" y2="480"/>
+<line x1="120" y1="560" x2="2280" y2="560"/><line x1="120" y1="640" x2="2280" y2="640"/>
+<line x1="120" y1="720" x2="2280" y2="720"/><line x1="120" y1="800" x2="2280" y2="800"/>
+<line x1="120" y1="880" x2="2280" y2="880"/><line x1="120" y1="960" x2="2280" y2="960"/>
+</g>
+
+<defs>
+<marker id="a-l1" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+<path d="M0,0 L0,6 L7,3 z" fill="#7B6B8B"/>
+</marker>
+<marker id="a-l2" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+<path d="M0,0 L0,6 L7,3 z" fill="#8B7355"/>
+</marker>
+<marker id="a-l3" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+<path d="M0,0 L0,6 L7,3 z" fill="#A07050"/>
+</marker>
+<marker id="a-l4" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+<path d="M0,0 L0,6 L7,3 z" fill="#4A6B5A"/>
+</marker>
+</defs>
+
+<g id="main-drawing" font-family="Microsoft YaHei,SimHei,sans-serif">
+
+<text x="1200" y="108" text-anchor="middle" font-size="24" font-weight="bold" fill="#2D3748" font-family="KaiTi,STKaiti,serif">Python 函数逻辑层级视图：从语法到执行的抽象层次</text>
+
+<text x="400" y="150" text-anchor="middle" font-size="16" font-weight="bold" fill="#7B6B8B">逻辑概念层</text>
+<text x="1560" y="150" text-anchor="middle" font-size="16" font-weight="bold" fill="#3a3a3a">实现载体与职责</text>
+
+<rect x="160" y="168" width="480" height="170" fill="none" stroke="#7B6B8B" stroke-width="1.5" rx="4"/>
+<rect x="160" y="168" width="480" height="32" fill="#ece6f0" rx="4"/>
+<text x="400" y="190" text-anchor="middle" font-size="14" font-weight="bold" fill="#7B6B8B">1. 语法层 (Syntax Layer)</text>
+<text x="400" y="215" text-anchor="middle" font-size="12" fill="#2D3748">函数定义的抽象语法表达</text>
+<rect x="175" y="230" width="220" height="28" fill="#f5f5f5" stroke="#7B6B8B" stroke-width="0.6" rx="3"/>
+<text x="285" y="249" text-anchor="middle" font-size="11" fill="#2D3748">def 语句 / lambda 表达式</text>
+<rect x="405" y="230" width="220" height="28" fill="#f5f5f5" stroke="#7B6B8B" stroke-width="0.6" rx="3"/>
+<text x="515" y="249" text-anchor="middle" font-size="11" fill="#2D3748">@decorator 装饰器语法</text>
+<rect x="175" y="262" width="220" height="28" fill="#f5f5f5" stroke="#7B6B8B" stroke-width="0.6" rx="3"/>
+<text x="285" y="281" text-anchor="middle" font-size="11" fill="#2D3748">async def 异步函数</text>
+<rect x="405" y="262" width="220" height="28" fill="#f5f5f5" stroke="#7B6B8B" stroke-width="0.6" rx="3"/>
+<text x="515" y="281" text-anchor="middle" font-size="11" fill="#2D3748">yield / yield from 生成器</text>
+<rect x="175" y="294" width="220" height="28" fill="#f5f5f5" stroke="#7B6B8B" stroke-width="0.6" rx="3"/>
+<text x="285" y="313" text-anchor="middle" font-size="11" fill="#2D3748">类型注解 annotations</text>
+<rect x="405" y="294" width="220" height="28" fill="#f5f5f5" stroke="#7B6B8B" stroke-width="0.6" rx="3"/>
+<text x="515" y="313" text-anchor="middle" font-size="11" fill="#2D3748">闭包 (嵌套 def 读外层变量)</text>
+
+<rect x="160" y="358" width="480" height="170" fill="none" stroke="#8B7355" stroke-width="1.5" rx="4"/>
+<rect x="160" y="358" width="480" height="32" fill="#ede0d2" rx="4"/>
+<text x="400" y="380" text-anchor="middle" font-size="14" font-weight="bold" fill="#8B7355">2. 编译层 (Compilation Layer)</text>
+<text x="400" y="405" text-anchor="middle" font-size="12" fill="#2D3748">AST 到字节码的转换过程</text>
+<rect x="175" y="420" width="220" height="28" fill="#f5f5f5" stroke="#8B7355" stroke-width="0.6" rx="3"/>
+<text x="285" y="439" text-anchor="middle" font-size="11" fill="#2D3748">AST -> 符号表 -> 控制流图</text>
+<rect x="405" y="420" width="220" height="28" fill="#f5f5f5" stroke="#8B7355" stroke-width="0.6" rx="3"/>
+<text x="515" y="439" text-anchor="middle" font-size="11" fill="#2D3748">字节码序列 (co_code)</text>
+<rect x="175" y="452" width="220" height="28" fill="#f5f5f5" stroke="#8B7355" stroke-width="0.6" rx="3"/>
+<text x="285" y="471" text-anchor="middle" font-size="11" fill="#2D3748">co_freevars 自由变量标记</text>
+<rect x="405" y="452" width="220" height="28" fill="#f5f5f5" stroke="#8B7355" stroke-width="0.6" rx="3"/>
+<text x="515" y="471" text-anchor="middle" font-size="11" fill="#2D3748">co_cellvars 单元变量标记</text>
+<rect x="175" y="484" width="450" height="28" fill="#f5f5f5" stroke="#8B7355" stroke-width="0.6" rx="3"/>
+<text x="400" y="503" text-anchor="middle" font-size="11" fill="#2D3748">co_flags (CO_OPTIMIZED / CO_NOFREE / CO_GENERATOR / CO_COROUTINE)</text>
+
+<rect x="160" y="548" width="480" height="170" fill="none" stroke="#A07050" stroke-width="1.5" rx="4"/>
+<rect x="160" y="548" width="480" height="32" fill="#f0e4d8" rx="4"/>
+<text x="400" y="570" text-anchor="middle" font-size="14" font-weight="bold" fill="#A07050">3. 运行时层 (Runtime Layer)</text>
+<text x="400" y="595" text-anchor="middle" font-size="12" fill="#2D3748">函数作为第一类对象的运行时表示</text>
+<rect x="175" y="610" width="220" height="28" fill="#f5f5f5" stroke="#A07050" stroke-width="0.6" rx="3"/>
+<text x="285" y="629" text-anchor="middle" font-size="11" fill="#2D3748">PyFunctionObject (funcobject.c)</text>
+<rect x="405" y="610" width="220" height="28" fill="#f5f5f5" stroke="#A07050" stroke-width="0.6" rx="3"/>
+<text x="515" y="629" text-anchor="middle" font-size="11" fill="#2D3748">bound / unbound method</text>
+<rect x="175" y="642" width="220" height="28" fill="#f5f5f5" stroke="#A07050" stroke-width="0.6" rx="3"/>
+<text x="285" y="661" text-anchor="middle" font-size="11" fill="#2D3748">闭包单元 PyCellObject</text>
+<rect x="405" y="642" width="220" height="28" fill="#f5f5f5" stroke="#A07050" stroke-width="0.6" rx="3"/>
+<text x="515" y="661" text-anchor="middle" font-size="11" fill="#2D3748">__annotations__ / __doc__</text>
+<rect x="175" y="674" width="220" height="28" fill="#f5f5f5" stroke="#A07050" stroke-width="0.6" rx="3"/>
+<text x="285" y="693" text-anchor="middle" font-size="11" fill="#2D3748">staticmethod / classmethod</text>
+<rect x="405" y="674" width="220" height="28" fill="#f5f5f5" stroke="#A07050" stroke-width="0.6" rx="3"/>
+<text x="515" y="693" text-anchor="middle" font-size="11" fill="#2D3748">functools.partial</text>
+
+<rect x="160" y="738" width="480" height="170" fill="none" stroke="#4A6B5A" stroke-width="1.5" rx="4"/>
+<rect x="160" y="738" width="480" height="32" fill="#dae8dc" rx="4"/>
+<text x="400" y="760" text-anchor="middle" font-size="14" font-weight="bold" fill="#4A6B5A">4. 执行层 (Execution Layer)</text>
+<text x="400" y="785" text-anchor="middle" font-size="12" fill="#2D3748">函数体实际执行的上下文与机制</text>
+<rect x="175" y="800" width="220" height="28" fill="#f5f5f5" stroke="#4A6B5A" stroke-width="0.6" rx="3"/>
+<text x="285" y="819" text-anchor="middle" font-size="11" fill="#2D3748">PyFrameObject 栈帧</text>
+<rect x="405" y="800" width="220" height="28" fill="#f5f5f5" stroke="#4A6B5A" stroke-width="0.6" rx="3"/>
+<text x="515" y="819" text-anchor="middle" font-size="11" fill="#2D3748">值栈 f_valuestack</text>
+<rect x="175" y="832" width="220" height="28" fill="#f5f5f5" stroke="#4A6B5A" stroke-width="0.6" rx="3"/>
+<text x="285" y="851" text-anchor="middle" font-size="11" fill="#2D3748">PyGenObject 生成器挂起</text>
+<rect x="405" y="832" width="220" height="28" fill="#f5f5f5" stroke="#4A6B5A" stroke-width="0.6" rx="3"/>
+<text x="515" y="851" text-anchor="middle" font-size="11" fill="#2D3748">PyCoroObject 协程调度</text>
+<rect x="175" y="864" width="220" height="28" fill="#f5f5f5" stroke="#4A6B5A" stroke-width="0.6" rx="3"/>
+<text x="285" y="883" text-anchor="middle" font-size="11" fill="#2D3748">异常处理 栈展开 unwind</text>
+<rect x="405" y="864" width="220" height="28" fill="#f5f5f5" stroke="#4A6B5A" stroke-width="0.6" rx="3"/>
+<text x="515" y="883" text-anchor="middle" font-size="11" fill="#2D3748">trace function / debugger</text>
+
+<path d="M640,253 C760,253 760,253 880,253" stroke="#7B6B8B" stroke-width="1.5" stroke-dasharray="6,3" fill="none" marker-end="url(#a-l1)"/>
+<path d="M640,443 C760,443 760,443 880,443" stroke="#8B7355" stroke-width="1.5" stroke-dasharray="6,3" fill="none" marker-end="url(#a-l2)"/>
+<path d="M640,633 C760,633 760,633 880,633" stroke="#A07050" stroke-width="1.5" stroke-dasharray="6,3" fill="none" marker-end="url(#a-l3)"/>
+<path d="M640,823 C760,823 760,823 880,823" stroke="#4A6B5A" stroke-width="1.5" stroke-dasharray="6,3" fill="none" marker-end="url(#a-l4)"/>
+
+<rect x="880" y="168" width="1280" height="170" fill="none" stroke="#7B6B8B" stroke-width="1.5" rx="4"/>
+<rect x="880" y="168" width="1280" height="32" fill="#f5f3f5" rx="4"/>
+<text x="1520" y="190" text-anchor="middle" font-size="14" font-weight="bold" fill="#7B6B8B">语法层实现载体</text>
+<text x="1520" y="215" text-anchor="middle" font-size="12" fill="#2D3748">Python语法 -> AST节点 (CPython解析器)</text>
+<rect x="895" y="230" width="310" height="28" fill="#f5f5f5" stroke="#7B6B8B" stroke-width="0.6" rx="3"/>
+<text x="1050" y="249" text-anchor="middle" font-size="11" fill="#2D3748">AST FunctionDef 节点</text>
+<rect x="1215" y="230" width="310" height="28" fill="#f5f5f5" stroke="#7B6B8B" stroke-width="0.6" rx="3"/>
+<text x="1370" y="249" text-anchor="middle" font-size="11" fill="#2D3748">AST Lambda 节点</text>
+<rect x="1535" y="230" width="310" height="28" fill="#f5f5f5" stroke="#7B6B8B" stroke-width="0.6" rx="3"/>
+<text x="1690" y="249" text-anchor="middle" font-size="11" fill="#2D3748">AST AsyncFunctionDef 节点</text>
+<rect x="1855" y="230" width="290" height="28" fill="#f5f5f5" stroke="#7B6B8B" stroke-width="0.6" rx="3"/>
+<text x="2000" y="249" text-anchor="middle" font-size="11" fill="#2D3748">ast.Call 装饰器等价</text>
+<rect x="895" y="262" width="620" height="28" fill="#f5f5f5" stroke="#7B6B8B" stroke-width="0.6" rx="3"/>
+<text x="1205" y="281" text-anchor="middle" font-size="11" fill="#2D3748">职责: 源码字符串 -> 词法分析(tokenize) -> 语法分析(parser) -> CST -> AST</text>
+<rect x="1525" y="262" width="620" height="28" fill="#f5f5f5" stroke="#7B6B8B" stroke-width="0.6" rx="3"/>
+<text x="1835" y="281" text-anchor="middle" font-size="11" fill="#2D3748">产出: FunctionDef.name / .args / .body / .decorator_list / .returns</text>
+<rect x="895" y="294" width="1250" height="28" fill="#f5f5f5" stroke="#7B6B8B" stroke-width="0.6" rx="3"/>
+<text x="1520" y="313" text-anchor="middle" font-size="11" fill="#2D3748">标记: CO_GENERATOR(含Yield) / CO_COROUTINE(async def) / co_freevars(闭包变量) 编译期识别</text>
+
+<rect x="880" y="358" width="1280" height="170" fill="none" stroke="#8B7355" stroke-width="1.5" rx="4"/>
+<rect x="880" y="358" width="1280" height="32" fill="#f5f0e8" rx="4"/>
+<text x="1520" y="380" text-anchor="middle" font-size="14" font-weight="bold" fill="#8B7355">编译层实现载体</text>
+<text x="1520" y="405" text-anchor="middle" font-size="12" fill="#2D3748">AST -> PyCodeObject (CPython编译器 compile.c)</text>
+<rect x="895" y="420" width="310" height="28" fill="#f5f5f5" stroke="#8B7355" stroke-width="0.6" rx="3"/>
+<text x="1050" y="439" text-anchor="middle" font-size="11" fill="#2D3748">symtable.c 符号表构建</text>
+<rect x="1215" y="420" width="310" height="28" fill="#f5f5f5" stroke="#8B7355" stroke-width="0.6" rx="3"/>
+<text x="1370" y="439" text-anchor="middle" font-size="11" fill="#2D3748">ceval.c 字节码生成</text>
+<rect x="1535" y="420" width="310" height="28" fill="#f5f5f5" stroke="#8B7355" stroke-width="0.6" rx="3"/>
+<text x="1690" y="439" text-anchor="middle" font-size="11" fill="#2D3748">co_code 字节码序列</text>
+<rect x="1855" y="420" width="290" height="28" fill="#f5f5f5" stroke="#8B7355" stroke-width="0.6" rx="3"/>
+<text x="2000" y="439" text-anchor="middle" font-size="11" fill="#2D3748">co_lnotab 行号映射</text>
+<rect x="895" y="452" width="620" height="28" fill="#f5f5f5" stroke="#8B7355" stroke-width="0.6" rx="3"/>
+<text x="1205" y="471" text-anchor="middle" font-size="11" fill="#2D3748">职责: AST遍历 -> 作用域分析 -> 栈深度计算 -> 控制流图 -> 字节码优化 -> 生成PyCodeObject</text>
+<rect x="1525" y="452" width="620" height="28" fill="#f5f5f5" stroke="#8B7355" stroke-width="0.6" rx="3"/>
+<text x="1835" y="471" text-anchor="middle" font-size="11" fill="#2D3748">产出: co_varnames / co_names / co_consts / co_freevars / co_cellvars</text>
+<rect x="895" y="484" width="1250" height="28" fill="#f5f5f5" stroke="#8B7355" stroke-width="0.6" rx="3"/>
+<text x="1520" y="503" text-anchor="middle" font-size="11" fill="#2D3748">关键: co_stacksize(值栈深度) / co_nlocals(局部变量数) / co_argcount / co_kwonlyargcount / co_flags</text>
+
+<rect x="880" y="548" width="1280" height="170" fill="none" stroke="#A07050" stroke-width="1.5" rx="4"/>
+<rect x="880" y="548" width="1280" height="32" fill="#f5ede5" rx="4"/>
+<text x="1520" y="570" text-anchor="middle" font-size="14" font-weight="bold" fill="#A07050">运行时层实现载体</text>
+<text x="1520" y="595" text-anchor="middle" font-size="12" fill="#2D3748">PyCodeObject + globals -> PyFunctionObject (MAKE_FUNCTION指令)</text>
+<rect x="895" y="610" width="310" height="28" fill="#f5f5f5" stroke="#A07050" stroke-width="0.6" rx="3"/>
+<text x="1050" y="629" text-anchor="middle" font-size="11" fill="#2D3748">PyFunctionObject</text>
+<rect x="1215" y="610" width="310" height="28" fill="#f5f5f5" stroke="#A07050" stroke-width="0.6" rx="3"/>
+<text x="1370" y="629" text-anchor="middle" font-size="11" fill="#2D3748">PyMethodObject</text>
+<rect x="1535" y="610" width="310" height="28" fill="#f5f5f5" stroke="#A07050" stroke-width="0.6" rx="3"/>
+<text x="1690" y="629" text-anchor="middle" font-size="11" fill="#2D3748">PyCellObject (闭包单元)</text>
+<rect x="1855" y="610" width="290" height="28" fill="#f5f5f5" stroke="#A07050" stroke-width="0.6" rx="3"/>
+<text x="2000" y="629" text-anchor="middle" font-size="11" fill="#2D3748">types.FunctionType</text>
+<rect x="895" y="642" width="620" height="28" fill="#f5f5f5" stroke="#A07050" stroke-width="0.6" rx="3"/>
+<text x="1205" y="661" text-anchor="middle" font-size="11" fill="#2D3748">职责: 封装 code object + 全局命名空间 + 默认参数 + 闭包单元 -> 可调用的第一类对象</text>
+<rect x="1525" y="642" width="620" height="28" fill="#f5f5f5" stroke="#A07050" stroke-width="0.6" rx="3"/>
+<text x="1835" y="661" text-anchor="middle" font-size="11" fill="#2D3748">字段: __code__ / __globals__ / __defaults__ / __closure__ / __name__</text>
+<rect x="895" y="674" width="1250" height="28" fill="#f5f5f5" stroke="#A07050" stroke-width="0.6" rx="3"/>
+<text x="1520" y="693" text-anchor="middle" font-size="11" fill="#2D3748">特殊: bound method(__self__绑定实例) / staticmethod(不绑定) / classmethod(绑定类) / partial(部分应用)</text>
+
+<rect x="880" y="738" width="1280" height="170" fill="none" stroke="#4A6B5A" stroke-width="1.5" rx="4"/>
+<rect x="880" y="738" width="1280" height="32" fill="#e8f0e8" rx="4"/>
+<text x="1520" y="760" text-anchor="middle" font-size="14" font-weight="bold" fill="#4A6B5A">执行层实现载体</text>
+<text x="1520" y="785" text-anchor="middle" font-size="12" fill="#2D3748">CALL指令 -> PyFrameObject -> eval loop -> RETURN_VALUE</text>
+<rect x="895" y="800" width="310" height="28" fill="#f5f5f5" stroke="#4A6B5A" stroke-width="0.6" rx="3"/>
+<text x="1050" y="819" text-anchor="middle" font-size="11" fill="#2D3748">PyFrameObject</text>
+<rect x="1215" y="800" width="310" height="28" fill="#f5f5f5" stroke="#4A6B5A" stroke-width="0.6" rx="3"/>
+<text x="1370" y="819" text-anchor="middle" font-size="11" fill="#2D3748">PyGenObject 生成器</text>
+<rect x="1535" y="800" width="310" height="28" fill="#f5f5f5" stroke="#4A6B5A" stroke-width="0.6" rx="3"/>
+<text x="1690" y="819" text-anchor="middle" font-size="11" fill="#2D3748">PyCoroObject 协程</text>
+<rect x="1855" y="800" width="290" height="28" fill="#f5f5f5" stroke="#4A6B5A" stroke-width="0.6" rx="3"/>
+<text x="2000" y="819" text-anchor="middle" font-size="11" fill="#2D3748">_PyInterpreterFrame (3.11+)</text>
+<rect x="895" y="832" width="620" height="28" fill="#f5f5f5" stroke="#4A6B5A" stroke-width="0.6" rx="3"/>
+<text x="1205" y="851" text-anchor="middle" font-size="11" fill="#2D3748">职责: 参数解析 -> 帧分配 -> 局部变量初始化 -> 字节码逐条执行 -> 值栈操作 -> 异常捕获 -> 返回值传递</text>
+<rect x="1525" y="832" width="620" height="28" fill="#f5f5f5" stroke="#4A6B5A" stroke-width="0.6" rx="3"/>
+<text x="1835" y="851" text-anchor="middle" font-size="11" fill="#2D3748">字段: f_back / f_code / f_locals / f_globals / f_lasti / f_valuestack</text>
+<rect x="895" y="864" width="1250" height="28" fill="#f5f5f5" stroke="#4A6B5A" stroke-width="0.6" rx="3"/>
+<text x="1520" y="883" text-anchor="middle" font-size="11" fill="#2D3748">特殊: 生成器(YIELD_VALUE挂起帧) / 协程(await挂起) / 异常(栈展开unwind) / 调试(f_trace钩子)</text>
+
+<g transform="translate(60,940)">
+<text x="0" y="0" font-size="13" font-weight="bold" fill="#3a3530" font-family="KaiTi,STKaiti,serif">图例</text>
+<line x1="0" y1="10" x2="40" y2="10" stroke="#3a3530" stroke-width="0.8"/>
+<rect x="0" y="22" width="14" height="14" fill="#7B6B8B" rx="2"/><text x="22" y="34" font-size="11" fill="#666666">语法层 (抽象语法)</text>
+<rect x="180" y="22" width="14" height="14" fill="#8B7355" rx="2"/><text x="202" y="34" font-size="11" fill="#666666">编译层 (AST -> 字节码)</text>
+<rect x="390" y="22" width="14" height="14" fill="#A07050" rx="2"/><text x="412" y="34" font-size="11" fill="#666666">运行时层 (对象表示)</text>
+<rect x="600" y="22" width="14" height="14" fill="#4A6B5A" rx="2"/><text x="622" y="34" font-size="11" fill="#666666">执行层 (帧 + 值栈)</text>
+<text x="0" y="58" font-size="11" fill="#999999">--- >  = 概念层到实现层的映射关系 · 上层抽象由下层实现承载</text>
+<text x="0" y="80" font-size="11" fill="#999999">依赖方向: 语法层 -> 编译层 -> 运行时层 -> 执行层 (上层定义语义，下层提供机制)</text>
+</g>
+
+</g>
+</svg>
