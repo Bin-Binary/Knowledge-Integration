@@ -13,7 +13,7 @@ Python 一切皆对象。本视图从两个完全独立的观察角度提供全�
 
 ## 读法 A：物理结构 × 生命周期
 
-[视图](../../svg/python-object-model-physical.svg)
+![视图](../../svg/python-object-model-physical.svg)
 
 | 物理层 \ 阶段 | 定义期 | 构建期 | 实例化期 | 运行期 | 销毁期 |
 | :--- | :--- | :--- | :--- | :--- | :--- |

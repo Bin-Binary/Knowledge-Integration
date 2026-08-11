@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Python&#x5bf9;&#x8c61;&#x6a21;&#x578b;&#x5168;&#x5c40;&#x89c6;&#x56fe;&#xff1a;&#x7269;&#x7406;&#x7ed3;&#x6784;&#x3001;&#x5b9e;&#x4f8b;&#x5feb;&#x7167; &times; &#x751f;&#x547d;&#x5468;&#x671f;</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <span id="markdown-mermaid" aria-hidden="true" data-config="{&quot;darkModeTheme&quot;:&quot;vscode&quot;,&quot;lightModeTheme&quot;:&quot;vscode&quot;,&quot;maxTextSize&quot;:50000,&quot;clickDrag&quot;:&quot;alt&quot;,&quot;showControls&quot;:&quot;onHoverOrFocus&quot;,&quot;resizable&quot;:true,&quot;maxHeight&quot;:&quot;&quot;}"></span>
+				<h1 id="python对象模型全局视图物理结构实例快照--生命周期">Python对象模型全局视图：物理结构、实例快照 × 生命周期</h1>
+<h2 id="概述">概述</h2>
+<p>Python 一切皆对象。本视图从两个完全独立的观察角度提供全景：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">视角</th>
+<th style="text-align:left">y 轴</th>
+<th style="text-align:left">x 轴</th>
+<th style="text-align:left">SVG</th>
+<th style="text-align:left">核心问题</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>读法 A</strong></td>
+<td style="text-align:left">物理结构 (H1→H5) 真实物理实体</td>
+<td style="text-align:left">生命周期 (5阶段)</td>
+<td style="text-align:left"><a href="../../svg/python-object-model-physical.svg">视图A</a></td>
+<td style="text-align:left">在每个阶段，哪些物理内存区域参与？</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>读法 B</strong></td>
+<td style="text-align:left">实例快照 (H1→H5) 层即快照</td>
+<td style="text-align:left">生命周期 (5阶段)</td>
+<td style="text-align:left"><a href="../../svg/python-object-model-snapshot.svg">视图B</a></td>
+<td style="text-align:left">在每个阶段，实例在各层是什么样？</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>读法 B 中 H1 CPython运行时 → H2 元类型根 → H3 元类层 → H4 类层 → H5 实例层 自底向上依次穿透，每一层即为实例在那一时刻的快照形态。</p>
+</blockquote>
+<h2 id="读法-a物理结构--生命周期">读法 A：物理结构 × 生命周期</h2>
+<p><img src="file:///c:\lbyier\code_repo\Knowledge-Integration\Python About\svg\python-object-model-physical.svg" alt="视图"></p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">物理层 \ 阶段</th>
+<th style="text-align:left">定义期</th>
+<th style="text-align:left">构建期</th>
+<th style="text-align:left">实例化期</th>
+<th style="text-align:left">运行期</th>
+<th style="text-align:left">销毁期</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>H5 属性区</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left">class <strong>dict</strong> (mappingproxy) 建立</td>
+<td style="text-align:left">instance.<strong>dict</strong> 就位 或 <strong>slots</strong> 内联数组初始化</td>
+<td style="text-align:left">属性查找遍历 <strong>dict</strong> / slots; GC 通过 <strong>dict</strong> 发现引用链</td>
+<td style="text-align:left"><strong>dict</strong> 释放; GC 断开引用链</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>H4 类型槽</strong></td>
+<td style="text-align:left">PyTypeObject 结构在 <code>typeobject.c</code> 中定义 tp_new/tp_init/tp_dealloc/tp_call 等函数指针</td>
+<td style="text-align:left">PyType_Ready 填充槽位、继承父类槽、计算 MRO、设置 tp_basicsize</td>
+<td style="text-align:left">tp_new 调用 → tp_init 调用</td>
+<td style="text-align:left">tp_getattro/tp_setattro 属性访问; tp_call 方法调用; tp_repr/tp_str 展示</td>
+<td style="text-align:left">tp_dealloc 被调用释放对象</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>H3 对象头</strong></td>
+<td style="text-align:left">PyObject struct 在 <code>object.h</code> 定义 16B 标头 (ob_refcnt + ob_type)</td>
+<td style="text-align:left">tp_basicsize 决定对象体大小</td>
+<td style="text-align:left">ob_refcnt=1; ob_type = &amp;PyFoo_Type</td>
+<td style="text-align:left">ob_refcnt 增减反映引用变化; ob_type 用于方法查找分派</td>
+<td style="text-align:left">ob_refcnt→0 触发 tp_dealloc</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>H2 对象池</strong></td>
+<td style="text-align:left">obmalloc arena/pool/block 设计定义于 <code>obmalloc.c</code></td>
+<td style="text-align:left">类型就绪时初始化对应 size class 的 pool / freelist</td>
+<td style="text-align:left">_PyObject_Malloc 从对应 size class 的 pool 取 block</td>
+<td style="text-align:left">freelist 缓存回收对象加速复用，小对象不走系统 malloc</td>
+<td style="text-align:left">_PyObject_Free 归还 block 到 pool 或 freelist</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>H1 堆栈内存</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left">CPython 进程内存布局就绪</td>
+<td style="text-align:left">malloc / _PyObject_Malloc 最终从 OS 堆中申请虚拟内存页</td>
+<td style="text-align:left">栈帧持有局部变量指针指向堆中对象; CPU 通过地址访问驻留内存</td>
+<td style="text-align:left">free 归还内存; 虚拟内存页可能被 OS 回收</td>
+</tr>
+</tbody>
+</table>
+<h2 id="读法-b实例快照--生命周期">读法 B：实例快照 × 生命周期</h2>
+<p><a href="../../svg/python-object-model-snapshot.svg">视图</a></p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">快照 \ 阶段</th>
+<th style="text-align:left">定义期</th>
+<th style="text-align:left">构建期</th>
+<th style="text-align:left">实例化期</th>
+<th style="text-align:left">运行期</th>
+<th style="text-align:left">销毁期</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>H5 实例层</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left">—</td>
+<td style="text-align:left">instance.<strong>dict</strong> 就位, 方法绑定为 bound method, ob_type→类</td>
+<td style="text-align:left"><code>a.x</code> → <code>type(a).__getattribute__(a,'x')</code> 对外服务</td>
+<td style="text-align:left"><strong>dict</strong> 释放; <strong>del</strong> 至多调用一次</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>H4 类层</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left">class body 执行; <strong>dict</strong>/MRO/<strong>slots</strong>/descriptor 就位</td>
+<td style="text-align:left"><strong>new</strong> 分配 + <strong>init</strong> 填充属性</td>
+<td style="text-align:left"><strong>getattribute</strong> → MRO → descriptor → <strong>dict</strong> → <strong>getattr</strong> 查找链</td>
+<td style="text-align:left">class.<strong>del</strong> 析构</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>H3 元类层</strong></td>
+<td style="text-align:left">class Foo(metaclass=Meta): 声明</td>
+<td style="text-align:left"><strong>prepare</strong> → <strong>new</strong> → <strong>init_subclass</strong> → <strong>set_name</strong> 工厂执行</td>
+<td style="text-align:left">metaclass.<strong>call</strong> 控制创建管线</td>
+<td style="text-align:left"><strong>call</strong> 单例/注册拦截; ABCMeta 虚拟子类</td>
+<td style="text-align:left">metaclass.<strong>del</strong> 类级清理</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>H2 元类型根</strong></td>
+<td style="text-align:left">object/type 解释器启动创建</td>
+<td style="text-align:left">type.<strong>new</strong> C3线性化生成 MRO</td>
+<td style="text-align:left">type.<strong>call</strong> 驱动 <strong>new__→__init</strong> 链</td>
+<td style="text-align:left">object.<strong>getattribute</strong> 默认属性解析器</td>
+<td style="text-align:left">object.<strong>del</strong></td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>H1 CPython运行时</strong></td>
+<td style="text-align:left">PyObject 头文件定义</td>
+<td style="text-align:left">PyType_Ready 初始化 tp_* 槽位</td>
+<td style="text-align:left">tp_new 分配 PyObject 内存, ob_refcnt=1</td>
+<td style="text-align:left">tp_getattro / tp_call 服务</td>
+<td style="text-align:left">tp_dealloc + GC 分代回收</td>
+</tr>
+</tbody>
+</table>
+<h2 id="对象清单">对象清单</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">序号</th>
+<th style="text-align:left">对象</th>
+<th style="text-align:left">所属区域</th>
+<th style="text-align:left">核心职责</th>
+<th style="text-align:left">来源</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">1</td>
+<td style="text-align:left">PyObject</td>
+<td style="text-align:left">对象头</td>
+<td style="text-align:left">C级对象头: ob_refcnt 引用计数 + ob_type 类型指针</td>
+<td style="text-align:left"><code>Include/object.h:106-115</code></td>
+</tr>
+<tr>
+<td style="text-align:left">2</td>
+<td style="text-align:left">PyTypeObject</td>
+<td style="text-align:left">类型槽</td>
+<td style="text-align:left">C级类型结构: tp_new/tp_init/tp_dealloc/tp_getattro 等函数槽</td>
+<td style="text-align:left"><code>Include/cpython/object.h</code></td>
+</tr>
+<tr>
+<td style="text-align:left">3</td>
+<td style="text-align:left">引用计数 (ob_refcnt)</td>
+<td style="text-align:left">对象头</td>
+<td style="text-align:left">即时回收: 引用归零 → tp_dealloc</td>
+<td style="text-align:left"><code>Include/object.h</code>; <code>Objects/object.c</code></td>
+</tr>
+<tr>
+<td style="text-align:left">4</td>
+<td style="text-align:left">GC 分代回收</td>
+<td style="text-align:left">属性区</td>
+<td style="text-align:left">循环引用检测: 三代分代扫描, gc 模块触发</td>
+<td style="text-align:left"><code>Modules/gcmodule.c</code></td>
+</tr>
+<tr>
+<td style="text-align:left">5</td>
+<td style="text-align:left">obmalloc</td>
+<td style="text-align:left">对象池</td>
+<td style="text-align:left">CPython 自定义内存分配器: arena→pool→block, freelist</td>
+<td style="text-align:left"><code>Objects/obmalloc.c</code></td>
+</tr>
+<tr>
+<td style="text-align:left">6</td>
+<td style="text-align:left">type</td>
+<td style="text-align:left">类型槽</td>
+<td style="text-align:left">元类型根: type(type)==type, <strong>call</strong> 驱动实例化, <strong>new</strong> 驱动类构建</td>
+<td style="text-align:left"><code>Objects/typeobject.c:type_new</code></td>
+</tr>
+<tr>
+<td style="text-align:left">7</td>
+<td style="text-align:left">object</td>
+<td style="text-align:left">类型槽</td>
+<td style="text-align:left">所有类的基类: 提供默认 <strong>getattribute</strong>/<strong>str</strong>/<strong>repr</strong>/<strong>del</strong></td>
+<td style="text-align:left"><code>Objects/object.c</code></td>
+</tr>
+<tr>
+<td style="text-align:left">8</td>
+<td style="text-align:left">metaclass</td>
+<td style="text-align:left">逻辑层</td>
+<td style="text-align:left">类的工厂: 控制类创建(<strong>prepare</strong>/<strong>new</strong>/<strong>init</strong>)与实例创建(<strong>call</strong>)</td>
+<td style="text-align:left">PEP 3115</td>
+</tr>
+<tr>
+<td style="text-align:left">9</td>
+<td style="text-align:left">class</td>
+<td style="text-align:left">属性区</td>
+<td style="text-align:left">用户自定义类: class body 执行产物, 持有 MRO/描述符/方法</td>
+<td style="text-align:left"><code>class</code> 语句</td>
+</tr>
+<tr>
+<td style="text-align:left">10</td>
+<td style="text-align:left">class <strong>dict</strong> (mappingproxy)</td>
+<td style="text-align:left">属性区</td>
+<td style="text-align:left">类命名空间: 存放方法对象、类属性、描述符实例</td>
+<td style="text-align:left">类对象自带</td>
+</tr>
+<tr>
+<td style="text-align:left">11</td>
+<td style="text-align:left">MRO (C3线性表)</td>
+<td style="text-align:left">类型槽</td>
+<td style="text-align:left">方法解析顺序: 构建期计算, 运行期遍历, 存于 type.<strong>mro</strong></td>
+<td style="text-align:left"><code>Objects/typeobject.c:mro_internal</code></td>
+</tr>
+<tr>
+<td style="text-align:left">12</td>
+<td style="text-align:left"><strong>slots</strong> 成员描述符</td>
+<td style="text-align:left">属性区</td>
+<td style="text-align:left">替代实例 <strong>dict</strong>: 类级描述符直接读写 C 偏移, 节省内存</td>
+<td style="text-align:left">§3.3.2.4</td>
+</tr>
+<tr>
+<td style="text-align:left">13</td>
+<td style="text-align:left">descriptor (property/自定义)</td>
+<td style="text-align:left">属性区</td>
+<td style="text-align:left">属性控制: <strong>get</strong>/<strong>set</strong>/<strong>delete</strong> 拦截访问, property 基于此</td>
+<td style="text-align:left">§3.3.2 数据模型</td>
+</tr>
+<tr>
+<td style="text-align:left">14</td>
+<td style="text-align:left">instance</td>
+<td style="text-align:left">属性区</td>
+<td style="text-align:left">用户创建的对象: ob_type 指向类, <strong>dict</strong> 存储属性</td>
+<td style="text-align:left">每次 <code>ClassName()</code></td>
+</tr>
+<tr>
+<td style="text-align:left">15</td>
+<td style="text-align:left">instance <strong>dict</strong></td>
+<td style="text-align:left">属性区</td>
+<td style="text-align:left">实例属性存储: <strong>init</strong> 填充, 无 <strong>slots</strong> 时存在</td>
+<td style="text-align:left">实例自带</td>
+</tr>
+</tbody>
+</table>
+
+            
+            
+        </body>
+        </html>
