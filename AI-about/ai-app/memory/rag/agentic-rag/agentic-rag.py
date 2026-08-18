@@ -44,11 +44,11 @@ def _watch_what_happen(list_obj: list):
     """辅助函数，用于查看列表元素"""
     print(f"==== watch_what_happen ====")
     for item in list_obj:
-        print(f"this item: {item}")
+        print(f"this item: {item}\n")
     
 def main():
     """Main function."""
-    docs = fetch_docs(from_flag="urls")
+    docs = fetch_docs()
     split_docs(docs)
 
 if __name__ == "__main__":

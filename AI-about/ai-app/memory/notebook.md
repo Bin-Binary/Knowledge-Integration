@@ -44,6 +44,18 @@ Scratchpad（草稿纸） ── 对应「瞬时工作记忆」 (Working Memory)
 RAG ── 对应「长期显式记忆」 (Long-term Explicit Memory)定位：Agent跨越会话的海量知识库与历史档案
 
 ---
+2. 知识图谱中对关系的分类是具有泛化性√
+| 类别	| 关系 | 说明 |
+| :-- | :-- | :-- |
+| 分类学 (taxonomic) | is-a/instance-of/subclass-of	| 层级/上下位，语义记忆的核心 |
+| 部分-整体 (mereological) | part-of/has-part/member-of/consists-of	| 构成关系 |
+| 等价/同一 | same-as/equivalent-to/synonym	| 实体对齐 |
+| 对立 | antonym/opposite-of	| 反义 |
+| 属性归属 | has-property/has-attribute | 属性挂载 |
+- 通用语义角色关系（可泛化模板）:
+causes（因果）、before/after/during（时序）、located-in（空间）、derived-from（来源）、used-for/uses（用途）、agent/patient（施受）、related-to（兜底弱关系）
+
+---
 ## FAQ
 **1.何时触发⌈记忆⌋的形成**
 ---

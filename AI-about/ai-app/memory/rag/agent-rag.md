@@ -45,3 +45,39 @@ text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
 )
 doc_splits = text_splitter.split_documents(docs_list)
 ```
+**文档预处理阶段观察到的现象**
+Ⅰ. 内容结构被破坏、即文档切片后文档内部的语义关系被破坏：
+- 因果/时序关系（causes/before-after）断裂：原文以 ➔ 串联的完整因果链（每个箭头 = 一条causes边），切片后被拆成 11 个片段；每个箭头两侧的"前件→后件"对被拆到不同chunk，推理链条断裂。
+  
+Ⅱ. chunk_overlap的重叠修复方案的局限性：重叠区（如MoE模型 ➔ 因为太庞大 ➔ 工程师用TP+PP+EP+DP）仍是残缺的因果半句——前件的后件可能留在上一块，后件的前件可能被切到下一块，重叠只保留了字符，未保留完整的 causes 边。
+
+```原文
+## 总结
+为了实现极高的智商 ➔ 科学家设计了万亿参数的 MoE 模型 ➔ 因为太庞大 ➔ 工程师用 TP+PP+EP+DP 把它拆分并克隆到全球的数据中心进行训练与部署 ➔ 为了在线上迎接高并发（QPS） ➔ 推理引擎开启 异步调度 与 连续批处理，用 PagedAttention 将显存切成固定页并消灭碎片 ➔ 为了应对企业级 RAG 和长提示词 ➔ 框架利用 Automatic Prefix Cache 跨用户共享显存块，配合 解耦部署 和 Chunked Prefill 彻底消灭长文本带来的卡顿 ➔ 最后，在芯片微观层面 ➔ 通过 Fullgraph 静态图 抹平 CPU 驱动开销，利用 MLP 权重预取 隐藏硬件搬运延迟，再套上 投机采样 让小模型盲猜，最终将大模型的蹦字速度拉到了物理极限
+```
+*切分后：*
+```
+## 总结' metadata={'source': 'C:\\lbyier\\code_repo\\Knowledge-Integration\\AI-about\\terminology-quick-reference.md'}
+
+this item: page_content='为了实现极高的智商 ➔ 科学家设计了万亿参数的 MoE 模型 ➔ 因为太庞大 ➔ 工程师用 TP+PP+EP+DP' metadata={'source': 'C:\\lbyier\\code_repo\\Knowledge-Integration\\AI-about\\terminology-quick-reference.md'}
+
+this item: page_content='MoE 模型 ➔ 因为太庞大 ➔ 工程师用 TP+PP+EP+DP 把它拆分并克隆到全球的数据中心进行训练与部署 ➔' metadata={'source': 'C:\\lbyier\\code_repo\\Knowledge-Integration\\AI-about\\terminology-quick-reference.md'}
+
+this item: page_content='➔ 为了在线上迎接高并发（QPS） ➔ 推理引擎开启 异步调度 与 连续批处理，用 PagedAttention' metadata={'source': 'C:\\lbyier\\code_repo\\Knowledge-Integration\\AI-about\\terminology-quick-reference.md'}
+
+this item: page_content='推理引擎开启 异步调度 与 连续批处理，用 PagedAttention 将显存切成固定页并消灭碎片 ➔ 为了应对企业级 RAG' metadata={'source': 'C:\\lbyier\\code_repo\\Knowledge-Integration\\AI-about\\terminology-quick-reference.md'}
+
+this item: page_content='将显存切成固定页并消灭碎片 ➔ 为了应对企业级 RAG 和长提示词 ➔ 框架利用 Automatic Prefix Cache' metadata={'source': 'C:\\lbyier\\code_repo\\Knowledge-Integration\\AI-about\\terminology-quick-reference.md'}
+
+this item: page_content='为了应对企业级 RAG 和长提示词 ➔ 框架利用 Automatic Prefix Cache 跨用户共享显存块，配合 解耦部署 和 Chunked Prefill' metadata={'source': 'C:\\lbyier\\code_repo\\Knowledge-Integration\\AI-about\\terminology-quick-reference.md'}
+
+this item: page_content='Automatic Prefix Cache 跨用户共享显存块，配合 解耦部署 和 Chunked Prefill 彻底消灭长文本带来的卡顿 ➔' metadata={'source': 'C:\\lbyier\\code_repo\\Knowledge-Integration\\AI-about\\terminology-quick-reference.md'}
+
+this item: page_content='解耦部署 和 Chunked Prefill 彻底消灭长文本带来的卡顿 ➔ 最后，在芯片微观层面 ➔ 通过 Fullgraph 静态图 抹平 CPU' metadata={'source': 'C:\\lbyier\\code_repo\\Knowledge-Integration\\AI-about\\terminology-quick-reference.md'}
+
+this item: page_content='最后，在芯片微观层面 ➔ 通过 Fullgraph 静态图 抹平 CPU 驱动开销，利用 MLP 权重预取' metadata={'source': 'C:\\lbyier\\code_repo\\Knowledge-Integration\\AI-about\\terminology-quick-reference.md'}
+
+this item: page_content='通过 Fullgraph 静态图 抹平 CPU 驱动开销，利用 MLP 权重预取 隐藏硬件搬运延迟，再套上 投机采样' metadata={'source': 'C:\\lbyier\\code_repo\\Knowledge-Integration\\AI-about\\terminology-quick-reference.md'}
+
+this item: page_content='隐藏硬件搬运延迟，再套上 投机采样 让小模型盲猜，最终将大模型的蹦字速度拉到了物理极限' metadata={'source': 'C:\\lbyier\\code_repo\\Knowledge-Integration\\AI-about\\terminology-quick-reference.md'}
+```
