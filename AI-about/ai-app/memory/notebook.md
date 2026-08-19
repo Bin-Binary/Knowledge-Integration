@@ -45,6 +45,7 @@ RAG ── 对应「长期显式记忆」 (Long-term Explicit Memory)定位：Ag
 
 ---
 2. 知识图谱中对关系的分类是具有泛化性√
+
 | 类别	| 关系 | 说明 |
 | :-- | :-- | :-- |
 | 分类学 (taxonomic) | is-a/instance-of/subclass-of	| 层级/上下位，语义记忆的核心 |
