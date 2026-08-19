@@ -52,6 +52,7 @@
 | 47 | RoPE | Rotary Position Embedding | 旋转位置编码，通过旋转矩阵将位置信息编码进词向量，使模型能够感知词与词的相对位置关系。相比传统绝对位置编码，RoPE 天然支持长度外推、且可直接与线性 Attention 兼容 | DeepSeek、GLM、LLaMA 等主流大模型均采用 |
 | 48 | Logits |  | 逻辑值（Logits），神经网络最后一层（LM Head）输出的原始未归一化分数向量，形状为 `[1, vocab_size]`。经过Softmax归一化后才转为概率分布，供解码策略采样 | 排错时直接看Logits分布是否平坦/尖峰可快速判断模型是否输出乱码 |
 | 49 | MTP | Multi-Token Prediction | 多头预测，DeepSeek首创的投机解码方案。用主模型本身的多个附加 MTP head 并行预测未来N个token，替代传统额外挂载小模型做 draft 的方式 | 与PD分离部署存在兼容性问题（P 节点 enforce-eager、D 节点 cudagraph_mode=FULL_DECODE_ONLY 时 MTP head 可能被禁用） |
+| 50 | TPS | Tokens Per Second | 每秒生成或处理的Toke（文本片段）数量 | 衡量大模型文本输出“流畅度”的核心指标 |
 
 ---
 ## 核心概念拆解
@@ -96,6 +97,9 @@
 | 34-Ⅱ |  | 采样（Sampling）| 引入了随机性，旨在寻找具备创造性、多样性的生成路径，如: [Top-p](#jump-TOP-P)、Top-k、Temperature |
 | 35-Ⅰ | 模型权重 | Weights/Parameters | 大模型经训练后冻结在网络中的静态参数矩阵，包含模型对知识的全部记忆与语义法则。推理时属于静态只读常量，是隐藏状态（激活值）进行矩阵乘法变换的映射底座。|
 | 35-Ⅱ | 动态全量读取 | Full-Weight Loading | 在Decode阶段，由于自回归无法并行，每生成一个新Token，隐藏状态都必须完整流经所有网络层。由于GPU计算核心（SRAM）存不下数十GB的权重，硬件每蹦一个字，都必须把全量静态权重从显存（HBM）中重新拉取、搬运进核心一次，导致算力被极度白嫖。|
+| 35 | TPS | Tokens Per Second | 衡量模型生成文本的速度。1个Token约等于0.75个英文单词或0.5个汉字 | 越高代表模型吐出字词的速度越快，用户等待时间越短 |
+| 36 | Prompt TPS | TPrefill Tokens Per Second | 模型处理用户输入（提示词）并生成第一个字之前的处理速度 | 决定了系统接收并理解复杂长文本的效率 |
+| 37 | Generation TPS | Decoding Tokens Per Second | 模型开始连续吐出（生成）新字词时的每秒速度 | 直接影响用户阅读模型输出时的视觉流利感 |
 
 ---
 ## 核心指标
