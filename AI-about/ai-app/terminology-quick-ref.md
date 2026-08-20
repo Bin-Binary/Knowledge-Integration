@@ -6,6 +6,7 @@ Agent 应用涉及相关术语 & 概念 & 指标
 | :---- | :---- | :---- | :---- | :---- |
 | <span id="jump-http-touting"> 01 </span> | - | HTTP Routing | 拆分请求的URL路径和方法，分发给对应处理代码的机制 | ‘Web开发的核心分拣系统’ |
 | <span id="jump-SSE"> 02 </span> | SSE | Server-Sent Events | 服务器发送事件，一种允许服务器向浏览器单向实时推送数据的HTTP技术 | 常见于AI聊天流式回复（如ChatGPT逐字输出）|
+| <span id="jump-POC"> 03 </span> | POC | 概念验证(Proof of Concept) | 验证某个想法、理论或技术方案在实际中是否可行而做的小规模试验 | 答一个最关键的问题：“这玩意儿到底能不能行得通？|
 
 ---
 ## 核心概念拆解
