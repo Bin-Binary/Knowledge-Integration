@@ -60,3 +60,13 @@ embedding = FakeEmbeddings(size=384)  # 随机向量，仅用于调试流程
 **如何验证RAG效果**
 Ⅰ.POC
 从最简架构和默认参数开始，先跑通流程拿到**基线数据**，再开始有针对性的优化。
+
+**评估embedding的指标是什么**
+[参考](https://zilliz.com.cn/blog/Vector-Database-POC-Guide-Embedding-Model-Selection)
+
+**LangChain的向量存储有哪些？**
+**向量模型有哪些？怎么选?**
+**模型不可用时，降级机制怎么实现**
+**LangChain的embedding源怎么配置**
+**RAG的效果受文档质量影响，那怎么反向通过AI生成好的文档**
+**好的文档的评估指标是什么**

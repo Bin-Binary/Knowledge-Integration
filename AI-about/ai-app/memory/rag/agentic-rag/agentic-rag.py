@@ -6,6 +6,9 @@ load_dotenv()
 
 from langchain_community.document_loaders import WebBaseLoader, TextLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_core.vectorstores import InMemoryVectorStore
+from langchain_openai import OpenAIEmbeddings, HuggingFaceEmbeddings
+from langchain_core.tools import create_retriever_tool as create_lc_retriever_tool
 
 URLS = os.getenv("URLS", "").split(",")
 LOCAL_FILES = os.getenv("LOCAL_FILES", "").split(",")
@@ -36,9 +39,28 @@ def split_docs(docs: list) -> list:
         chunk_size=100,
         chunk_overlap=50
     )
-    doc_splits = text_splitter.split_documents(docs_list)
-    print(f"==== Watch split: doc_splits ====")
-    _watch_what_happen(doc_splits)
+    chunks = text_splitter.split_documents(docs_list)
+    print(f"==== Watch split: chunks ====")
+    _watch_what_happen(chunks)
+    return chunks
+
+def create_retriever_tool(chunks: list):
+    try:
+        
+        embeddings = OpenAIEmbeddings()
+    except Exception as e:
+        embeddings = HuggingFaceEmbeddings()
+
+    vectorstore = InMemoryVectorStore.from_documents(
+            documents=chunks, embedding=embeddings
+    )
+    retriever = vectorstore.as_retriever()
+    retriever_tool = create_lc_retriever_tool(
+        retriever,
+        "retrieve_blog_posts",
+        "Search and return information about Lilian Weng blog posts.",
+    )
+    return retriever_tool
 
 def _watch_what_happen(list_obj: list):
     """辅助函数，用于查看列表元素"""
@@ -49,7 +71,10 @@ def _watch_what_happen(list_obj: list):
 def main():
     """Main function."""
     docs = fetch_docs()
-    split_docs(docs)
+    chunks = split_docs(docs)
+    retriever_tool = create_retriever_tool(chunks)
+    retriever_tool.invoke({"query": "types of reward hacking"})
+
 
 if __name__ == "__main__":
     main()
