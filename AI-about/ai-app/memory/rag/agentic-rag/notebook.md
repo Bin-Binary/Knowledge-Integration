@@ -56,21 +56,96 @@ print(f"按token(chunk_size=5)分块: {splitter_tik.split_text(text)}")
 from langchain_community.embeddings import FakeEmbeddings
 embedding = FakeEmbeddings(size=384)  # 随机向量，仅用于调试流程
 ```
------------------分割线-----------------
-**如何验证RAG效果**
+
+**8. init_chat_model()在langchain的什么版本引入？**
+langchain >= 0.2.8、升级命令：
+
+```Python
+pip install -U langchain langchain-core langchain-openai
+
+```
+
+**9. .env怎么配置结构化数据格式(例如json)？**
+不建议使用 .env适配该场景
+
+**10. oepncode的opencode.josn文件是否适用于langchain的init_chat_model()**
+Ⅰ. 两者⌈Schema结构⌋完全不同，即init_chat_model()接收的是标准的独立关键字参数，或者接收由对应大模型厂商官方包（如langchain-openai、langchain-anthropic）定义的特定参数格式
+```Python
+@overload
+def init_chat_model(  # type: ignore[overload-overlap]
+    model: str,
+    *,
+    model_provider: Optional[str] = None,
+    configurable_fields: Literal[None] = None,
+    config_prefix: Optional[str] = None,
+    **kwargs: Any,
+) -> BaseChatModel: ...
+```
+
+**11. 怎么提取异构⌈Schema结构⌋的交集**
+Ⅰ. Pydantic有⌈忽略未知字段⌋策略、即从 .json/...等数据源提取Pydantic模型定义的数据
+```Python
+from pathlib import Path
+from pydantic import BaseModel, Field, ConfigDict
+from langchain.chat_models import init_chat_model
+
+# 定义Pydantic模型，只提取OpenCode中LangChain关心的字段
+class OpenCodeModelConfig(BaseModel):
+    # 核心：使用extra="ignore" 自动忽略 opencode.json 里的快捷键、UI 等杂七杂八的配置
+    model_config = ConfigDict(extra="ignore")
+    
+    # 提取默认模型名称 (例如 "anthropic/claude-sonnet-4-5")
+    model_name: str = Field(..., alias="model")
+
+```
+
+**12. Path读取Win环境路径：unicode error**
+Ⅰ. 反斜杠 \ 是转义字符, 即代表一个8位的Unicode字符转义序列
+Ⅱ. r是原始字符串（Raw String）的缩写，即r后的字符串会被当作普通文本处理
+```Python
+
+# 原
+config_path = config_path or Path("C:\Users\xxx\config\opencode\opencode.json")
+
+# 改
+config_path = config_path or Path(r"C:\Users\xxx\config\opencode\opencode.json")
+
+```
+
+**13. 对于LiteLLM为什么OpenCode支持，而LangChain却不纳入核心**
+Ⅰ. LiteLLM的定位是⌈模型网关⌋、属于**模型调用的提供者**，即**作为代理来路由多模型**、对外提供请求路由、成本统计、负载均衡等能力。
+
+Ⅱ. OpenCode定位是一个⌈终端AI编程工具/客户端⌋、属于**模型调用的消费者**。自身只维护一套provider接入层（OpenAI 兼容协议为主），接入LiteLLM网关几乎零成本。
+
+Ⅲ. LangChain定位是⌈企业级的底层开发框架⌋、同在模型调用的消费侧。但对provider的接入处理策略不同：LangChain选择原生直连各供应商。
+
+从接入模型成本来看，OpenCode自身没有模型抽象层，逐家自建100+集成成本过高，委托网关是最优解；
+而LangChain的BaseChatModel抽象 + partner packages（langchain-openai、langchain-anthropic…）降低集成成本。它虽也能消费LiteLLM网关（如ChatLiteLLM/ OpenAI兼容端点指向网关），但为避免额外一跳的延迟、故障点以及功能被网关截断（流式、工具调用、结构化输出保真），所以不纳入核心。
+
+**14. Agent的记忆与业务落地：修改OpenCode还是基于LangChain自研？**
+Ⅰ. 记忆是⌈生物/机器编码、存储、检索信息的能力
+
+Ⅱ. 记忆的一个重要功能是帮助确保Agent的**行为符合当前情景（上下文）、并根据经验(短期、长期记忆)进行调整**。[引用](https://www.psychologytoday.com/us/basics/memory/how-memory-works)
+
+Ⅲ. 记忆是Agent**理解业务**的基础设施
+
+将opencode作为langchain的一个工具节点负责执行，litellm进行模型路由
+
+**15. 如何验证RAG效果**
 Ⅰ.POC
 从最简架构和默认参数开始，先跑通流程拿到**基线数据**，再开始有针对性的优化。
 
 **评估embedding的指标是什么**
 [参考](https://zilliz.com.cn/blog/Vector-Database-POC-Guide-Embedding-Model-Selection)
 
-**LangChain的向量存储是什么？**
+**16. LangChain的向量存储是什么？**
 Ⅰ. 指集成层？集成了什么？
-**向量模型输出的是什么？存在哪里？**
-**向量模型有哪些？怎么选?**
-**模型不可用时，降级机制怎么实现**
-**LangChain的embedding源怎么配置**
-**RAG的效果受文档质量影响，那怎么反向通过AI生成好的文档**
+
+**17.向量模型输出的是什么？存在哪里？**
+**18.向量模型有哪些？怎么选?**
+**19.模型不可用时，降级机制怎么实现**
+**20.LangChain的embedding源怎么配置**
+**21.RAG的效果受文档质量影响，那怎么反向通过AI生成好的文档**
 以下为AI参考回答
 ```
 不是"AI 凭空造文档"，而是用 AI 做清洗、结构化、增强：
@@ -82,7 +157,7 @@ embedding = FakeEmbeddings(size=384)  # 随机向量，仅用于调试流程
 6. 摘要/关键词标注：为 chunk 加摘要字段，辅助检索排序
 ```
 
-**好的文档的评估指标是什么**
+**22.好的文档的评估指标是什么**
 Ⅰ.
 Ⅱ.
 
@@ -117,3 +192,30 @@ embedding = FakeEmbeddings(size=384)  # 随机向量，仅用于调试流程
 - 语义记忆可描述无直接关联的事实与意义（如俚语含义）
 补全其余记忆类型后，方可作为合格段落。
 ```
+
+**23. pytest的测试命令**
+1. 基础运行命令：
+- 运行所有测试：直接在项目根目录下输入 pytest
+- 指定文件运行：pytest test_login.py
+- 指定目录运行：pytest tests/
+- 指定函数运行：pytest test_login.py::test_user_login
+- 指定类与方法：pytest test_login.py::TestClass::test_method
+
+2. 常用控制台输出参数
+- 详细输出模式：pytest -v（显示每个测试用例的详细结果）
+- 简略输出模式：pytest -q（只显示关键结果，减少干扰）
+- 打印捕获的标准输出：pytest -s（允许在测试时看到代码中的 print() 信息）
+- 显示最慢的N个用例：pytest --durations=N（排查测试性能瓶颈）
+
+3. 执行控制与筛选
+- 按关键字筛选：pytest -k "login or logout"（运行名字包含相关词的用例）
+- 按标签/标记筛选：pytest -m smoke（只运行被 @pytest.mark.smoke 标记的用例）遇
+- 错即停：pytest -x（只要有一个用例失败，立即停止整个测试任务）
+- 限制失败次数：pytest --maxfail=2（失败 2 次后停止测试）
+- 失败重跑：pytest --lf（last failed，只运行上一次失败的用例）
+- 从失败处开始：pytest --ff（failed first，先运行上次失败的，再运行其他的）
+
+4. 调试与排查
+- 失败时进入PDB调试：pytest --pdb（用例失败时自动断点，进入 Python 调试器）
+- 查看已注册的 Markers：pytest --markers
+- 查看已可用的 Fixtures：pytest --fixtures
