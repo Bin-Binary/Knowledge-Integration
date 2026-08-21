@@ -219,3 +219,41 @@ config_path = config_path or Path(r"C:\Users\xxx\config\opencode\opencode.json")
 - 失败时进入PDB调试：pytest --pdb（用例失败时自动断点，进入 Python 调试器）
 - 查看已注册的 Markers：pytest --markers
 - 查看已可用的 Fixtures：pytest --fixtures
+
+**24. embedding模型的作用是什么？**
+**25. 用户的原始问题会被embedding模型执行什么操作？处理后的内容是什么？**
+**26. 原始文档会被embedding模型执行什么操作？处理后的内容是什么？**
+**27. Pytest中的方法的名称有什么要求？**
+Ⅰ.  Pytest会在指定的目录（未指定则默认为当前目录）下，按照「文件 -> 类 -> 函数/方法」 的层级，根据特定的命名规则自动寻找并执行测试
+Ⅱ.  识别test_开头和_test结尾的**py文件**
+Ⅲ. **类名**必须以 Test 开头，且不能有 __init__ 方法
+Ⅳ. **函数名**必须以 test_ 开头
+Ⅴ. **路径搜索优先级**, 显式指定（命令行写了路径（如 pytest tests/）） > 根目录配置文件（从当前目录开始，寻找pytest.ini、pyproject.toml或setup.cfg 等配置文件，并读取其中定义的 testpaths 路径） > 默认当前目录
+
+**28. TypedDict和Pydantic区别是什么**
+~~Ⅰ. TypedDict是Python**类型提示（Type Hints）字典**的一种结构，会被静态类型检查工具拦截检查~~
+~~Ⅱ. TypedDict在代码运行时仍然是一个普通的Python普通字典~~
+
+**29. LangChain中的消息合并机制有哪些？convert_to_messages()采取的是什么方式？**
+
+**30. langchain_core只接受PromptValue/str/BaseMessage列表**
+Ⅰ.`BaseChatModel.invoke()`及`_convert_input()`定义在langchain_core的抽象基类中，所有`BaseChatModel`子类(ChatOpenAI/ChatAnthropic/ChatGoogleGenerativeAI等)共用同一入参校验路径
+
+Ⅱ.顶层入参契约是`LanguageModelInput = Union[PromptValue, str, Sequence[MessageLikeRepresentation]]`,裸dict不在其列，但列表内部的dict会被`convert_to_messages()`逐元素转成BaseMessage
+
+Ⅲ.各厂商(partner包)只负责消息下游序列化为自家API格式，不参与该层入参类型校验
+
+langchain_core在抽象基类层统一约束"PromptValue/str/BaseMessage列表"的入参契约，各厂商子类只做下游消息序列化而不改变该校验，因此该结论可跨模型厂商泛化使用
+
+**31. Annotated是什么？**
+Ⅰ.是Python类型提示(Type Hints)系统中的一个**通用元数据装饰器**——更准确说是**特殊形式(special form)类型构造器**，语句`Annotated[T, meta1, meta2, ...]`在类型T上附着任意元数据形成新类型，但**不改变T本身的类型语义**
+
+Ⅱ."通用"指不依赖任何特定框架，各库均可自定义并读取元数据（如pydantic的`Field`/`AfterValidator`、FastAPI的`Query`/`Path`）；同时运行时`isinstance(x, T)`仍按原类型T判断
+
+Ⅲ.元数据是任意对象的附加信息（字符串/枚举/函数/方法均可），可传多个，存于类型对象的`__metadata__`属性；它不参与类型约束，仅在消费方运行时按需读取
+
+Ⅳ.装饰器——"装饰"体现为对类型做"包装+附加"，而非函数/类的`@装饰器`语法；读取时`get_type_hints()`默认剥离元数据，需`include_extras=True`，或直接访问`Annotated[T, meta].__metadata__`
+
+Annotated的核心应用场景：数据校验(pydantic)、依赖注入(FastAPI)、运行时读取元数据(自省)、类型化文档；**本质是"类型T+附着信息"的单一声明点**，让类型系统与业务约束在同一处表达
+
+**LangGraph示例**：`messages: Annotated[list[AnyMessage], add_messages]`中`T=list[AnyMessage]`、元数据为reducer函数`add_messages`——LangGraph通过`include_extras`读取`__metadata__`拿到合并策略(按消息id去重后追加)，即"类型声明+状态更新策略"绑定于同一声明点，属核心点Ⅲ的直接体现
