@@ -7,7 +7,8 @@ load_dotenv()
 from langchain_community.document_loaders import WebBaseLoader, TextLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.vectorstores import InMemoryVectorStore
-from langchain_openai import OpenAIEmbeddings, HuggingFaceEmbeddings
+from langchain_openai import OpenAIEmbeddings
+from langchain_community.embeddings.huggingface import HuggingFaceEmbeddings
 from langchain_core.tools import create_retriever_tool as create_lc_retriever_tool
 
 URLS = os.getenv("URLS", "").split(",")
