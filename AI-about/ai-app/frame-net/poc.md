@@ -1,6 +1,7 @@
+---
 # 基于框架语义学和生成词汇学的垂直领域Agent工程实践POC
 以"流水线"为激活词、通常激活实体、身份或抽象概念场景
-
+---
 ## 基于生产语料分布观察
 框架从使用中归纳出来，不要内省出来！！！(一段很长的痛苦经历)
 *实践建议：先共现后划分，先提取高频搭配、扁平化词汇，先做FE划分会因词元位置变化导致FE漂移*
@@ -86,8 +87,14 @@ Agentive	如何产生	由 Operator 创建、由 Scheme 定义、由 Template 派
 4. Process / Activity（施事位）：流水线运行、流水线等待……
    流水线 = Agent / Process → 流水线在执行/进行
 ```
+---
 ## 框架定义与FE清单
+*先基于生产语料分布观察候选出一般框架作为父类框架、再进一步根据候选FE派生出具体领域内框架*
+*核心FE随层级递增：每往下一层，框架就多出若干核心FE——因为更具体的框架需要更多角色才能定义*
+*这是框架语义学的核心设计原则：框架越具体，核心FE越多；框架越一般，核心FE越少（退化为框架本身 + 外围环境信息）*
+例如：Event只需要一个核心FE（事件本身）；Intentionally_act需要四个（施事 + 行动 + 目的 + 手段）
 
+### 候选父类清单
 Event
  ├── Process        （加 Duration 维度）
  ├── Change         （加 Entity + Initial/Final_state）
@@ -96,12 +103,57 @@ Event
 
 | 框架ID | 框架名(EN/ZH) | 类型 | 父框架 | 关系 | Core FE 数 |
 |---|---|---|---|---|---|
-| F0 | Activity/行动框架| 抽象父框架 | — | — | 2 |
+| F0 | Intentionally_act/意图性行动框架| 抽象父框架 | — | — | 2 |
+| F1 | Change/变化框架 | 抽象父框架 | — | — | 3 |
+| F3 | Activity/活动框架| 抽象父框架 | — | — | 2 |
+| F4 | State/状态框架| 抽象父框架 | — | — | 2 |
 
-*核心FE随层级递增：每往下一层，框架就多出若干核心FE——因为更具体的框架需要更多角色才能定义*
-*这是框架语义学的核心设计原则：框架越具体，核心FE越多；框架越一般，核心FE越少（退化为事件本身 + 外围环境信息）*
-Event只需要一个核心FE（事件本身）；Intentionally_act需要四个（施事 + 行动 + 目的 + 手段）。
+### 派生框架
+*重要的实操建议：非必要不派生框架、除非候选FE*
+从每个子框架继承Fn的全部FE，必须新增子框架专属FE（如F1增加基于模板Template FE；F2增加执行方案 Scheme FE为核心），
+#### F0的派生框架
+```
+语义不能是无意向的习惯性行为，例如、启动流水线
+```
+##### F0_create: Create_pipeline（创建流水线）
+**定义**: 施事(Operator)意图性地创建一条新的流水线(Pipeline)。'创建'隐含从无到有(genesis)——Pipeline作为Patient从不存在到存在
+**落地难点**:
+1. 无法确定加哪些FE
+2. 无法确认哪些FE必须继承、哪些可以新增
+3. 无法确定Patient的Qualia驱动领域发现
+**理论/方法**
+*Vender-> 确定"动词/事件类型（4类）"的FE签名* *FramNet继承确定"父子传递规则"* *Pustejovsky发现Patient的领域FE*
 
+*Vender*
+State（状态）
+State的特征：[持续、无变化、无目标]
+state的FE签名（固有角色）：[Entity、State]
+state的典型动词：[be、exist、remain]
+
+Activity（活动）
+Activity的特征：[持续、有施事、无内在终点]
+Activity的FE签名（固有角色）：[Agent、Activity、Duration]
+Activity的典型动词：[run、wait、do]
+
+Accomplishment（完成）
+Activity的特征：[持续、有施事、有内在终点+产出]
+Activity的FE签名（固有角色）：[Agent、Patient、Result、Material/Source]
+Activity的典型动词：[creat、build、make、write]
+
+Achievement（成就）
+Achievement的特征：[瞬时、有施事、状态转换]
+Achievement的FE签名（固有角色）：[Agent、Patient、Result(瞬时)]
+Achievement的典型动词：[start、stop、trigger、pause]
+
+**实操**
+
+**Core FE**:
+| FE | 语义角色 | 填充物示例 |
+| operator | Agent/施事 |---| 
+| crate | Act/行动 | "创建流水线" |
+| {fill} | Purpose/行动目的 |---|
+| {fill} | Means/手段 |---|
+| {fill} | {fill} |---|
 <!-- ### F0: Intentionally_act（流水线操作）
 
 **定义**: 一个意图性行动框架：施事 Agent（Operator）对受事 Patient（Pipeline）执行某种自主性动作 Action，通过工具 Means（Scheme）在条件 Condition（Branch/Trigger/Version）下达成目标，并产生结果 Result（Outcome）。本框架为所有流水线操作子框架的抽象父框架，Action 不取定值。
@@ -122,7 +174,7 @@ F0: Intentionally_act（流水线操作·父框架）
   ├── F5: Stop_pipeline（停止流水线）     Act = 停止
   └── F6: Deploy_pipeline（部署流水线）   Act = 部署
 
-每个子框架继承 F0 的全部 FE，Act FE 取定值，并可能新增子框架专属 FE（如 F1 增加基于模板 Template FE；F2 增加执行方案 Scheme FE 为核心）
+
 -->
 
 
@@ -197,5 +249,4 @@ F0: Intentionally_act（流水线操作·父框架）
 *Core FE*: [Agent/施事、Act/行动、Purpose/行动目的、Means/手段]
 *Peripheral FE*: [Condition/条件、Goal/目标、Manner/方式]
 *高频词汇*: [act、action、do、perform、carry out、execute、commit]
-
-
+---
