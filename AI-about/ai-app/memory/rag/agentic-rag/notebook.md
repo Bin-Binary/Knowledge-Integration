@@ -258,6 +258,89 @@ Annotated的核心应用场景：数据校验(pydantic)、依赖注入(FastAPI)�
 
 **LangGraph示例**：`messages: Annotated[list[AnyMessage], add_messages]`中`T=list[AnyMessage]`、元数据为reducer函数`add_messages`——LangGraph通过`include_extras`读取`__metadata__`拿到合并策略(按消息id去重后追加)，即"类型声明+状态更新策略"绑定于同一声明点，属核心点Ⅲ的直接体现
 
+**32. LagnGraph的对话消息处理的默认策略是什么？**
+
+**33. 如果找到相似文档怎么处理？**
+
+**34. Python函数可以定义的参数类型？**
+
+**35. Langgraph的ToolNode和LangChain的@Tool有什么不同?**
+
+**36. LangChain的@Tool和tools.retriever.create_retriever_tool有什么不同?**
+!!! note
+    对工具入参的理解缺失、先补齐
+**结论Ⅰ和示例不成立**
+~~Ⅰ. 函数返回的对象类型可能被装饰器可能会改变、即错误使用装饰器可能会导致函数发生预期外的错误~~
+```Python
+原：
+def _creat_retriver_tool(chunks: list) -> langchain_core.tools.base.BaseTool:
+    retriever = _embedding_and_vectorstore(chunks)
+    return create_retriever_tool(...)
+
+装饰：
+from langchain_core.tools import tool
+"""原预期返回BaseTool、实际返回StructuredTool
+原参数chunks为list, 被当成工具入参校验、和StructuredTool的预期
+"""
+@tool
+def _creat_retriver_tool(chunks: list) -> langchain_core.tools.base.BaseTool:
+    retriever = _embedding_and_vectorstore(chunks)
+    return create_retriever_tool(...)
+```
+
+**37. LangChain的.bind_tools.invoke()是否会执行工具调用**
+Ⅰ. 它只生成一个请求、一个独立的执行器（例如运行时或代理）负责处理工具调用并返回结果
+
+不会
+
+**38. LLM返回内容解析阶段可能会发生的异常**
+Ⅰ. 数据交互边界可能发生**解析异常**
+```Python
+"""异构Schema导致异常"""
+# 解析异常
+    E OutputParserException: Function GradeDocuments arguments:
+    E   <tool_call>{ "binary_score": "yes" }
+    E  are not valid JSON. JSONDecodeError ... (char 0)
+# LiteLLM网关返回格式
+<tool_call>{ "binary_score": "yes" }
+
+"""
+angchain的OpenAIToolsParser.parse_tool_call对参数字符串直接json.loads(),
+遇到<tool_call>开头就抛JSONDecodeError（char 0）,最终转成 OutputParserException
+"""
+```
+
+**39. 结构化输出异常的本质与“降级+归一化”修复策略**
+
+!!! note
+    现象复盘：`test_grade_yes` 报 `OutputParserException: <tool_call>{ "binary_score": "yes" } are not valid JSON`，且该报错**随机出现**——同一条提示词，网关有时返回纯JSON、有时把参数包成`<tool_call>...</tool_call>`、偶尔还会带markdown围栏
+
+**核心结论：** LLM与框架之间最大的不确定性不在业务逻辑、而在**输出边界**——该边界的异常呈**随机/间歇性**（同一网关会随机以纯JSON、`<tool_call>`包裹、markdown围栏三种形态返回同一内容）。默认解析器对这种“异构输入”采取**崩溃式失败**（直接raise，连原始响应都拿不到），导致测试时红时绿、无法兜底。修复的支点不是“猜中所有格式”，而是**把解析失败从致命异常降级为可观测信号（`include_raw=True`），再走统一的“归一化→反序列化→schema重校验”管线**，让一条最不稳定的边界行为变得确定。
+
+Ⅰ. 边界“异构”从哪来：OpenAI兼容响应规定 `function.arguments` 必须是纯JSON，但网关渲染层在参数外层又包了`<tool_call>`标签，形成“协议内嵌套协议”。默认链末端的 `OpenAIToolsParser.parse_tool_call` 对 `arguments` 直接 `json.loads()`，遇到`<`打头立即 `JSONDecodeError (char 0)`，再包装成 `OutputParserException`
+
+Ⅱ. 崩溃式失败 vs 可恢复失败：
+- 崩溃式（默认）：`with_structured_output(GradeDocuments)` 把解析器串在链末端，解析异常沿 `invoke()` 直接抛出，调用方**连原始响应(raw)都拿不到**——唯一可做的只有“改提示词重试”，不具备工程化的兜底能力
+- 可恢复（`include_raw=True`）：链改为返回 `{raw, parsed, parsing_error}`，解析失败**不再是终点，而是分类问题**——parsed可用直接用，parsed为空则进入自定义兜底
+
+Ⅲ. 归一化管线的三个环节（对应 `_parse_structured_output`）：
+1. `_strip_tool_call_markers()`：`re.sub` 剥离 `<tool_call>/</tool_call>`，兼容 markdown 代码围栏（json 包裹）——“剥壳”
+2. `json.loads()`：严格按JSON反序列化——**宁可继续抛异常也不做宽容解析**，保证真实错误不被吞掉，只是把抛错点从一个不透明位置移到我们控制的位置
+3. `GradeDocuments(**dict)`：以pydantic schema重新校验——“契约仍是唯一事实源”，格式兼容只发生在数据边界，不污染类型约束
+
+Ⅳ. 为什么修复后仍可能间歇变红——**提取路径的三层兜底**（`_extract_tool_call_arguments`）：
+模型输出载体本身不确定：有时走tool_call、有时只回纯文本content。按“`tool_calls`优先 → `content`兜底 → 两者皆空则抛回原`parsing_error`”提取。两者皆空时抛回原异常，是为了**保持错误可见、行为确定**——宁可红，也不能把“模型真没产出”误判成“格式小问题”而静默通过
+
+Ⅴ. 反模式对照：全局修改解析器、`except`全吞异常都是**错误粒度**；正确粒度是“只归一化格式边界，其余校验仍交给框架与pydantic”。代码证据：`grade_documents()`仅多一行 `include_raw=True`，其余既有逻辑与测试断言全部保持原样
+
+Ⅵ. 测试固定行为：`TestToolCallMarkers` 8个用例锁定三种形态（有/无闭标签、纯JSON、markdown围栏、无tool_call走content、空参抛回原异常），`test_grade_yes`即使连跑也稳定通过
+
+**40. npm源是个啥？@welink/welink-cli又是个啥？**
+
+**41. Fram命中结果怎么算？-> 待验证**
+基于"frame semantics"的核心/非核心FE划分各占0.5权重，具体公式如下:
+(core_fe_hit/core_fe_lenth + peripheral_fe_hit/peripheral_fe_length) * 0.5
+
 ------------分割线------------
 
 ## 附录
