@@ -341,6 +341,30 @@ angchain的OpenAIToolsParser.parse_tool_call对参数字符串直接json.loads()
 基于"frame semantics"的核心/非核心FE划分各占0.5权重，具体公式如下:
 (core_fe_hit/core_fe_lenth + peripheral_fe_hit/peripheral_fe_length) * 0.5
 
+**42. Fram的FE和语义角色关系是？区别是？**
+*关系*
+语义角色是FE语义层面的抽象，同一理论（Fillmore格语法）不同维度的体现，但FrameNet放弃了"普遍角色清单"
+
+*区别*
+语义角色泛化性强于FE，即语义角色可以横跨所有事件、而FE在具体的Frame内定义、只对当前Frame有意义
+在语义内容上，语义角色属于抽象标签、本身无内容
+
+1. "一个语义角色 = 一族 FE"：比如"Agent 类"落进 FrameNet 是被拆成 Operator / Executor / Perpetrator / Speaker / Cognizer 等帧内 FE；"Theme/受事类"落成 Patient / Item / Entity / Facility / BuildInstance。语义角色是"族名"，FE 是"成员"，两者是层级映射而非一一对应。
+2. FE 也有"角色 vs 类型"分层（对上轮的衔接）：
+- Core FE（该帧必有、事件定义性参与者）↔ 近似传统"核心论元"；
+- Non-core FE（Time/Place/Manner/Instrument 情景状语）↔ 传统"旁格/附接语"更像普适格位。
+- FE 填充物再挂 semantic_type（Agent 类 FE 填 Sentient，实体类 FE 填 Physical/Artifact），这个"类型平面"就是上轮"实体"所在层。
+
+**43. 事件的子事件分解是什么意思？和qualia是什么关系**
+Ⅰ. “子事件分解”确立了Entry在生命周期最初阶段的动态行为边界
+Ⅱ. “Qualia”确立了它为了支撑上述每一个子事件的推进，自己本身必须携带什么静态属性。
+
+在Pustejovsky的生成词汇学和事件语义学理论中，“事件的子事件分解（Sub-eventual Analysis）” 是指把一个看似单一的动作（如“创建”），
+拆解为在时间先后、因果关系上发生的更小、更微观的阶段（子事件）。
+
+子事件分解与Qualia（物性结构）的关系非常紧密：子事件分解是从“动态过程”去解构一个事件，而Qualia是从“静态/本质属性”去解构实体（Patient）。
+它们是“过程”与“结果”、“动作”与“对象”的孪生关系。
+一个动词之所以能作用于某个名词，是因为动词的事件结构与名词的物性结构（Qualia）能够实现“语义融合”（Type Coercion/Unification）
 ------------分割线------------
 
 ## 附录
