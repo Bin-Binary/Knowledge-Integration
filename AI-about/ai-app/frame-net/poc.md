@@ -1,7 +1,9 @@
 ---
 # 基于框架语义学和生成词汇学的垂直领域Agent工程实践POC
-以"流水线"为激活词、通常激活实体、身份或抽象概念场景
+核心思想: 从官方文档/生产日志抽取先建立基线Frame、持续使用真实语料迭代FrameNet
 ---
+以"流水线"为激活词、通常激活实体、身份或抽象概念场景
+
 ## 基于生产语料分布观察
 框架从使用中归纳出来，不要内省出来！！！(一段很长的痛苦经历)
 *实践建议：先共现后划分，先提取高频搭配、扁平化词汇，先做FE划分会因词元位置变化导致FE漂移*
@@ -93,6 +95,11 @@ Agentive	如何产生	由 Operator 创建、由 Scheme 定义、由 Template 派
 *核心FE随层级递增：每往下一层，框架就多出若干核心FE——因为更具体的框架需要更多角色才能定义*
 *这是框架语义学的核心设计原则：框架越具体，核心FE越多；框架越一般，核心FE越少（退化为框架本身 + 外围环境信息）*
 例如：Event只需要一个核心FE（事件本身）；Intentionally_act需要四个（施事 + 行动 + 目的 + 手段）
+---
+## 难点
+1. 选取品文档还是生产日志作为语料抽取基线？
+2. 基线和迭代语料冲突怎么办？
+3. 怎么进行迭代？
 
 ### 候选父类清单
 Event
@@ -116,44 +123,212 @@ Event
 语义不能是无意向的习惯性行为，例如、启动流水线
 ```
 ##### F0_create: Create_pipeline（创建流水线）
-**定义**: 施事(Operator)意图性地创建一条新的流水线(Pipeline)。'创建'隐含从无到有(genesis)——Pipeline作为Patient从不存在到存在
+**定义**: 施事(Operator)意图性地创建一条新的流水线(Pipeline)。'创建'隐含从无到有(genesis)——Pipeline作为Patient从不存在到存在的意图
 **落地难点**:
 1. 无法确定加哪些FE
 2. 无法确认哪些FE必须继承、哪些可以新增
 3. 无法确定Patient的Qualia驱动领域发现
 **理论/方法**
-*Vender-> 确定"动词/事件类型（4类）"的FE签名* *FramNet继承确定"父子传递规则"* *Pustejovsky发现Patient的领域FE*
+[框架派生](./frame_derive.md)
 
-*Vender*
-State（状态）
-State的特征：[持续、无变化、无目标]
-state的FE签名（固有角色）：[Entity、State]
-state的典型动词：[be、exist、remain]
+**落地难点的理论/方法实操**
+1. 决定FE签名
+例如：当Act取'create'后进行特征分析后确定事件类型为'Accomplishment'，明确了当前框架有[Agent、Patient、Result、Material/Source]FE签名
 
-Activity（活动）
-Activity的特征：[持续、有施事、无内在终点]
-Activity的FE签名（固有角色）：[Agent、Activity、Duration]
-Activity的典型动词：[run、wait、do]
+2. 继承父框架 FE:
+| 父 FE | 类型 | 子 FE 处理 |
+|---|---|---|
+| Agent | Core | 继承为核心；填充约束细化 → Human_operator |
+| Act | Core | 继承为核心；取定值 = create |
+| Purpose | Core | 继承为核心 |
+| Means | Core | 继承为核心；填充约束细化 → Template/Scheme/Copy |
+| Condition | Peripheral | 待定（step 6 重新分类） |
+| Goal | Peripheral | 继承为外围 |
+| Manner | Peripheral | 继承为外围 |
 
-Accomplishment（完成）
-Activity的特征：[持续、有施事、有内在终点+产出]
-Activity的FE签名（固有角色）：[Agent、Patient、Result、Material/Source]
-Activity的典型动词：[creat、build、make、write]
+3. 按事件类型签名补FE
+diff已继承的FE和事件类型签名FE:
+| 签名要求的 FE | 是否已继承 | 处理 |
+|---|---|---|
+| Agent | ✓ 已继承 | — |
+| Patient | ✗ 父框架没有 Patient | **新增为核心** |
+| Result | ✗ 父框架没有 Result | **新增为核心** |
+| Material/Source | ✗ 父框架没有 | **新增为核心**（领域映射为 Template） |
 
-Achievement（成就）
-Achievement的特征：[瞬时、有施事、状态转换]
-Achievement的FE签名（固有角色）：[Agent、Patient、Result(瞬时)]
-Achievement的典型动词：[start、stop、trigger、pause]
+4. 用Qualia发现领域FE
+对Patient做qualia分析，找出与Act相关的维度
 
-**实操**
+*v2 基于示例实体Entry（其生命周期的主事件为 Act）*
+```markdown
+你是语言学专家，你精通Pustejovsky的理论。
+擅长事件的子事件分解和Qualia。
+你的任务是基于文档内容/URL、对实体进行Qualia分析，并输出结构化表格到: ./references/qualia/qualia_{实体}.md
+约束：
+1. 说明中内容仅为格式示范，属性和候选FE必须从{文档内容}中提取，不得照搬样例，除非文档确证相同语义
+2. 输入槽位 {}、必须被真实内容替换
+3. 仅输出下述两张Markdown表格，不要添加解释或前言
 
+以下为输出格式:
+## Qualia分析
+| Quale | 属性 | 与{主事件}相关？ | → 候选 FE |
+| :--- | :--- | :--- | :--- |
+| Formal | {fill_Formal_1} | {fill_Formal_2} | {fill_Formal_3} |
+| Constitutive | {fill_Constitutive_1} | {fill_Constitutive_2} | {fill_Constitutive_3} |
+| Telic | {fill_Telic_1} | {fill_Telic_2} | {fill_Telic_3} |
+| Agentive | {fill_Agentive_1} | {fill_Agentive_2} | {fill_Agentive_3} |
+
+说明: 
+    **关于Qualia表占位符说明**：
+        fill_Formal_1: Entry 是可寻址的工作单元，具有唯一标识与状态机（待触发/运行/完成/失败）
+        fill_Formal_2: 同类别成员：Act 调度的对象
+        fill_Formal_3: EntryIdentity, EntryState ; {约束1}
+        fill_Constitutive_1: 由任务定义、入参、触发条件、执行上下文（凭证/环境）组成
+        fill_Constitutive_2: 构成决定 Act 可执行性
+        fill_Constitutive_3: TaskDef, Parameters, TriggerCondition; {约束1}
+        fill_Telic_1: 承载请求上下文、驱动 Act 执行并记录结果以支持调度与回溯
+        fill_Telic_2: 直接服务 Act
+        fill_Telic_3: Context, Outcome, Retrieval; {约束1}
+        fill_Agentive_1: 由触发事件（用户操作/定时/上游信号）实例化产生
+        fill_Agentive_2: 事件源决定 Act 何时启动
+        fill_Agentive_3: TriggerSource, Creator; {约束1}
+
+## 子事件分解
+| 子事件阶段 | 协同的Qualia维度 | 语义融合逻辑 (Why) | 最终确定的领域 FE |
+| :--- | :--- | :--- | :--- |
+| **$e_1$ (过程阶段)** | **Agentive (施成)** | 探究事件"始发原因"：Entry由谁/什么触发而生成 | {fill_e_1_Agentive} |
+| **$e_1$ (过程阶段)** | **Constitutive (构成)** | 探究动作发生时的"装配物料"：是哪些任务定义与参数被组装进Entry | {fill_e_1_Constitutive} |
+| **$e_2$ (状态阶段)** | **Formal (形式)** | 探究Entry如何被识别：系统必须赋予它区别于其他实体的特征（唯一ID+状态） | {fill_e_2_Formal} |
+| **$e_2$ (状态阶段)** | **Telic (目的)** | 探究Entry诞生后的"生存意义"：处于等待被Act触发、在何环境运行的状态 | {fill_e_2_Telic} |
+说明: 
+    **关于子事件表结构**：
+        子事件表固定为4行（e1-Agentive/Constitutive、e2-Formal/Telic）属于预设结构，
+        若目标实体生命周期都符合"过程+状态"二元切分则保留，否则"行数可随子事件阶段增减"
+    **关于子事件表占位符说明**：
+        fill_e_1_Agentive: TriggerSource, BY_ACT——FE: 触发源; {约束1}
+        fill_e_1_Constitutive: TaskDef, Parameters——FE: 装配物; {约束1}
+        fill_e_2_Formal: EntryIdentity, EntryState——FE: 识别特征; {约束1}
+        fill_e_2_Telic: Pending, RunEnvironment, Trigger——FE: 待运行环境; {约束1}
+
+以下是实体 {实体}
+以下是文档内容 {文档内容}
+
+```
+
+例如对"创建流水线":
+*Qualia分析*
+| Quale | 属性 | 与执行(Act)相关？ | → 候选 FE |
+| :--- | :--- | :--- | :--- |
+| Formal | 流水线是可寻址的自动化发布单元（人造物），具有唯一标识（pipeline_id/URL）并按类型固定阶段链形态（如微服务型 Source→Build→Alpha→Beta→Gamma→Production；组合服务型 Assemble→Package→Iota→Kappa→Lambda→Production），归属于云龙服务，一个服务下可有多条流水线 | 同类别成员：作为流水线操作/执行框架的受事(Patient)，被启动/停止/查询/创建/配置 | Pipeline, PipelineType, LifecycleStage, Service |
+| Constitutive | 由阶段(Stage)→Job→任务(Task)递归构成；阶段配置含阶段名称、阶段类型、是否默认运行/总是运行、超时时间、触发类型（手动/成功/失败/总是）、工作项串/并行；支持参数化定义、通知(notify)与子流水线引用 | 构成决定流水线可执行性与执行路径（触发条件、串/并行、超时中止整条流水线） | Stage, Job, Task, Trigger, ConfigItem, SubPipeline, Parameter |
+| Telic | 服务于自动化发布链路：自动出包（编译构建+静态检查+测试）、通过平台接口任务发布、配置云龙部署任务自动部署；通过质量门禁（110+检查项）管控各阶段出口质量，满足可信构建（可视化/可追溯/可重复）要求 | 直接服务执行——执行是流水线发挥"出包→部署"功效的载体 | Artifact, Gate, Metric, EvaluationResult, Outcome |
+| Agentive | 由创建行为实例化产生：单独创建/使用模板创建/代码化(Yaml)创建/复制流水线；也可由配置推送事件或MR触发自动创建，服务初始化(CloudInit)可初始化创建 | 创建者与推送事件源决定流水线何时进入可执行状态 | Operator, Template, ConfigRepo, TriggerSource, PipelineType |
+
+*子事件分解*
+| 子事件阶段 | 协同的Qualia维度 | 语义融合逻辑 (Why) | 最终确定的领域 FE |
+| :--- | :--- | :--- | :--- |
+| **$e_1$ (过程阶段)** | **Agentive (施成)** | 探究流水线"始发原因"：由谁/什么创建而生成（操作者手工创建 / 模板 / 代码化YAML / 配置推送事件自动创建 / 基于流水线复制） | Operator, Template, ConfigRepo, TriggerSource——FE: 创建者/创建方式 |
+| **$e_1$ (过程阶段)** | **Constitutive (构成)** | 探究装配物料：哪些阶段/Job/任务、参数与触发规则被组装进流水线定义 | Stage, Job, Task, Parameter, TriggerType——FE: 装配物料 |
+| **$e_2$ (状态阶段)** | **Formal (形式)** | 探究流水线如何被识别：系统必须赋予唯一流水线ID与类型并挂载阶段链，以区别于其他实体 | PipelineID, PipelineType, LifecycleStage——FE: 识别特征 |
+| **$e_2$ (状态阶段)** | **Telic (目的)** | 探究流水线诞生后的"生存意义"：处于任务默认勾选就绪待触发、被启动运行、向下游产出并被质量门禁判定的状态 | DefaultRun, RunStatus, Trigger, GateResult, Artifact——FE: 待运行与产出状态 |
+
+*新增候选FE*
+Formal：[Pipeline、PipelineType、LifecycleStage、Service]
+Constitutive：[Stage、Job、Task、Trigger、ConfigItem、SubPipeline、Parameter]
+Telic：[Artifact、Gate、Metric、EvaluationResult、Outcome]
+Agentive：[Operator、Template、ConfigRepo、TriggerSource、PipelineType]
+
+5. 候选FE验证
+
+*语料验证*：回到语料，检查"创建流水线"的共现词是否覆盖了上述FE
+*问题*：尚未做新的语料抽取、此处先人工确认
+交给AI处理、以下为提示词：
+```markdown
+你是数据分析专家。
+你的任务是对语料进行验证，要求为：回到语料集，检查激活词的共现词是否覆盖了上述FE。将结果结构化输出表格到: ./frame_net/frame/sub_frame_{name}/debug/candidate_fe_verification.md
+约束：
+1. 说明中内容仅为格式示范，属性和候选FE必须从{文档内容}中提取，不得照搬样例，除非文档确证相同语义
+2. 输入槽位 {}、必须被真实内容替换
+3. 仅输出下述一张Markdown表格，不要添加解释或前言
+
+以下为输出格式:
+| 候选 FE | 语料中的共现词 | 验证 |
+| :--- | :--- | :--- |
+例如：
+| 候选 FE | 语料中的共现词 | 验证 |
+| :--- | :--- | :--- |
+| Pipeline | 人工确认 | ✓ |
+| PipelineType | 人工确认 | ✓ |
+| LifecycleStage | 人工确认 | ✓ |
+....
+
+```
+
+*子框架对比*：把{sub_frame_{name}}与兄弟子框架并列，找出独有FE
+交给AI处理、以下为提示词：
+```markdown
+你是边界定义专家。
+你的任务是：把{sub_frame_{name}}与兄弟子框架并列，找出独有FE。将结果结构化追加输出表格到: ./frame_net/frame/{sub_frame_name}/debug/candidate_fe_verification.md的末尾
+约束：
+1. 例子中内容仅为格式示范，属性和候选FE必须从{文档内容}中提取，不得照搬样例，除非文档确证相同语义
+2. 输入槽位 {}、必须被真实内容替换
+3. 仅输出下述一张Markdown表格 + 发现，不要添加解释或前言
+
+以下为输出格式:
+*子框架对比*
+| FE | {sub_frame_name} | {sub_frame_name_contrast} |
+| :--- | :--- | :--- |
+*发现*
+[{FE_0}、{FE_1}、...、{FE_N}]是"{sub_frame_name}"独有的核心FE——因为没有[{FE_0}、{FE_1}、...、{FE_N}]，"{fe_name}"行为无法完成
+
+例如：
+*子框架对比*
+| FE | create_frame | execute_frame | 
+| :--- | :--- | :--- |
+| Template | ✓ 核心 | ✗ |
+| Pipeline_name | ✓ 核心 | ✗（用已有 ID）|
+| Result（新实体）| ✓ 核心（新建的 pipeline） | △（执行结果）|
+| Scheme | △ 外围 | ✓ 核心 |
+...
+
+*发现*
+Template和Pipeline_name是Create独有的核心FE——因为没有模板和名称，"创建"行为无法完成。
+
+....
+
+```
+
+6. 核心性重新分类
+
+对全部FE（继承 + 新增）做三项检验
+交给AI处理、以下为提示词：
+```markdown
+你是数据分析专家。
+你的任务是对语料进行验证，要求为：回到语料集，检查激活词的共现词是否覆盖了上述FE。将结果结构化输出表格到: ./frame_net/frame/sub_frame_{name}/debug/candidate_fe_verification.md
+约束：
+1. 说明中内容仅为格式示范，属性和候选FE必须从{文档内容}中提取，不得照搬样例，除非文档确证相同语义
+2. 输入槽位 {}、必须被真实内容替换
+3. 仅输出下述一张Markdown表格，不要添加解释或前言
+
+以下为输出格式:
+| 候选 FE | 语料中的共现词 | 验证 |
+| :--- | :--- | :--- |
+例如：
+| 候选 FE | 语料中的共现词 | 验证 |
+| :--- | :--- | :--- |
+| Pipeline | 人工确认 | ✓ |
+| PipelineType | 人工确认 | ✓ |
+| LifecycleStage | 人工确认 | ✓ |
+....
+
+```
 **Core FE**:
 | FE | 语义角色 | 填充物示例 |
 | operator | Agent/施事 |---| 
 | crate | Act/行动 | "创建流水线" |
 | {fill} | Purpose/行动目的 |---|
 | {fill} | Means/手段 |---|
-| {fill} | {fill} |---|
+| Pipeline | Patient |---|
+| Pipeline | Result |---|
 <!-- ### F0: Intentionally_act（流水线操作）
 
 **定义**: 一个意图性行动框架：施事 Agent（Operator）对受事 Patient（Pipeline）执行某种自主性动作 Action，通过工具 Means（Scheme）在条件 Condition（Branch/Trigger/Version）下达成目标，并产生结果 Result（Outcome）。本框架为所有流水线操作子框架的抽象父框架，Action 不取定值。
@@ -249,4 +424,3 @@ F0: Intentionally_act（流水线操作·父框架）
 *Core FE*: [Agent/施事、Act/行动、Purpose/行动目的、Means/手段]
 *Peripheral FE*: [Condition/条件、Goal/目标、Manner/方式]
 *高频词汇*: [act、action、do、perform、carry out、execute、commit]
----
