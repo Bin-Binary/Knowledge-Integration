@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>frame-net/src 是什么 · 火影忍者版</title>
+<style>
+  :root{
+    --navy:#0d1322; --navy2:#131b2e; --orange:#ff7a18; --red:#d9452b;
+    --green:#5a9a3f; --gold:#e8c46a; --paper:#f0e9dc; --dim:#8b93a8;
+    --skin:#f4cfa3;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--navy);
+    font-family:"STKaiti","KaiTi","FangSong","SimSun",serif;
+    color:var(--paper);line-height:1.9;overflow-x:hidden;
+    background:
+      radial-gradient(1100px 460px at 50% -120px, rgba(255,122,24,.14), transparent 60%),
+      linear-gradient(180deg,#0d1322 0%,#141d33 48%,#0d1322 100%);
+  }
+  .wrap{max-width:1100px;margin:0 auto;padding:0 26px 120px}
+
+  /* 云 */
+  .cloud{position:fixed;opacity:.05;z-index:0;pointer-events:none}
+  .c1{top:80px;left:-40px;width:260px}.c2{top:240px;right:-30px;width:300px}
+  .c3{bottom:120px;left:-20px;width:240px}
+
+  /* ---------- 标题 ---------- */
+  .hero{padding:86px 0 34px;text-align:center;position:relative;z-index:1}
+  .leaf-badge{
+    display:inline-block;width:64px;height:64px;margin-bottom:20px;position:relative;
+  }
+  .kana{color:var(--orange);font-size:13px;letter-spacing:8px;margin-bottom:16px;text-transform:uppercase}
+  .hero h1{font-size:52px;letter-spacing:12px;font-weight:normal;color:var(--paper)}
+  .hero h1 .src{color:var(--orange)}
+  .sub{margin-top:16px;color:var(--dim);font-size:16px;letter-spacing:3px}
+  .rule{width:230px;height:2px;margin:24px auto;background:linear-gradient(90deg,transparent,var(--orange),transparent)}
+
+  /* ---------- 一句话 ---------- */
+  .oneliner{position:relative;z-index:1;text-align:center;font-size:21px;letter-spacing:2px;
+    padding:32px 20px;margin:8px 0 30px;border-top:1px solid rgba(240,233,220,.12);
+    border-bottom:1px solid rgba(240,233,220,.12)}
+  .oneliner b{color:var(--orange);font-weight:normal}
+  .oneliner .g{color:var(--green)}
+
+  h2.section{text-align:center;font-size:30px;letter-spacing:10px;font-weight:normal;
+    margin:80px 0 18px;color:var(--paper);position:relative;z-index:1}
+  h2.section .deco{color:var(--orange);font-size:16px;vertical-align:middle;margin:0 14px}
+  .lead{text-align:center;color:var(--dim);max-width:720px;margin:0 auto 44px;font-size:15px;position:relative;z-index:1}
+
+  /* ---------- 火影岩 ---------- */
+  .scene{position:relative;height:250px;margin:8px 0 46px;overflow:hidden;z-index:1}
+  .rock{position:absolute;bottom:0;left:0;width:100%}
+  .haze{position:absolute;left:-20%;width:140%;height:110px;bottom:0;
+    background:radial-gradient(ellipse at 50% 100%, rgba(240,233,220,.12), transparent 70%);
+    filter:blur(7px);animation:drift 10s ease-in-out infinite alternate}
+  @keyframes drift{from{transform:translateX(-28px)}to{transform:translateX(28px)}}
+
+  /* ---------- 人物头像 ---------- */
+  .avatar{width:92px;height:92px;margin:0 auto 12px;position:relative;z-index:2}
+
+  /* ---------- 流程 ---------- */
+  .flow{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;position:relative;z-index:1}
+  .node{background:linear-gradient(180deg,rgba(255,122,24,.05),rgba(255,255,255,.01));
+    border:1px solid rgba(240,233,220,.14);border-radius:8px;padding:26px 22px;text-align:center;
+    position:relative;transition:transform .25s,border-color .25s}
+  .node:hover{transform:translateY(-5px);border-color:var(--orange)}
+  .node .stage{font-size:13px;letter-spacing:3px;color:var(--paper);border:1px solid var(--orange);
+    color:var(--orange);padding:2px 14px;display:inline-block;border-radius:20px;margin-bottom:16px}
+  .node h3{font-size:24px;font-weight:normal;letter-spacing:4px;margin-bottom:4px}
+  .node .who{color:var(--gold);font-size:14px;letter-spacing:2px;margin-bottom:10px}
+  .node .file{color:var(--dim);font-family:Consolas,monospace;font-size:13px;margin-bottom:10px}
+  .node p{font-size:14px;color:#c9c2b2}
+  .node .arrow{position:absolute;right:-24px;top:50%;transform:translateY(-50%);
+    color:var(--orange);font-size:22px;z-index:3}
+
+  /* ---------- 例子 ---------- */
+  .example{position:relative;z-index:1;max-width:740px;margin:34px auto;padding:30px 34px;
+    border:1px solid rgba(255,122,24,.35);border-radius:8px;text-align:center;
+    background:linear-gradient(180deg,rgba(255,122,24,.06),transparent)}
+  .example .zh{font-size:28px;letter-spacing:3px;color:var(--paper)}
+  .example .to{color:var(--orange);font-size:22px;margin:8px 0}
+  .example .out{font-size:17px;color:#c9c2b2;letter-spacing:1px}
+  .example .out b{color:var(--orange);font-weight:normal}
+  .example .dim{color:var(--dim);font-size:14px}
+
+  /* ---------- 模块表 ---------- */
+  .mods{display:grid;grid-template-columns:1fr 1fr;gap:18px;position:relative;z-index:1}
+  .mod{display:flex;gap:16px;align-items:center;padding:16px 20px;border:1px solid rgba(240,233,220,.12);
+    border-radius:8px;background:rgba(255,255,255,.02)}
+  .mod .avatar{width:74px;height:74px;margin:0;flex:0 0 74px}
+  .mod h4{font-size:19px;font-weight:normal;letter-spacing:2px;font-family:Consolas,monospace}
+  .mod h4 em{color:var(--orange);font-style:normal;font-size:14px;font-family:"KaiTi",serif;margin-left:8px;letter-spacing:1px}
+  .mod .role{color:var(--dim);font-size:13px;margin:2px 0 5px;letter-spacing:1px}
+  .mod p{font-size:14px;color:#c9c2b2}
+
+  .foot{text-align:center;color:var(--dim);font-size:13px;margin-top:90px;letter-spacing:3px;position:relative;z-index:1}
+  @media(max-width:840px){.flow{grid-template-columns:1fr}.mods{grid-template-columns:1fr}
+    .node .arrow{display:none}.hero h1{font-size:38px}}
+</style>
+</head>
+<body>
+
+<!-- 云 -->
+<svg class="cloud c1" viewBox="0 0 200 120"><circle cx="60" cy="70" r="40" fill="#d9452b"/><circle cx="130" cy="60" r="34" fill="#d9452b"/></svg>
+<svg class="cloud c2" viewBox="0 0 200 120"><circle cx="70" cy="60" r="40" fill="#d9452b"/><circle cx="140" cy="72" r="34" fill="#d9452b"/></svg>
+<svg class="cloud c3" viewBox="0 0 200 120"><circle cx="60" cy="70" r="40" fill="#d9452b"/><circle cx="130" cy="60" r="34" fill="#d9452b"/></svg>
+
+<div class="wrap">
+
+  <div class="hero">
+    <div class="leaf-badge">
+      <svg viewBox="0 0 80 80">
+        <circle cx="40" cy="40" r="38" fill="#141d33" stroke="#ff7a18" stroke-width="3"/>
+        <path d="M40,36 a4,4 0 0 1 4,4 a8,8 0 0 1 -8,8 a12,12 0 0 1 -12,-12 a16,16 0 0 1 16,-16 a20,20 0 0 1 20,20"
+              fill="none" stroke="#ff7a18" stroke-width="3" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="kana">木叶隐村 · 情报解析班</div>
+    <h1>frame-net / <span class="src">src</span></h1>
+    <div class="sub">一支忍者小队，从成堆卷轴里提炼出「招式 · 谁 · 对谁」的秘籍</div>
+    <div class="rule"></div>
+  </div>
+
+  <div class="oneliner">
+    一句话：它读入一堆中文产品文档（云龙 CloudDragon 的 DevOps 说明），<br>
+    像忍者小队执行<b>「情报提炼」</b>任务一样，自动筛出「<b>动词 + 名词</b>」的固定搭配，<br>
+    最后写成一本 <b>FrameNet 式<span class="g">语义框架秘籍</span></b>。
+  </div>
+
+  <!-- 火影岩 -->
+  <div class="scene">
+    <svg class="rock" viewBox="0 0 1200 250" preserveAspectRatio="none">
+      <path d="M0,250 L90,140 L160,175 L240,90 L340,165 L430,70 L520,150 L610,95 L700,160 L790,85 L880,150 L970,110 L1060,170 L1140,135 L1200,160 L1200,250 Z"
+            fill="#1a2340"/>
+      <path d="M0,250 L150,180 L270,215 L400,150 L520,205 L650,140 L780,200 L900,168 L1020,215 L1140,180 L1200,205 L1200,250 Z"
+            fill="#10172b"/>
+    </svg>
+    <div class="haze"></div>
+  </div>
+
+  <!-- 六道工序 -->
+  <h2 class="section"><span class="deco">✧</span>六道工序<span class="deco">✧</span></h2>
+  <div class="lead">如同忍者修行，从「看破」到「搓成螺旋丸」，一步比一步精进。</div>
+
+  <div class="flow">
+    <div class="node">
+      <div class="stage">P0 · 看破</div>
+      <svg class="avatar" viewBox="0 0 120 120">
+        <ellipse cx="60" cy="78" rx="30" ry="30" fill="#c9ced6"/>
+        <path d="M30,78 L26,50 L44,44 L60,40 L76,44 L94,50 L90,78" fill="#c9ced6"/>
+        <circle cx="60" cy="74" r="27" fill="var(--skin)"/>
+        <path d="M30,60 q30,-26 60,0 l-3,14 q-27,-20 -54,0 z" fill="#c9ced6"/>
+        <rect x="33" y="56" width="54" height="13" rx="3" fill="#1f2a44"/>
+        <rect x="44" y="57" width="32" height="11" rx="2" fill="#c9c2b0"/>
+        <path d="M60,58 a3,3 0 0 1 3,3 a6,6 0 0 1 -6,6 a8,8 0 0 1 -8,-8" fill="none" stroke="#d9452b" stroke-width="1.6" stroke-linecap="round"/>
+        <circle cx="51" cy="72" r="2.4" fill="#2a2a2a"/><circle cx="69" cy="72" r="2.4" fill="#2a2a2a"/>
+        <rect x="44" y="88" width="32" height="12" rx="3" fill="#1f2a44"/>
+      </svg>
+      <h3>解析</h3>
+      <div class="who">卡卡西 · 写轮眼</div>
+      <div class="file">parser.py</div>
+      <p>切句、分词，看穿每句话里的「主谓宾」结构，标出每个词的语法角色。</p>
+      <div class="arrow">➤</div>
+    </div>
+
+    <div class="node">
+      <div class="stage">P1 · 收集</div>
+      <svg class="avatar" viewBox="0 0 120 120">
+        <path d="M30,74 L20,38 L34,32 L60,28 L86,32 L100,38 L90,74" fill="#e8e2d4"/>
+        <path d="M34,34 L20,44 L22,96 L42,60 z" fill="#e8e2d4"/>
+        <path d="M86,34 L100,44 L98,96 L78,60 z" fill="#e8e2d4"/>
+        <circle cx="60" cy="74" r="27" fill="var(--skin)"/>
+        <path d="M33,60 q27,-26 54,0 l-3,13 q-24,-19 -48,0 z" fill="#e8e2d4"/>
+        <rect x="33" y="56" width="54" height="13" rx="3" fill="#1f2a44"/>
+        <rect x="44" y="57" width="32" height="11" rx="2" fill="#c9c2b0"/>
+        <path d="M60,58 a3,3 0 0 1 3,3 a6,6 0 0 1 -6,6 a8,8 0 0 1 -8,-8" fill="none" stroke="#d9452b" stroke-width="1.6" stroke-linecap="round"/>
+        <circle cx="51" cy="72" r="2.4" fill="#2a2a2a"/><circle cx="69" cy="72" r="2.4" fill="#2a2a2a"/>
+      </svg>
+      <h3>数搭配</h3>
+      <div class="who">自来也 · 情报</div>
+      <div class="file">bigram.py</div>
+      <p>统计「哪个动词和哪个名词老是一起出现」，记下次数和出现文档数。</p>
+      <div class="arrow">➤</div>
+    </div>
+
+    <div class="node">
+      <div class="stage">P2 · 淘汰</div>
+      <svg class="avatar" viewBox="0 0 120 120">
+        <path d="M32,70 L28,40 L44,32 L60,30 L76,32 L92,40 L88,70" fill="#2b3550"/>
+        <path d="M28,44 L34,74 L60,34 z" fill="#2b3550"/><path d="M92,44 L86,74 L60,34 z" fill="#2b3550"/>
+        <circle cx="60" cy="74" r="27" fill="var(--skin)"/>
+        <path d="M33,60 q27,-26 54,0 l-3,13 q-24,-19 -48,0 z" fill="#2b3550"/>
+        <rect x="33" y="56" width="54" height="13" rx="3" fill="#1f2a44"/>
+        <rect x="44" y="57" width="32" height="11" rx="2" fill="#c9c2b0"/>
+        <path d="M60,58 a3,3 0 0 1 3,3 a6,6 0 0 1 -6,6 a8,8 0 0 1 -8,-8" fill="none" stroke="#d9452b" stroke-width="1.6" stroke-linecap="round"/>
+        <circle cx="51" cy="72" r="2.4" fill="#2a2a2a"/><circle cx="69" cy="72" r="2.4" fill="#2a2a2a"/>
+      </svg>
+      <h3>过滤</h3>
+      <div class="who">佐助 · 千鸟</div>
+      <div class="file">llr.py</div>
+      <p>用统计检验（LLR）一刀切，把偶然撞上的弱搭配全部淘汰，留下真高频的。</p>
+      <div class="arrow">➤</div>
+    </div>
+
+    <div class="node">
+      <div class="stage">P3 · 提纯</div>
+      <svg class="avatar" viewBox="0 0 120 120">
+        <path d="M32,66 L30,38 L46,32 L60,30 L74,32 L90,38 L88,66" fill="#f2a6c0"/>
+        <path d="M32,50 L34,96 L40,60 z" fill="#f2a6c0"/><path d="M88,50 L86,96 L80,60 z" fill="#f2a6c0"/>
+        <circle cx="60" cy="74" r="27" fill="var(--skin)"/>
+        <path d="M33,60 q27,-26 54,0 l-3,13 q-24,-19 -48,0 z" fill="#f2a6c0"/>
+        <rect x="33" y="56" width="54" height="13" rx="3" fill="#1f2a44"/>
+        <rect x="44" y="57" width="32" height="11" rx="2" fill="#c9c2b0"/>
+        <path d="M60,58 a3,3 0 0 1 3,3 a6,6 0 0 1 -6,6 a8,8 0 0 1 -8,-8" fill="none" stroke="#d9452b" stroke-width="1.6" stroke-linecap="round"/>
+        <circle cx="51" cy="72" r="2.4" fill="#2a2a2a"/><circle cx="69" cy="72" r="2.4" fill="#2a2a2a"/>
+      </svg>
+      <h3>提纯</h3>
+      <div class="who">小樱 · 查克拉控制</div>
+      <div class="file">entropy.py</div>
+      <p>看每个动词的宾语「专不专一」：专一→好种子；满天飞→轻动词（如「进行」）。</p>
+      <div class="arrow">➤</div>
+    </div>
+
+    <div class="node">
+      <div class="stage">P4 · 组合</div>
+      <svg class="avatar" viewBox="0 0 120 120">
+        <path d="M32,68 L26,36 L42,28 L60,26 L78,28 L94,36 L88,68" fill="#ffd23e"/>
+        <path d="M30,38 L22,42 L34,44 z" fill="#ffd23e"/><path d="M42,30 L40,20 L50,28 z" fill="#ffd23e"/>
+        <path d="M60,26 L60,14 L70,24 z" fill="#ffd23e"/><path d="M78,28 L80,18 L70,24 z" fill="#ffd23e"/>
+        <path d="M90,38 L98,42 L86,44 z" fill="#ffd23e"/>
+        <circle cx="60" cy="74" r="27" fill="var(--skin)"/>
+        <path d="M33,60 q27,-26 54,0 l-3,13 q-24,-19 -48,0 z" fill="#ffd23e"/>
+        <rect x="33" y="56" width="54" height="13" rx="3" fill="#1f2a44"/>
+        <rect x="44" y="57" width="32" height="11" rx="2" fill="#c9c2b0"/>
+        <path d="M60,58 a3,3 0 0 1 3,3 a6,6 0 0 1 -6,6 a8,8 0 0 1 -8,-8" fill="none" stroke="#d9452b" stroke-width="1.6" stroke-linecap="round"/>
+        <circle cx="51" cy="72" r="2.4" fill="#2a2a2a"/><circle cx="69" cy="72" r="2.4" fill="#2a2a2a"/>
+      </svg>
+      <h3>扩三元</h3>
+      <div class="who">鸣人 · 影分身</div>
+      <div class="file">trigram.py</div>
+      <p>在选中动词上前后多看一格，凑出「副-动-名」「介-名-动」三元组。</p>
+      <div class="arrow">➤</div>
+    </div>
+
+    <div class="node">
+      <div class="stage">P5 · 完成</div>
+      <svg class="avatar" viewBox="0 0 120 120">
+        <circle cx="60" cy="52" r="26" fill="#4fc3f7" opacity=".9"/>
+        <circle cx="60" cy="52" r="26" fill="none" stroke="#8fd8ff" stroke-width="2" opacity=".7"/>
+        <path d="M32,70 L26,38 L42,30 L60,28 L78,30 L94,38 L88,70" fill="#ffd23e"/>
+        <path d="M30,40 L22,44 L34,46 z" fill="#ffd23e"/><path d="M42,32 L40,22 L50,30 z" fill="#ffd23e"/>
+        <path d="M60,28 L60,16 L70,26 z" fill="#ffd23e"/><path d="M78,30 L80,20 L70,26 z" fill="#ffd23e"/>
+        <path d="M90,40 L98,44 L86,46 z" fill="#ffd23e"/>
+        <circle cx="60" cy="76" r="27" fill="var(--skin)"/>
+        <path d="M33,62 q27,-26 54,0 l-3,13 q-24,-19 -48,0 z" fill="#ffd23e"/>
+        <rect x="33" y="58" width="54" height="13" rx="3" fill="#1f2a44"/>
+        <rect x="44" y="59" width="32" height="11" rx="2" fill="#c9c2b0"/>
+        <path d="M60,60 a3,3 0 0 1 3,3 a6,6 0 0 1 -6,6 a8,8 0 0 1 -8,-8" fill="none" stroke="#d9452b" stroke-width="1.6" stroke-linecap="round"/>
+        <circle cx="51" cy="74" r="2.4" fill="#2a2a2a"/><circle cx="69" cy="74" r="2.4" fill="#2a2a2a"/>
+      </svg>
+      <h3>定模板</h3>
+      <div class="who">鸣人 · 螺旋丸</div>
+      <div class="file">trigram.py</div>
+      <p>用偏互信息（PMI）最后一筛，搓出完整的「框架骨架模板」。</p>
+    </div>
+  </div>
+
+  <!-- 例子 -->
+  <h2 class="section"><span class="deco">✧</span>成品长什么样<span class="deco">✧</span></h2>
+  <div class="example">
+    <div class="zh">「部署流水线」</div>
+    <div class="to">⇣</div>
+    <div class="out">动词 <b>部署</b> ＝ 一招「框架」(LU)<br>
+    名词 <b>流水线</b> ＝ 它的「槽位」(FE)</div>
+    <div class="dim" style="margin-top:12px">每道工序都同时产出 .json（给机器）和 .md（给人）两份卷轴。</div>
+  </div>
+
+  <!-- 模块表 -->
+  <h2 class="section"><span class="deco">✧</span>十个文件，各司其职<span class="deco">✧</span></h2>
+  <div class="lead">每位忍者负责一件差事，队长在最后统筹全局。</div>
+
+  <div class="mods">
+    <div class="mod">
+      <svg class="avatar" viewBox="0 0 120 120"><path d="M32,68 L26,36 L42,28 L60,26 L78,28 L94,36 L88,68" fill="#ffd23e"/><path d="M30,38 L22,42 L34,44 z" fill="#ffd23e"/><path d="M42,30 L40,20 L50,28 z" fill="#ffd23e"/><path d="M60,26 L60,14 L70,24 z" fill="#ffd23e"/><path d="M78,28 L80,18 L70,24 z" fill="#ffd23e"/><path d="M90,38 L98,42 L86,44 z" fill="#ffd23e"/><circle cx="60" cy="74" r="27" fill="var(--skin)"/><path d="M33,60 q27,-26 54,0 l-3,13 q-24,-19 -48,0 z" fill="#ffd23e"/><rect x="33" y="56" width="54" height="13" rx="3" fill="#1f2a44"/><rect x="44" y="57" width="32" height="11" rx="2" fill="#c9c2b0"/><path d="M60,58 a3,3 0 0 1 3,3 a6,6 0 0 1 -6,6 a8,8 0 0 1 -8,-8" fill="none" stroke="#d9452b" stroke-width="1.6" stroke-linecap="round"/><circle cx="51" cy="72" r="2.4" fill="#2a2a2a"/><circle cx="69" cy="72" r="2.4" fill="#2a2a2a"/></svg>
+      <div><h4>pipeline.py <em>队长·统筹</em></h4><div class="role">把六道工序串成一条流水</div>
+      <p>P0→P1→P2→P3→P3.5→P4→P5 依次跑，最后写 run_report.json 汇总战报。</p></div>
+    </div>
+
+    <div class="mod">
+      <svg class="avatar" viewBox="0 0 120 120"><ellipse cx="60" cy="78" rx="30" ry="30" fill="#c9ced6"/><path d="M30,78 L26,50 L44,44 L60,40 L76,44 L94,50 L90,78" fill="#c9ced6"/><circle cx="60" cy="74" r="27" fill="var(--skin)"/><path d="M30,60 q30,-26 60,0 l-3,14 q-27,-20 -54,0 z" fill="#c9ced6"/><rect x="33" y="56" width="54" height="13" rx="3" fill="#1f2a44"/><rect x="44" y="57" width="32" height="11" rx="2" fill="#c9c2b0"/><path d="M60,58 a3,3 0 0 1 3,3 a6,6 0 0 1 -6,6 a8,8 0 0 1 -8,-8" fill="none" stroke="#d9452b" stroke-width="1.6" stroke-linecap="round"/><circle cx="51" cy="72" r="2.4" fill="#2a2a2a"/><circle cx="69" cy="72" r="2.4" fill="#2a2a2a"/><rect x="44" y="88" width="32" height="12" rx="3" fill="#1f2a44"/></svg>
+      <div><h4>parser.py <em>卡卡西·写轮眼</em></h4><div class="role">P0 · 分词 + 浅层句法</div>
+      <p>规则版（jieba 词性 + 找主宾），另可切换 hanlp 深度解析。</p></div>
+    </div>
+
+    <div class="mod">
+      <svg class="avatar" viewBox="0 0 120 120"><path d="M30,74 L20,38 L34,32 L60,28 L86,32 L100,38 L90,74" fill="#e8e2d4"/><path d="M34,34 L20,44 L22,96 L42,60 z" fill="#e8e2d4"/><path d="M86,34 L100,44 L98,96 L78,60 z" fill="#e8e2d4"/><circle cx="60" cy="74" r="27" fill="var(--skin)"/><path d="M33,60 q27,-26 54,0 l-3,13 q-24,-19 -48,0 z" fill="#e8e2d4"/><rect x="33" y="56" width="54" height="13" rx="3" fill="#1f2a44"/><rect x="44" y="57" width="32" height="11" rx="2" fill="#c9c2b0"/><path d="M60,58 a3,3 0 0 1 3,3 a6,6 0 0 1 -6,6 a8,8 0 0 1 -8,-8" fill="none" stroke="#d9452b" stroke-width="1.6" stroke-linecap="round"/><circle cx="51" cy="72" r="2.4" fill="#2a2a2a"/><circle cx="69" cy="72" r="2.4" fill="#2a2a2a"/></svg>
+      <div><h4>bigram.py <em>自来也·情报</em></h4><div class="role">读语料 + P1 二元抽取</div>
+      <p>递归读 .txt、分句去噪，统计动词-名词共现。</p></div>
+    </div>
+
+    <div class="mod">
+      <svg class="avatar" viewBox="0 0 120 120"><path d="M32,70 L28,40 L44,32 L60,30 L76,32 L92,40 L88,70" fill="#2b3550"/><path d="M28,44 L34,74 L60,34 z" fill="#2b3550"/><path d="M92,44 L86,74 L60,34 z" fill="#2b3550"/><circle cx="60" cy="74" r="27" fill="var(--skin)"/><path d="M33,60 q27,-26 54,0 l-3,13 q-24,-19 -48,0 z" fill="#2b3550"/><rect x="33" y="56" width="54" height="13" rx="3" fill="#1f2a44"/><rect x="44" y="57" width="32" height="11" rx="2" fill="#c9c2b0"/><path d="M60,58 a3,3 0 0 1 3,3 a6,6 0 0 1 -6,6 a8,8 0 0 1 -8,-8" fill="none" stroke="#d9452b" stroke-width="1.6" stroke-linecap="round"/><circle cx="51" cy="72" r="2.4" fill="#2a2a2a"/><circle cx="69" cy="72" r="2.4" fill="#2a2a2a"/></svg>
+      <div><h4>llr.py <em>佐助·千鸟</em></h4><div class="role">P2 · LLR 显著性过滤</div>
+      <p>Dunning 对数似然比四格表，判「入选/淘汰」。</p></div>
+    </div>
+
+    <div class="mod">
+      <svg class="avatar" viewBox="0 0 120 120"><path d="M32,66 L30,38 L46,32 L60,30 L74,32 L90,38 L88,66" fill="#f2a6c0"/><path d="M32,50 L34,96 L40,60 z" fill="#f2a6c0"/><path d="M88,50 L86,96 L80,60 z" fill="#f2a6c0"/><circle cx="60" cy="74" r="27" fill="var(--skin)"/><path d="M33,60 q27,-26 54,0 l-3,13 q-24,-19 -48,0 z" fill="#f2a6c0"/><rect x="33" y="56" width="54" height="13" rx="3" fill="#1f2a44"/><rect x="44" y="57" width="32" height="11" rx="2" fill="#c9c2b0"/><path d="M60,58 a3,3 0 0 1 3,3 a6,6 0 0 1 -6,6 a8,8 0 0 1 -8,-8" fill="none" stroke="#d9452b" stroke-width="1.6" stroke-linecap="round"/><circle cx="51" cy="72" r="2.4" fill="#2a2a2a"/><circle cx="69" cy="72" r="2.4" fill="#2a2a2a"/></svg>
+      <div><h4>entropy.py <em>小樱·查克拉</em></h4><div class="role">P3 语义熵 + P3.5 义项检查</div>
+      <p>按宾语分布熵打标签，上下文聚类识别多义。</p></div>
+    </div>
+
+    <div class="mod">
+      <svg class="avatar" viewBox="0 0 120 120"><path d="M32,68 L26,36 L42,28 L60,26 L78,28 L94,36 L88,68" fill="#ffd23e"/><path d="M30,38 L22,42 L34,44 z" fill="#ffd23e"/><path d="M42,30 L40,20 L50,28 z" fill="#ffd23e"/><path d="M60,26 L60,14 L70,24 z" fill="#ffd23e"/><path d="M78,28 L80,18 L70,24 z" fill="#ffd23e"/><path d="M90,38 L98,42 L86,44 z" fill="#ffd23e"/><circle cx="60" cy="74" r="27" fill="var(--skin)"/><path d="M33,60 q27,-26 54,0 l-3,13 q-24,-19 -48,0 z" fill="#ffd23e"/><rect x="33" y="56" width="54" height="13" rx="3" fill="#1f2a44"/><rect x="44" y="57" width="32" height="11" rx="2" fill="#c9c2b0"/><path d="M60,58 a3,3 0 0 1 3,3 a6,6 0 0 1 -6,6 a8,8 0 0 1 -8,-8" fill="none" stroke="#d9452b" stroke-width="1.6" stroke-linecap="round"/><circle cx="51" cy="72" r="2.4" fill="#2a2a2a"/><circle cx="69" cy="72" r="2.4" fill="#2a2a2a"/></svg>
+      <div><h4>trigram.py <em>鸣人·螺旋丸</em></h4><div class="role">P4 三元抽取 + P5 过滤</div>
+      <p>组三元、算 PMI / 偏互信息，产出框架模板。</p></div>
+    </div>
+
+    <div class="mod">
+      <svg class="avatar" viewBox="0 0 120 120"><circle cx="60" cy="60" r="34" fill="#141d33" stroke="#ff7a18" stroke-width="3"/><path d="M60,56 a4,4 0 0 1 4,4 a8,8 0 0 1 -8,8 a12,12 0 0 1 -12,-12 a16,16 0 0 1 16,-16 a20,20 0 0 1 20,20" fill="none" stroke="#ff7a18" stroke-width="3" stroke-linecap="round"/></svg>
+      <div><h4>domain_dict.py <em>封印词表</em></h4><div class="role">领域词典 · 喂给分词器</div>
+      <p>让 jieba 认得「流水线 / pipeline_id / MR」等专名，别切错。</p></div>
+    </div>
+
+    <div class="mod">
+      <svg class="avatar" viewBox="0 0 120 120"><rect x="40" y="30" width="40" height="60" rx="6" fill="#d9b36a"/><rect x="46" y="40" width="28" height="40" fill="#141d33"/><path d="M50,48 h20 M50,56 h20 M50,64 h14" stroke="#e8c46a" stroke-width="2.5"/></svg>
+      <div><h4>io_utils.py <em>卷轴书写官</em></h4><div class="role">落盘 · JSON + Markdown</div>
+      <p>统一写文件、渲染 Markdown 表格的工具。</p></div>
+    </div>
+
+    <div class="mod">
+      <svg class="avatar" viewBox="0 0 120 120"><rect x="38" y="28" width="44" height="64" rx="4" fill="#141d33" stroke="#ff7a18" stroke-width="2.5"/><path d="M50,42 h20 M50,52 h20 M50,62 h20 M50,72 h12" stroke="#ff7a18" stroke-width="3"/></svg>
+      <div><h4>cli.py <em>任务卷轴</em></h4><div class="role">入口 · 命令行开关</div>
+      <p>python -m 运行，可改语料路径、阈值等参数。</p></div>
+    </div>
+
+    <div class="mod">
+      <svg class="avatar" viewBox="0 0 120 120"><circle cx="60" cy="60" r="34" fill="#141d33" stroke="#5a9a3f" stroke-width="3"/><path d="M60,38 L76,74 L60,64 L44,74 Z" fill="#5a9a3f"/></svg>
+      <div><h4>config.py <em>火影设定书</em></h4><div class="role">总参数 · 所有阈值</div>
+      <p>频率、LLR、熵、PMI 等全部可调，也可被环境变量覆盖。</p></div>
+    </div>
+  </div>
+
+  <div class="foot">
+    木叶村的忍者们 · 把成堆卷轴炼成一本框架秘籍 —— frame-net / src
+  </div>
+</div>
+</body>
+</html>
