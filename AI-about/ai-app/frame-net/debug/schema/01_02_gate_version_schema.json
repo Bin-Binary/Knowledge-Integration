@@ -1,0 +1,54 @@
+{
+  "metadata": {
+    "entity_schema_id": "01_02_gate_version_schema",
+    "entity_schema_name": "gate_version_schema",
+    "description": "描述在门禁语义下的版本实体",
+    "type": "gate"
+  },
+
+  "qualia": {
+    "formal": {
+      "is_a": "version",
+      "features": {
+        "version_value": { "type": "string", "is_required": "true" }
+      }
+    },
+
+    "constitutive": {
+        "repository": { 
+          "type": "list[entity_id]", 
+          "is_required": "true",
+          "target_schema_id": "01_03_gate_repository_schema" 
+        },
+        "profile": { 
+          "type": "list[entity_id]",
+          "is_required": "false",
+          "target_schema_id": "01_04_gate_profile_schema"
+        }
+    },
+ 
+    "telic": {
+      "built_in_events": {
+        "configure_gate": { "type": "event", "is_required": "true" },
+        "sync_config": { "type": "event", "is_required": "false" }
+      }
+    },
+
+    "agentive": {
+      "pre_version": { "type": "string", "is_required": "false", "description": "前序版本" }
+    }
+  },
+
+  "entity_relation": [
+    { 
+      "relation_type": "is_version_of",
+      "target_schema_id": "01_01_gate_product_schema",
+      "cardinality": "many_to_one" 
+    },
+    {
+      "relation_type": "has_repositories", 
+      "target_schema_id": "01_03_gate_repository_schema",
+      "cardinality": "one_to_many"
+    }
+  ]
+}
