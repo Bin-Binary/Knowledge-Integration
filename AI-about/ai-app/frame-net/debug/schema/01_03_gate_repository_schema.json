@@ -1,0 +1,35 @@
+{
+  "metadata": {
+    "entity_schema_id": "01_03_gate_repository_schema",
+    "entity_schema_name": "gate_repository_schema",
+    "description": "描述在门禁语义下的代码仓实体",
+    "type": "gate"
+  },
+
+  "qualia":{
+    "formal": { "is_a": "repository" },
+
+    "constitutive": {
+      "url": { "type": "string", "is_required": "true" },
+      "branch": { "type": "string", "is_required": "true" },
+      "physical_files": { 
+        "type": "Json_schema", 
+        "is_required": "true" 
+      }
+    },
+
+    "telic": {
+      "built_in_envets": {
+          "create_branch": { "type": "event", "is_required": "false" }
+      }
+    }
+  },
+
+  "entity_relation": [
+    {
+      "relation_type": "is_repository_of",
+      "target_schema_id": "01_02_gate_version_schema",
+      "cardinality": "many_to_one"
+    }
+  ]
+}
