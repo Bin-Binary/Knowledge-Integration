@@ -1,0 +1,21 @@
+{
+    "frame_id": "04_01_quality_gate_create_schema",
+    "frame_name": "quality_gate_create_schema",
+    "description": "刻画新版本门禁的配置事件",
+    "frame_relationship": {"inherited": "intentional_action"},
+    "required_fe":{
+        "agent": "",
+        "action": "create",
+        "patient": "",
+        "purpose": "",
+        "means": "",
+        "result": ""
+    },
+    "optional_fe":{
+        "condition": "",
+        "source": "",
+        "goal": "",
+        "manner": ""
+    },
+    "lus": ["create","gate","product","version"]
+}
