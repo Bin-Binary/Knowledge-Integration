@@ -45,7 +45,7 @@ Quality_gate_setup（配置门禁）
 ├── 事件类型: Quality_gate_setup
 │
 ├── Core FE:
-│   ├── Agent/事件            (inherited) 填充约束: Agent (执行者)
+│   ├── Agent/施事            (inherited) 填充约束: Agent (执行者)
 │   ├── Act/行动              (inherited, fixed = configure)
 │   ├── Patient/受事          (inherited) 填充约束: QualityGate (待生效的门禁实体)
 │   ├── Purpose/目的          (inherited) 填充约束: 确保分支满足规则 (如行覆盖率 >= 80%)
@@ -124,7 +124,7 @@ Quality_gate_setup（配置门禁）
 
 ### 3.1 实体层（Entity Layer）
 
-采用 Qualia 结构增强实体描述，支持概念泛化和功能推理。核心实体包括：
+采用Qualia结构增强实体描述，支持概念泛化和功能推理。核心实体包括：
 
 - **产品（Product）**
 - **产品版本（Version）**
@@ -133,7 +133,9 @@ Quality_gate_setup（配置门禁）
 - **自定义任务（CustomTask）**（如编译、DT 等）
 - **CIE 配置文件（Profile）**（可选，描述个人或团队习惯）
 
-每个实体均包含四个 Qualia 角色：
+**设计说明**：采取"管中窥豹"策略、只精准描述目标视角下的实体即可
+
+每个实体均包含四个Qualia角色：
 
 | 角色 | 说明 | 示例（以"代码覆盖率门禁"为例） |
 |------|------|--------------------------------|
