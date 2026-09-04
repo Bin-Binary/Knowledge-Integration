@@ -1,0 +1,48 @@
+{
+  "metadata": {
+    "entity_schema_id": "01_04_gate_profile_schema",
+    "entity_schema_name": "gate_profile_schema",
+    "description": "描述在门禁语义下的个人实体",
+    "type": "gate"
+  },
+
+  "qualia":{
+    "formal": {
+      "is_a": "profile",
+      "features": {
+        "user_id": { "type": "string", "is_required": "true" },
+        "user_name": { "type": "string", "is_required": "true" }
+      }
+    },
+
+    "constitutive": {
+        "habit_with": { "type": "string", "is_required": false }
+      },
+
+    "agentive": {
+      "create_by": {
+        "type": "string",
+        "enum": ["human", "system", "hybrid"],
+        "is_required": true
+      }
+    }
+  },
+
+  "entity_relation": [
+    {
+      "relation_type": "belong_to",
+      "target_schema_id": "01_01_gate_product_schema",
+      "cardinality": "one_to_many"
+    },
+    {
+      "relation_type": "belong_to",
+      "target_schema_id": "01_02_gate_version_schema",
+      "cardinality": "one_to_many"
+    },    
+    {
+      "relation_type": "operate",
+      "target_schema_id": "01_03_gate_repository_schema",
+      "cardinality": "one_to_many"
+    }
+  ]
+}
