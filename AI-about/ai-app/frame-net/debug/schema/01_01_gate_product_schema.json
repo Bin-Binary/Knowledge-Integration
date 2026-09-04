@@ -1,0 +1,33 @@
+{
+  "metadata": {
+    "entity_schema_id": "01_01_gate_product_schema",
+    "entity_schema_name": "gate_product_schema",
+    "description": "描述在门禁语义下的产品实体",
+    "type": "gate"
+  },
+
+  "qualia": {
+    "formal": {
+      "is_a": "product",
+      "features": {
+        "pbi": { "type": "string", "is_required": "true" },
+        "offering": { "type": "string", "is_required": "true" }
+      }
+    },
+
+    "constitutive": {
+      "version": { 
+        "type": "list[entity_id]",
+        "is_required": "true",
+        "target_schema_id": "01_02_gate_version_schema" 
+      }
+    }
+  },
+  "entity_relation": [
+    { 
+      "relation_type": "has_versions",
+      "target_schema_id": "01_02_gate_version_schema",
+      "cardinality": "one_to_many"
+     }
+  ]
+}
