@@ -6,7 +6,7 @@
 *Core FE*: [action/行动]
 *Peripheral FE*：None
 *高频词元(LUs)*: [action/行动]
-## template
+
 Intentional_action（意图性行动）
 │
 ├── 继承自: Event
@@ -14,19 +14,16 @@ Intentional_action（意图性行动）
 ├── 事件类型: Quality_gate_setup / Custom_task_setup
 │
 ├── Core FE:
-│   ├── Event/事件            (inherited) 填充约束: Agent (人物或自动化系统)
+│   ├── Agent/施事            (inherited) 填充约束: 人物或自动化系统
 │   ├── Act/行动              (inherited) 填充约束: 配置/搭建
-│   ├── Patient/受事          (inherited) 填充约束: Product / Version / Repository
+│   ├── Patient/受事          (inherited) 填充约束: Product/Version/Repository
 │   ├── Purpose/目的          (inherited) 填充约束: 目标描述 (goal)
-│   ├── Intention/意图        (NEW, qualia Telic) 填充约束: 主观意图 (intention)
 │   ├── Means/手段            (inherited) 填充约束: Instrument (Jenkins 等工具)
 │   ├── Plan/计划             (NEW, qualia Constitutive) 填充约束: 分解步骤 (plan)
-│   ├── Result/结果           (inherited) 填充约束: 实际结果 (result)
-│   ├── related_entities      (NEW) 填充约束: 关联实体 ID
-│   └── related_config_units  (NEW) 填充约束: 关联配置单元 ID
+│   └── Result/结果           (inherited) 填充约束: 实际结果 (result)
 │
 ├── Peripheral FE:
-│   ├── Condition/条件        (inherited→保持外围) 填充约束: Branch / Version
+│   ├── Condition/条件        (inherited→保持外围) 填充约束: Branch/Version
 │   ├── Configuration/配置    (NEW, qualia Constitutive) 填充约束: rules / task_config
 │   ├── Goal/目标             (inherited)
 │   └── Manner/方式           (inherited)
@@ -40,7 +37,7 @@ Intentional_action（意图性行动）
 *Core FE*: [gate/门禁]
 *Peripheral FE*：None
 *高频词元(LUs)*: [gate/门禁]
-## template
+
 Quality_gate_setup（配置门禁）
 │
 ├── 继承自: Intentional_action
@@ -48,58 +45,21 @@ Quality_gate_setup（配置门禁）
 ├── 事件类型: Quality_gate_setup
 │
 ├── Core FE:
-│   ├── Event/事件            (inherited) 填充约束: Agent (执行者)
+│   ├── Agent/事件            (inherited) 填充约束: Agent (执行者)
 │   ├── Act/行动              (inherited, fixed = configure)
 │   ├── Patient/受事          (inherited) 填充约束: QualityGate (待生效的门禁实体)
 │   ├── Purpose/目的          (inherited) 填充约束: 确保分支满足规则 (如行覆盖率 >= 80%)
-│   ├── Intention/意图        (inherited) 填充约束: 防止低质量代码合并
-│   ├── Means/手段            (inherited) 填充约束: Jenkins / CI 门禁工具
-│   ├── Plan/计划             (inherited) 填充约束: 添加规则、绑定分支
-│   ├── Result/结果           (inherited) 填充约束: 门禁规则生效
-│   ├── related_entities      (inherited) 填充约束: QG_xxx / Product / Repository
-│   └── related_config_units  (inherited) 填充约束: coverage_gate 等配置单元
+│   ├── Means/手段            (inherited) 填充约束: Jenkins / CI门禁工具
+│   └── Result/结果           (inherited) 填充约束: 门禁规则生效
 │
 ├── Peripheral FE:
 │   ├── Condition/条件        (inherited) 填充约束: Branch / Version
 │   ├── Configuration/配置    (inherited) 填充约束: rules [{metric, operator, threshold}]
+│   ├── Source/来源           (inherited) 填充约束: 添加规则、绑定分支
 │   ├── Goal/目标             (inherited)
 │   └── Manner/方式           (inherited)
 │
 └── 高频词元: 配置、门禁、覆盖率、阈值、合并
-
----
-
-**Custom_task_setup（配置自定义任务）**
-*定义*: 刻画编译、DT 等自定义任务的配置事件
-*Core FE*: [task/任务]
-*Peripheral FE*：None
-*高频词元(LUs)*: [task/任务]
-## template
-Custom_task_setup（配置自定义任务）
-│
-├── 继承自: Intentional_action
-├── Act FE 定值: fixed = configure
-├── 事件类型: Custom_task_setup
-│
-├── Core FE:
-│   ├── Event/事件            (inherited) 填充约束: Agent (执行者)
-│   ├── Act/行动              (inherited, fixed = configure)
-│   ├── Patient/受事          (inherited) 填充约束: CustomTask (编译/DT 等任务实体)
-│   ├── Purpose/目的          (inherited) 填充约束: 完成编译/DT 等自动化任务
-│   ├── Intention/意图        (inherited) 填充约束: 自动化执行自定义流程
-│   ├── Means/手段            (inherited) 填充约束: Jenkins / CI 工具
-│   ├── Plan/计划             (inherited) 填充约束: 添加任务、配置参数
-│   ├── Result/结果           (inherited) 填充约束: 自定义任务配置生效
-│   ├── related_entities      (inherited) 填充约束: CustomTask / Product / Repository
-│   └── related_config_units  (inherited) 填充约束: compile_task / dt_task 等配置单元
-│
-├── Peripheral FE:
-│   ├── Condition/条件        (inherited) 填充约束: Branch / Version
-│   ├── Configuration/配置    (inherited) 填充约束: task_config
-│   ├── Goal/目标             (inherited)
-│   └── Manner/方式           (inherited)
-│
-└── 高频词元: 配置、任务、编译、DT、构建
 
 ---
 
