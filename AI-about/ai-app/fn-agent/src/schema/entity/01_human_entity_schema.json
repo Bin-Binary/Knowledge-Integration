@@ -1,0 +1,44 @@
+{
+  "metadata": {
+    "entity_schema_id": "01_human_entity_schema",
+    "entity_schema_name": "human_entity_schema",
+    "description": "人类实体schema",
+    "type": "entity"
+  },
+
+  "qualia": {
+    "formal": {
+      "is_a": "human",
+      "features": {
+        "user_id": { "type": "string", "is_required": "true" },
+        "offering": { "type": "string", "is_required": "true" }
+      }
+    },
+
+    "constitutive": {
+      "version": { 
+        "type": "list[entity_id]",
+        "is_required": "true",
+        "target_schema_id": "01_02_gate_version_schema" 
+      }
+    }
+  },
+  "entity_relation": [
+    { 
+      "relation_type": "has_versions",
+      "target_schema_id": "01_02_gate_version_schema",
+      "cardinality": "one_to_many"
+     }
+  ]
+}
+
+用户输入 → 通道适配（Step0 程序构造 Communication 实例 → 话轮快照）
+         → 入口分流（认证 / 归一 / 力量×域内容 / verdict）
+             ├─ 寒暄 → 规则直接回（响应话轮落快照）
+             ├─ 访客/超范围 → 兜底 LLM（触发域动作必须过门+intent快照）
+             ├─ 力量未知+域内容有 → 反问（Question 响应，链上补全）
+             └─ 力量已知+域内容有 → 父图唤起
+         → 意图识别（候选级联 → selected_frames[]）
+         → intent 快照（含 verdict）
+         → 调度（依赖求值）→ 子图 plan→execute→validate → result 回写
+         → 响应 Communication 实例（In_response_to 闭合话轮）→ 用户
