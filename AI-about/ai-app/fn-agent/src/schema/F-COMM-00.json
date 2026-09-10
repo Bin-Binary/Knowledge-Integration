@@ -2,17 +2,15 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:frame:F-COMM-00:v1-candidate",
   "metadata": {
-    "frame_schema_id": "F-COMMUNICATION-SCHEMA-00",
-    "frame_schema_name": "F-COMMUNICATION-SCHEMA",
-    "evocation": "channel_turn",
+    "frame_schema_id": "F-COMM-00",
+    "frame_schema_name": "F-COMM",
     "parent": null,
-    "description": "发送方通过媒介向接收方传递信息（转移图式[Agent,Theme,Goal]）,作为入口框架，所有与Agent的交互都被封装为这种交流事件",
-    "event_type": "turn_envelope",
+    "description": "发送方通过媒介向接收方传递信息（转移图式[Agent,Theme,Goal]）,作为入口框架，所有与本系统的交互都被封装为这种交流事件",
     "event_note": "此框架实例代表一个话轮对话的抽象容器，其中包裹了具体的被激活的框架和域内容",
     "lu_inventory": [],
-    "lu_note": "非词元根框架（对齐FrameNet设计）；通知/告知/提醒/转告待日志抽取后挂力量子框架",
-    "frame_relationship": null,
-    "type": "frame"
+    "lu_note": "非词元根框架（对齐FrameNet设计）；通知/告知/提醒/转告待日志抽取后挂子框架",
+    "type": "frame",
+    "version": "v1-candidate"
   },
 
     "core_fe":{
@@ -34,25 +32,21 @@
       },
       "message": {
         "semantic_role": "Theme",
-        "note": "嵌入宿主？不透明SoA或force_frame_schema",
+        "note": "embedding message: opaque SoA(域内容不透明)/被激活的框架",
+        "properties": [
+          "request", "question", "statement",
+          "commitment", "phatic", "unclear", "ood"
+        ],
         "oneOf": [
-          { "type": "string", "note": "opaque SoA, 未解析/寒暄/本系统边界外" },
+          { "type": "string", "note": "opaque SoA, 指未解析/寒暄/本系统边界外" },
           {
             "type": "object",
-            "required": ["force_frame_schema_id"],
-            "properties": {
-              "force_frame_schema_id": {
-                "enum": ["F-COMM-01-Request", "F-COMM-02-Command",
-                        "F-COMM-03-Question", "F-COMM-04-Statement",
-                        "F-COMM-05-Commitment"]
-              },
-              "force_frame_instance_id": { "type": "string", "format": "uuid" },
-              "content": {
-                "oneOf": [
-                  { "type": "string", "note": "域内容不透明" },
-                  { "$ref": "#/$defs/frame_instance_ref", "note": "域框架实例" }
-                ]
-              }
+            "required": ["frame_schema_id"],
+            "content": {
+              "oneOf": [
+                { "type": "string", "note": "域内容不透明" },
+                { "$ref": "#/$defs/frame_instance_ref", "note": "域框架实例" }
+              ]
             }
           }
         ]
@@ -62,7 +56,7 @@
         "type": "entity_ref",
         "entity_schemas": ["ENT-SYSTEM", "ENT-GROUP"],
         "qualia_projection": "Constitutive",
-        "note": "升核心:转告场景agent自身(例如将消息转发给他人)=Medium; Medium决定force_frame缺省解读"
+        "note": "升核心:转告场景agent自身(例如将消息转发给他人)=Medium; Medium决定force缺省解读"
       }
     },
 
@@ -78,14 +72,22 @@
     },
 
     "frame_rules": {
-      "routing": "content承载域框架的Telic ⊆ addressee.qualia.Telic；不满足→转交/反问",
-      "deontic_hook": "speaker.qualia.Formal × 域框架类型 → allow/deny/escalate；动作执行层统一执行，全通道（含兜底）共用",
+      "routing": {"type": "object", "is_required": true},
       "embedding_depth": 2,
       "recursion_limit": "Communication嵌Communication ≤1层（转告）",
-      "regression_anchor": [
-        "任意入站话轮构造实例 frame_schema_id == F-COMM-00",
-        "'门禁不通过'类话语解析结果 frame_schema_id == F-CHECK-01"
-      ]
+      "force_dispatch": {
+        "request":   { "path": "执行子图", "deontic": true, "terminal_response_mapping": true },
+        "question":  { "path": "只读子图", "readonly": true, "answer_linkage": "In_response_to" },
+        "statement": { "path": "记录/一致性校验", "response_obligation": "low" },
+        "commitment": { "$ref": "F-COMM-05" },
+        "phatic":    { "path": "规则直接回" },
+        "unclear":   { "path": "反问（候选=候选力量集）" },
+        "ood":       { "path": "兜底LLM（触发域动作仍过deontic）" }
+      },
+      "regression_anchor": {
+        "note": "回归锚点：域内消息处理后转发llm;域外消息不加工直接转发给llm;",
+        "anchors": {"type": "object"}
+      } 
     },
 
     "$defs": {
@@ -101,7 +103,7 @@
     },
 
     "instance_template": {
-      "description": "每入站话轮实例化一次; uuid只在这一层生成; FE槽位结构复用core_fe/peripheral_fe",
+      "description": "每轮实例化一次; uuid只在这一层生成; FE槽位结构复用core_fe/peripheral_fe",
       "properties": {
         "frame_instance_id":  { "type": "string", "format": "uuid", "generator": "uuid4" },
         "frame_schema_id":    { "const": "F-COMM-00" },
@@ -109,6 +111,10 @@
         "utterance":          { "type": "string", "note": "原始话轮文本,禁止拼接qualia" },
         "created_at":         { "type": "string", "format": "date-time" }
       },
-      "required": ["frame_instance_id", "frame_schema_id", "addressee", "message"]
+      "required": ["frame_instance_id", "frame_schema_id", "addressee", "message"],
+      "message_resolution": {
+        "enum": ["force_resolved", "force_pending_clarify", "opaque_final"],
+        "note": "2×2矩阵的落库状态：力量已知/待反问/寒暄超范围终态"
+      }
     }
 }
