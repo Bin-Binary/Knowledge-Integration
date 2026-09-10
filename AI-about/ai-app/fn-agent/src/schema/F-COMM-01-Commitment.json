@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:frame:F-COMM-01-Commitment:v1-candidate",
+  "metadata" :{
+    "frame_schema_id": "F-COMM-01-Commitment",
+    "frame_name": "F-COMM-Commitment",
+    "parent": "F-COMM-00",
+    "description": "说话者承诺自己将执行某行动——唯一施事在communicator侧的力量",
+    "frame_type": "force",
+    "message_semantic_type": "Proposition(未来，communicator为施事)",
+    "message_telic": "约束说话者自身的未来行动",
+    "type": "frame",
+    "version": "v1-candidate"
+  },
+
+  "core_fe": {
+    "content": {
+      "filling_constraint": "行动类frame实例（施事=communicator）",
+      "example": "Create_pipeline实例{Operator: communicator}"
+    }
+  },
+  "peripheral_fe": {
+    "deadline":        { "type": "string", "format": "date-time" },
+    "tracking_status": { "enum": ["open", "fulfilled", "overdue", "cancelled"] }
+  },
+
+  "lu_inventory": [
+    { "lu": "我会",   "grammar_evidence": true, "corpus_evidence": "pending" },
+    { "lu": "稍后",   "grammar_evidence": true, "corpus_evidence": "pending" },
+    { "lu": "之后我来", "grammar_evidence": true, "corpus_evidence": "pending" }
+  ],
+
+  "frame_rules": {
+    "agent_obligation": "待办追踪：建追踪项，不执行",
+    "fulfillment_check": "fulfilled判定=快照链证据：该communicator后续产生content同型frame的recorded实例即达成（'我会创建门禁'→intent快照中create_quality_gate@recorded）——承诺闭环接执行链",
+    "reminder": "到期未达→Agent作为communicator发起追问（Request或Question型）"
+  },
+
+  "regression_anchor": [ "'我稍后会处理' → F-COMM-01-Commitment" ]
+}
