@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:frame:F-COMM-01:v1.2-draft",
+  "metadata": {
+    "frame_schema_id": "F-COMM-01",
+    "frame_schema_name": "F-COMM",
+    "parent": null,
+    "description": "入口路由框架：对话入口的意图分流器，将话轮分类为寒暄/越界/域内，域内时激活目标框架并前景化力量",
+    "type": "frame",
+    "version": "v1.2-draft"
+  },
+  "core_fe": {
+    "communicator": {
+      "semantic_role": "Agent",
+      "type": "entity_ref",
+      "enum": ["ENT-HUMAN", "ENT-SYSTEM", "ENT-GROUP"],
+      "null_instantiation": "INI",
+      "default_on_missing": "ENT-GUEST",
+      "qualia_projection": "Agentive",
+      "note": "INI(上游无信息)缺省填充ENT-GUEST;qualia保留供下游域框架参考"
+    },
+    "addressee": {
+      "semantic_role": "Goal",
+      "type": "entity_ref",
+      "enum": ["ENT-HUMAN", "ENT-SYSTEM", "ENT-GROUP"],
+      "qualia_projection": "Telic",
+      "note": "不限定system:转告场景Addressee=ENT-GROUP;入口场景恒为自身是实例层缺省注入非类型约束"
+    },
+    "utterance": {
+      "semantic_role": "Theme",
+      "type": "string",
+      "note": "话轮原文,路由判定输入,禁止拼接qualia"
+    }
+  },
+  "peripheral_fe": {
+    "medium": {
+      "type": "entity_ref",
+      "enum": ["ENT-SYSTEM", "ENT-GROUP"],
+      "qualia_projection": "Constitutive",
+      "note": "通信通道,决定force缺省解读"
+    },
+    "topic": { "type": "string" },
+    "language": { "type": "string" },
+    "source": {
+      "type": "entity_ref",
+      "enum": ["ENT-HUMAN", "ENT-SYSTEM"],
+      "note": "转告链原始说话者"
+    }
+  },
+  "frame_rules": {
+    "routing": {
+      "phatic": {
+        "action": "respond",
+        "note": "礼貌回应,不激活框架,不调工具"
+      },
+      "ood": {
+        "action": "guide",
+        "note": "礼貌引导回域内,不激活框架,不调域工具"
+      },
+      "in_domain": {
+        "action": "activate",
+        "note": "激活目标框架,按force选择执行路径"
+      }
+    },
+    "foreground_operator": {
+      "force": {
+        "enum": ["request", "question", "statement", "commitment", "unclear"],
+        "note": "request=执行子图(写),question=只读子图(读),statement=记录确认,commitment=待办追踪,unclear=激活澄清框架"
+      },
+      "target_frame_schema_id": {
+        "type": "string",
+        "note": "激活的目标框架schema ID;force=unclear时target为域内澄清框架"
+      }
+    }
+  },
+  "instance_template": {
+    "description": "每轮实例化一次,uuid只在这一层生成",
+    "properties": {
+      "frame_instance_id": { "type": "string", "format": "uuid" },
+      "frame_schema_id": { "const": "F-COMM-01" },
+      "in_response_to": { "type": ["string", "null"], "format": "uuid" },
+      "utterance": { "type": "string" },
+      "routing_outcome": {
+        "enum": ["phatic", "ood", "in_domain"],
+        "note": "路由判定结果,入口框架唯一产出"
+      },
+      "force": {
+        "enum": ["request", "question", "statement", "commitment", "unclear"]
+      },
+      "target_frame_schema_id": { "type": "string" },
+      "created_at": { "type": "string", "format": "date-time" }
+    },
+    "required": ["frame_instance_id", "frame_schema_id", "communicator", "utterance", "routing_outcome"],
+    "if": {
+      "properties": { "routing_outcome": { "const": "in_domain" } }
+    },
+    "then": {
+      "required": ["force", "target_frame_schema_id"]
+    }
+  }
+}
