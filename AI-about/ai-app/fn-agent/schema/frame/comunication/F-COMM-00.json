@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:frame:F-COMM-00:v1-candidate",
+  "metadata": {
+    "frame_schema_id": "F-COMM-00",
+    "frame_schema_name": "F-COMM",
+    "parent": null,
+    "description": "发送方通过媒介向接收方传递信息（转移图式[Agent,Theme,Goal]）,作为入口框架，所有与本系统的交互都被封装为这种交流事件",
+    "event_note": "此框架实例代表一个话轮对话的抽象容器，其中包裹了具体的被激活的框架和域内容",
+    "type": "frame",
+    "version": "v1-candidate"
+  },
+
+    "core_fe":{
+      "communicator": {
+        "semantic_role": "Agent",
+        "type": "entity_ref", 
+        "enum": ["ENT-HUMAN", "ENT-SYSTEM", "ENT-GROUP"], 
+        "qualia_projection": "Agentive",
+        "null_instantiation": "INI",
+        "default_on_missing": "ENT-GUEST",
+        "note": "INI(上游无信息)缺省填充ENT-GUEST"
+      },
+      "addressee": {
+        "semantic_role": "Goal",
+        "type": "entity_ref", 
+        "enum": ["ENT-HUMAN", "ENT-SYSTEM", "ENT-GROUP"], 
+        "qualia_projection": "Telic",
+        "note": "不限定system: 转告场景Addressee=ENT-GROUP(群实体)；入口场景的'恒为自身'是实例层缺省注入，非类型约束"
+      },
+      "message": {
+        "semantic_role": "Theme",
+        "note": "embedding message: opaque SoA(域内容不透明)/被激活的框架",
+        "properties": [
+          "request", "question", "statement",
+          "commitment", "phatic", "unclear", "ood"
+        ],
+        "oneOf": [
+          { "type": "string", "note": "opaque SoA, 指未解析/寒暄/本系统边界外" },
+          {
+            "type": "object",
+            "required": ["frame_schema_id"],
+            "content": {
+              "oneOf": [
+                { "type": "string", "note": "域内容不透明" },
+                { "$ref": "#/$defs/frame_instance_ref", "note": "域框架实例" }
+              ]
+            }
+          }
+        ]
+      },
+      "medium": {
+        "semantic_role": "channel",
+        "type": "entity_ref",
+        "entity_schemas": ["ENT-SYSTEM", "ENT-GROUP"],
+        "qualia_projection": "Constitutive",
+        "note": "升核心:转告场景agent自身(例如将消息转发给他人)=Medium; Medium决定force缺省解读"
+      }
+    },
+
+    "peripheral_fe":{
+      "topic": {"type": "string"},
+      "manner": {"type": "string"},
+      "language": {"type": "string"},
+      "source": { 
+        "type": "entity_ref", 
+        "entity_schemas": ["ENT-HUMAN", "ENT-SYSTEM"],
+        "note": "转告链原始说话者"
+      }
+    },
+
+    "frame_rules": {
+      "routing": {"type": "object", "is_required": true},
+      "embedding_depth": 2,
+      "recursion_limit": "Communication嵌Communication ≤1层（转告）",
+      "force_dispatch": {
+        "request":   { "path": "执行子图", "deontic": true, "terminal_response_mapping": true },
+        "question":  { "path": "只读子图", "readonly": true, "answer_linkage": "In_response_to" },
+        "statement": { "path": "记录/一致性校验", "response_obligation": "low" },
+        "commitment": { "$ref": "F-COMM-05" },
+        "phatic":    { "path": "规则直接回" },
+        "unclear":   { "path": "反问（候选=候选力量集）" },
+        "ood":       { "path": "兜底LLM（触发域动作仍过deontic）" }
+      },
+      "regression_anchor": {
+        "note": "回归锚点：域内消息处理后转发llm;域外消息不加工直接转发给llm;",
+        "anchors": {"type": "object"}
+      } 
+    },
+
+    "$defs": {
+      "frame_instance_ref": {
+        "type": "object",
+        "required": ["frame_schema_id"],
+        "properties": {
+          "frame_schema_id":    { "type": "string" },
+          "frame_instance_id":  { "type": "string", "format": "uuid" },
+          "core_fe":            { "type": "object" }
+        }
+      }
+    },
+
+    "instance_template": {
+      "description": "每轮实例化一次; uuid只在这一层生成; FE槽位结构复用core_fe/peripheral_fe",
+      "properties": {
+        "frame_instance_id":  { "type": "string", "format": "uuid", "generator": "uuid4" },
+        "frame_schema_id":    { "const": "F-COMM-00" },
+        "in_response_to":     { "type": ["string", "null"], "format": "uuid" },
+        "utterance":          { "type": "string", "note": "原始话轮文本,禁止拼接qualia" },
+        "created_at":         { "type": "string", "format": "date-time" }
+      },
+      "required": ["frame_instance_id", "frame_schema_id", "addressee", "message"],
+      "message_resolution": {
+        "enum": ["force_resolved", "force_pending_clarify", "opaque_final"],
+        "note": "2×2矩阵的落库状态：力量已知/待反问/寒暄超范围终态"
+      }
+    }
+}
