@@ -7,8 +7,6 @@
     "parent": null,
     "description": "发送方通过媒介向接收方传递信息（转移图式[Agent,Theme,Goal]）,作为入口框架，所有与本系统的交互都被封装为这种交流事件",
     "event_note": "此框架实例代表一个话轮对话的抽象容器，其中包裹了具体的被激活的框架和域内容",
-    "lu_inventory": [],
-    "lu_note": "非词元根框架（对齐FrameNet设计）；通知/告知/提醒/转告待日志抽取后挂子框架",
     "type": "frame",
     "version": "v1-candidate"
   },
