@@ -1,0 +1,226 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:frame:F-PROCESSING-MATERIALS-00:v1-draft",
+  "metadata": {
+    "frame_schema_id": "F-PROCESSING-MATERIALS-00",
+    "frame_schema_name": "F-PROCESSING-MATERIALS",
+    "parent_frame_schema_id": null,
+    "definition": "刻画原材料被加工转化为产品的过程。",
+    "type": "frame",
+    "version": "v1-draft",
+    "external_refs": [
+      {
+        "target_schema_id": "R-ROLES-00",
+        "source_file": "./R-ROLES-00.json",
+        "source_version": "v1-draft",
+        "imported_at": "2026-09-15",
+        "usage": "引用 AgentRole、EntityType、MeansType"
+      },
+      {
+        "target_schema_id": "system-queries",
+        "source_file": "./system-queries.json",
+        "source_version": "v1",
+        "imported_at": "2026-09-15",
+        "usage": "引用 current_time、default_environment、pipeline.environment、pipeline.triggered_by、entity.resolve、repo.resolve、unit.resolve、unit.list、pipeline.list、tool.resolve、current_user"
+      }
+    ]
+  },
+
+  "core_fe": {
+    "material": {
+      "definition": "被加工的原材料，可以是代码仓、配置单元、版本等实体。",
+      "required": true,
+      "constraint": {
+        "type": {
+          "kind": "role",
+          "ref": "EntityType",
+          "cardinality": "one",
+          "note": "值域见 R-ROLES-00，CI 场景中常为 CodeRepo / ConfigUnit / Version"
+        },
+        "fillers": {
+          "sources": ["explicit", "context", "system", "qualia"],
+          "system_queries": ["entity.resolve", "repo.resolve", "unit.resolve"],
+          "qualia_paths": ["Product.qualia.constitutive"],
+          "notes": "优先显式宾语，其次上下文注入，最后从产品构成反推"
+        },
+        "default": {
+          "strategy": "query_system",
+          "rule": "从上下文解析可用材料",
+          "fallback": "ask"
+        },
+        "multi_candidate": {
+          "strategy": "score",
+          "ranking": ["explicit", "context", "history", "qualia"],
+          "threshold": 0.15,
+          "question_template": "使用什么作为原材料？",
+          "options_source": "EntityType.values",
+          "max_options": 3,
+          "fallback": "ask"
+        }
+      }
+    },
+    "product": {
+      "definition": "加工后产出的产品，可以是 artifact、版本、发布包等实体。",
+      "required": true,
+      "constraint": {
+        "type": {
+          "kind": "role",
+          "ref": "EntityType",
+          "cardinality": "one",
+          "note": "值域见 R-ROLES-00，CI 场景中常为 Artifact / Version"
+        },
+        "fillers": {
+          "sources": ["explicit", "qualia", "inferred", "frame"],
+          "qualia_paths": ["{material}.qualia.telic"],
+          "frame_refs": [
+            { "frame": "Intentionally_act", "fe": "purpose" },
+            { "frame": "Change", "fe": "final_state" }
+          ],
+          "notes": "优先显式产品，其次从材料 telic 或 Purpose 推导"
+        },
+        "default": {
+          "strategy": "derive_qualia",
+          "rule": "从材料 telic 推导目标产品",
+          "fallback": "ask"
+        },
+        "multi_candidate": {
+          "strategy": "score",
+          "ranking": ["explicit", "qualia", "frame", "history"],
+          "threshold": 0.15,
+          "question_template": "加工产出什么产品？",
+          "options_source": "EntityType.values",
+          "max_options": 3,
+          "fallback": "ask"
+        }
+      }
+    }
+  },
+
+  "peripheral_fe": {
+    "agent": {
+      "definition": "执行加工的施事。",
+      "required": false,
+      "constraint": {
+        "type": {
+          "kind": "role",
+          "ref": "AgentRole",
+          "cardinality": "one",
+          "note": "值域见 R-ROLES-00"
+        },
+        "fillers": {
+          "sources": ["explicit", "context", "default", "frame"],
+          "system_queries": ["current_user", "pipeline.triggered_by"],
+          "frame_refs": [
+            { "frame": "Intentionally_act", "fe": "agent" }
+          ],
+          "notes": "优先显式，其次从行动框架继承，最后默认当前用户"
+        },
+        "default": {
+          "strategy": "use_default",
+          "rule": "默认当前用户或流水线触发者",
+          "fallback": "ask",
+          "assumptions": ["当前用户为加工者"]
+        },
+        "multi_candidate": {
+          "strategy": "ask",
+          "question_template": "谁在执行加工？",
+          "options_source": "AgentRole.values",
+          "max_options": 3,
+          "fallback": "ask"
+        }
+      }
+    },
+    "means": {
+      "definition": "加工所采用的手段，包括工具、流程、配置。",
+      "required": false,
+      "constraint": {
+        "type": {
+          "kind": "role",
+          "ref": "MeansType",
+          "cardinality": "one",
+          "note": "值域见 R-ROLES-00，选中后惰性激活对应框架"
+        },
+        "fillers": {
+          "sources": ["explicit", "system", "qualia", "frame"],
+          "system_queries": ["pipeline.list", "unit.list", "tool.resolve"],
+          "qualia_paths": ["{material}.qualia.agentive"],
+          "frame_refs": [
+            { "frame": "Using", "fe": "instrument" }
+          ],
+          "notes": "优先显式方式状语，其次查系统流水线和配置单元"
+        },
+        "default": {
+          "strategy": "query_system",
+          "rule": "查系统配置单元和历史成功流水线",
+          "fallback": "ask"
+        },
+        "multi_candidate": {
+          "strategy": "score",
+          "ranking": ["explicit", "history_success", "permission", "cost"],
+          "threshold": 0.15,
+          "question_template": "通过什么手段加工？",
+          "options_source": "MeansType.values",
+          "max_options": 3,
+          "fallback": "ask"
+        }
+      }
+    },
+    "time": {
+      "definition": "加工发生的时间。",
+      "required": false,
+      "constraint": {
+        "type": {
+          "kind": "primitive",
+          "ref": "timestamp",
+          "cardinality": "one"
+        },
+        "fillers": {
+          "sources": ["explicit", "context", "system"],
+          "system_queries": ["current_time"]
+        },
+        "default": {
+          "strategy": "query_system",
+          "rule": "使用当前时间",
+          "fallback": "use_default",
+          "assumptions": ["使用当前时间"]
+        },
+        "multi_candidate": {
+          "strategy": "default_top1",
+          "question_template": "加工发生在什么时间？",
+          "max_options": 1,
+          "fallback": "ask"
+        }
+      }
+    },
+    "place": {
+      "definition": "加工发生的地点或环境。",
+      "required": false,
+      "constraint": {
+        "type": {
+          "kind": "primitive",
+          "ref": "string",
+          "cardinality": "one"
+        },
+        "fillers": {
+          "sources": ["explicit", "context", "system"],
+          "system_queries": ["default_environment", "pipeline.environment"]
+        },
+        "default": {
+          "strategy": "query_system",
+          "rule": "使用默认构建环境",
+          "fallback": "use_default",
+          "assumptions": ["使用默认构建环境"]
+        },
+        "multi_candidate": {
+          "strategy": "default_top1",
+          "question_template": "加工发生在什么环境？",
+          "max_options": 1,
+          "fallback": "ask"
+        }
+      }
+    }
+  },
+
+  "lus": ["process", "refine", "manufacture", "produce", "fabricate", "convert", "treat"],
+  "lus_zh": ["加工", "处理", "制造", "生产", "转化", "精炼", "制作"]
+}

@@ -1,0 +1,265 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:frame:F-ACT-00:v1-draft",
+  "metadata": {
+    "frame_schema_id": "F-ACT-00",
+    "frame_schema_name": "F-ACT",
+    "parent_frame_schema_id": null,
+    "definition": "刻画施事参与一项活动。引入施事，但不预设意向性（可是有意的，也可以是无意的习惯性行为）",
+    "type": "frame",
+    "version": "v1-draft",
+    "external_refs": [
+      {
+        "target_schema_id": "R-ROLES-00",
+        "source_file": "./R-ROLES-00.json",
+        "source_version": "v1-draft",
+        "imported_at": "2026-09-15",
+        "usage": "引用 AgentRole、ActionType、PurposeType、MeansType"
+      },
+      {
+        "target_schema_id": "system-queries",
+        "source_file": "./system-queries.json",
+        "source_version": "v1",
+        "imported_at": "2026-09-15",
+        "usage": "引用 current_user、current_time、default_environment、process.duration、unit.list、pipeline.history"
+      }
+    ]
+  },
+
+  "core_fe": {
+    "agent": {
+      "definition": "施事，参与活动的实体。",
+      "required": true,
+      "constraint": {
+        "type": {
+          "kind": "role",
+          "ref": "AgentRole",
+          "cardinality": "one",
+          "note": "施事角色，值域见 R-ROLES-00"
+        },
+        "fillers": {
+          "sources": ["explicit", "context", "default"],
+          "system_queries": ["current_user"],
+          "notes": "优先显式，其次上下文，最后默认当前用户"
+        },
+        "default": {
+          "strategy": "use_default",
+          "rule": "默认当前用户为施事",
+          "fallback": "ask",
+          "assumptions": ["当前用户为施事"]
+        },
+        "multi_candidate": {
+          "strategy": "ask",
+          "question_template": "是谁在执行这个活动？",
+          "options_source": "AgentRole.values",
+          "max_options": 3,
+          "fallback": "ask"
+        }
+      }
+    },
+    "act": {
+      "definition": "活动本身，开放语义槽。选中后按 ActionType.frame 惰性激活对应框架。",
+      "required": true,
+      "constraint": {
+        "type": {
+          "kind": "role",
+          "ref": "ActionType",
+          "cardinality": "one",
+          "note": "动作类型，值域见 R-ROLES-00"
+        },
+        "fillers": {
+          "sources": ["explicit", "qualia", "history", "inferred"],
+          "qualia_paths": ["{entity}.qualia.agentive"],
+          "notes": "从动词、历史或患者实体 agentive 角色推断"
+        },
+        "default": {
+          "strategy": "infer",
+          "rule": "从激活词元或历史推断",
+          "fallback": "ask"
+        },
+        "multi_candidate": {
+          "strategy": "score",
+          "ranking": ["explicit", "qualia", "history"],
+          "threshold": 0.2,
+          "question_template": "你是要执行哪个动作？",
+          "options_source": "ActionType.values",
+          "max_options": 3,
+          "fallback": "ask"
+        }
+      }
+    }
+  },
+
+  "peripheral_fe": {
+    "time": {
+      "definition": "活动发生的时间。",
+      "required": false,
+      "constraint": {
+        "type": {
+          "kind": "primitive",
+          "ref": "timestamp",
+          "cardinality": "one"
+        },
+        "fillers": {
+          "sources": ["explicit", "context", "system"],
+          "system_queries": ["current_time"]
+        },
+        "default": {
+          "strategy": "query_system",
+          "rule": "使用当前时间",
+          "fallback": "use_default",
+          "assumptions": ["使用当前时间"]
+        },
+        "multi_candidate": {
+          "strategy": "default_top1",
+          "question_template": "活动发生在什么时间？",
+          "max_options": 1,
+          "fallback": "ask"
+        }
+      }
+    },
+    "place": {
+      "definition": "活动发生的地点。",
+      "required": false,
+      "constraint": {
+        "type": {
+          "kind": "primitive",
+          "ref": "string",
+          "cardinality": "one"
+        },
+        "fillers": {
+          "sources": ["explicit", "context", "system"],
+          "system_queries": ["default_environment"]
+        },
+        "default": {
+          "strategy": "query_system",
+          "rule": "使用默认环境",
+          "fallback": "use_default",
+          "assumptions": ["使用默认环境"]
+        },
+        "multi_candidate": {
+          "strategy": "default_top1",
+          "question_template": "活动发生在什么地点？",
+          "max_options": 1,
+          "fallback": "ask"
+        }
+      }
+    },
+    "duration": {
+      "definition": "活动持续的时间。",
+      "required": false,
+      "constraint": {
+        "type": {
+          "kind": "primitive",
+          "ref": "number",
+          "cardinality": "one",
+          "note": "单位为秒"
+        },
+        "fillers": {
+          "sources": ["explicit", "inferred", "system"],
+          "system_queries": ["process.duration"]
+        },
+        "default": {
+          "strategy": "infer",
+          "rule": "从过程或历史推断",
+          "fallback": "ask"
+        },
+        "multi_candidate": {
+          "strategy": "default_top1",
+          "question_template": "活动持续多久？",
+          "max_options": 1,
+          "fallback": "ask"
+        }
+      }
+    },
+    "manner": {
+      "definition": "活动执行的方式。",
+      "required": false,
+      "constraint": {
+        "type": {
+          "kind": "primitive",
+          "ref": "string",
+          "cardinality": "one"
+        },
+        "fillers": {
+          "sources": ["explicit", "inferred"]
+        },
+        "default": {
+          "strategy": "use_default",
+          "rule": "使用默认方式",
+          "fallback": "ask"
+        },
+        "multi_candidate": {
+          "strategy": "default_top1",
+          "question_template": "以什么方式执行？",
+          "max_options": 1,
+          "fallback": "ask"
+        }
+      }
+    },
+    "purpose": {
+      "definition": "施事意图通过活动达成的未来状态、事件或结果。F-ACT-00 中为外围角色，子框架可提升为核心。",
+      "required": false,
+      "constraint": {
+        "type": {
+          "kind": "role",
+          "ref": "PurposeType",
+          "cardinality": "one",
+          "note": "值域见 R-ROLES-00，选中后惰性激活对应框架"
+        },
+        "fillers": {
+          "sources": ["explicit", "qualia", "inferred"],
+          "qualia_paths": ["{entity}.qualia.telic"]
+        },
+        "default": {
+          "strategy": "derive_qualia",
+          "rule": "从患者实体的 telic 推导",
+          "fallback": "ask"
+        },
+        "multi_candidate": {
+          "strategy": "score",
+          "ranking": ["explicit", "qualia"],
+          "threshold": 0.15,
+          "question_template": "目的是什么？",
+          "options_source": "PurposeType.values",
+          "max_options": 3,
+          "fallback": "ask"
+        }
+      }
+    },
+    "means": {
+      "definition": "施事为实现目的而采用的方法、行动、工具或过程。F-ACT-00 中为外围角色，子框架可提升为核心。",
+      "required": false,
+      "constraint": {
+        "type": {
+          "kind": "role",
+          "ref": "MeansType",
+          "cardinality": "one",
+          "note": "值域见 R-ROLES-00，选中后惰性激活对应框架"
+        },
+        "fillers": {
+          "sources": ["explicit", "system", "qualia"],
+          "system_queries": ["unit.list", "pipeline.history"],
+          "qualia_paths": ["ConfigUnit.qualia.telic"]
+        },
+        "default": {
+          "strategy": "query_system",
+          "rule": "查系统配置单元和历史流水线",
+          "fallback": "ask"
+        },
+        "multi_candidate": {
+          "strategy": "score",
+          "ranking": ["explicit", "history_success", "permission", "cost"],
+          "threshold": 0.15,
+          "question_template": "选择哪种方式？",
+          "options_source": "MeansType.values",
+          "max_options": 3,
+          "fallback": "ask"
+        }
+      }
+    }
+  },
+
+  "lus": ["do", "engage in", "perform", "practice", "work (at)", "carry out", "conduct", "undertake"],
+  "lus_zh": ["做", "从事", "执行", "练习", "工作于", "开展", "进行", "承担"]
+}

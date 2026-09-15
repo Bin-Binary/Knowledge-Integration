@@ -1,0 +1,216 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:frame:F-CHOOSING-00:v1-draft",
+  "metadata": {
+    "frame_schema_id": "F-CHOOSING-00",
+    "frame_schema_name": "F-CHOOSING",
+    "parent_frame_schema_id": null,
+    "definition": "刻画认知者从备选项中选出一个。",
+    "type": "frame",
+    "version": "v1-draft",
+    "external_refs": [
+      {
+        "target_schema_id": "R-ROLES-00",
+        "source_file": "./R-ROLES-00.json",
+        "source_version": "v1-draft",
+        "imported_at": "2026-09-15",
+        "usage": "引用 AgentRole、ChosenType、AlternativeType、PurposeType"
+      },
+      {
+        "target_schema_id": "system-queries",
+        "source_file": "./system-queries.json",
+        "source_version": "v1",
+        "imported_at": "2026-09-15",
+        "usage": "引用 current_user、candidate.list、candidate.resolve、entity.resolve、unit.list、pipeline.list"
+      }
+    ]
+  },
+
+  "core_fe": {
+    "cognizer": {
+      "definition": "做出选择认知主体。",
+      "required": true,
+      "constraint": {
+        "type": {
+          "kind": "role",
+          "ref": "AgentRole",
+          "cardinality": "one",
+          "note": "值域见 R-ROLES-00"
+        },
+        "fillers": {
+          "sources": ["explicit", "context", "default"],
+          "system_queries": ["current_user"],
+          "notes": "优先显式，其次上下文，最后默认当前用户"
+        },
+        "default": {
+          "strategy": "use_default",
+          "rule": "默认当前用户为认知者",
+          "fallback": "ask",
+          "assumptions": ["当前用户为认知者"]
+        },
+        "multi_candidate": {
+          "strategy": "ask",
+          "question_template": "是谁在做选择？",
+          "options_source": "AgentRole.values",
+          "max_options": 3,
+          "fallback": "ask"
+        }
+      }
+    },
+
+    "chosen": {
+      "definition": "从备选项中被选出的项。",
+      "required": true,
+      "constraint": {
+        "type": {
+          "kind": "role",
+          "ref": "ChosenType",
+          "cardinality": "one",
+          "note": "值域见 R-ROLES-00，引用 EntityType + filter"
+        },
+        "fillers": {
+          "sources": ["explicit", "system", "qualia"],
+          "system_queries": ["candidate.resolve", "entity.resolve"],
+          "qualia_paths": ["alternatives.qualia.telic"],
+          "notes": "优先显式被选项，其次从候选系统解析；qualia 路径从备选项集合的 telic 角色推断被选项倾向"
+        },
+        "default": {
+          "strategy": "query_system",
+          "rule": "从候选中选打分最高项",
+          "fallback": "ask"
+        },
+        "multi_candidate": {
+          "strategy": "score",
+          "ranking": ["explicit", "qualia", "history", "permission"],
+          "threshold": 0.15,
+          "question_template": "选择哪一个？",
+          "options_source": "candidate.list",
+          "max_options": 3,
+          "fallback": "ask"
+        }
+      }
+    },
+
+    "alternatives": {
+      "definition": "可选的备选项集合。",
+      "required": true,
+      "constraint": {
+        "type": {
+          "kind": "role",
+          "ref": "AlternativeType",
+          "cardinality": "many",
+          "note": "值域见 R-ROLES-00，引用 EntityType + filter"
+        },
+        "fillers": {
+          "sources": ["explicit", "system"],
+          "system_queries": ["candidate.list", "unit.list", "pipeline.list"],
+          "notes": "优先显式列出，其次从系统候选列表获取"
+        },
+        "default": {
+          "strategy": "query_system",
+          "rule": "查询系统候选列表",
+          "fallback": "ask"
+        },
+        "multi_candidate": {
+          "strategy": "ask",
+          "question_template": "备选项有哪些？",
+          "options_source": "candidate.list",
+          "max_options": 5,
+          "fallback": "ask"
+        }
+      }
+    }
+  },
+
+  "peripheral_fe": {
+    "basis": {
+      "definition": "选择的依据或理由。",
+      "required": false,
+      "constraint": {
+        "type": {
+          "kind": "primitive",
+          "ref": "string",
+          "cardinality": "many"
+        },
+        "fillers": {
+          "sources": ["explicit", "inferred", "qualia"],
+          "qualia_paths": ["chosen.qualia.telic"],
+          "notes": "优先显式依据，其次从被选项 telic 推断"
+        },
+        "default": {
+          "strategy": "infer",
+          "rule": "从被选项属性或历史推断",
+          "fallback": "ask"
+        },
+        "multi_candidate": {
+          "strategy": "score",
+          "ranking": ["explicit", "qualia", "history"],
+          "threshold": 0.2,
+          "question_template": "选择依据是什么？",
+          "max_options": 3,
+          "fallback": "ask"
+        }
+      }
+    },
+
+    "manner": {
+      "definition": "选择的方式。",
+      "required": false,
+      "constraint": {
+        "type": {
+          "kind": "primitive",
+          "ref": "string",
+          "cardinality": "one"
+        },
+        "fillers": {
+          "sources": ["explicit", "inferred"]
+        },
+        "default": {
+          "strategy": "use_default",
+          "rule": "使用默认方式",
+          "fallback": "ask"
+        },
+        "multi_candidate": {
+          "strategy": "default_top1",
+          "question_template": "以什么方式选择？",
+          "max_options": 1,
+          "fallback": "ask"
+        }
+      }
+    },
+
+    "purpose": {
+      "definition": "选择行为的目的。",
+      "required": false,
+      "constraint": {
+        "type": {
+          "kind": "role",
+          "ref": "PurposeType",
+          "cardinality": "one",
+          "note": "值域见 R-ROLES-00，选中后惰性激活对应框架"
+        },
+        "fillers": {
+          "sources": ["explicit", "qualia", "inferred"],
+          "qualia_paths": ["{entity}.qualia.telic", "chosen.qualia.telic"]
+        },
+        "default": {
+          "strategy": "derive_qualia",
+          "rule": "从上下文实体或被选项的 telic 推导",
+          "fallback": "ask"
+        },
+        "multi_candidate": {
+          "strategy": "score",
+          "ranking": ["explicit", "qualia"],
+          "threshold": 0.15,
+          "question_template": "选择目的是什么？",
+          "options_source": "PurposeType.values",
+          "max_options": 3,
+          "fallback": "ask"
+        }
+      }
+    }
+  },
+
+  "lus": ["choose", "select", "pick", "decide", "opt", "elect", "prefer"],
+  "lus_zh": ["选择", "挑选", "选取", "决定", "选定", "偏好", "择优"]
+}

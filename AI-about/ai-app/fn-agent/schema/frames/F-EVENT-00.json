@@ -1,0 +1,228 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:frame:F-EVENT-00:v1-draft",
+  "metadata": {
+    "frame_schema_id": "F-EVENT-00",
+    "frame_schema_name": "F-EVENT",
+    "parent_frame_schema_id": null,
+    "definition": "刻画某事在特定时间和地点发生。这是最一般的\"发生\"框架，不预设意向性、持续性或状态变化性。",
+    "type": "frame",
+    "version": "v1-draft",
+    "external_refs": [
+      {
+        "target_schema_id": "R-ROLES-00",
+        "source_file": "./R-ROLES-00.json",
+        "source_version": "v1-draft",
+        "imported_at": "2026-09-15",
+        "usage": "引用 EventType"
+      },
+      {
+        "target_schema_id": "system-queries",
+        "source_file": "./system-queries.json",
+        "source_version": "v1",
+        "imported_at": "2026-09-15",
+        "usage": "引用 current_time、default_environment、event.duration、event.frequency、event.instance_id"
+      }
+    ]
+  },
+
+  "core_fe": {
+    "event": {
+      "definition": "发生的事件本身，开放语义槽。",
+      "required": true,
+      "constraint": {
+        "type": {
+          "kind": "role",
+          "ref": "EventType",
+          "cardinality": "one",
+          "note": "值域见 R-ROLES-00，选中后惰性激活对应框架"
+        },
+        "fillers": {
+          "sources": ["explicit", "inferred", "context"],
+          "notes": "优先显式事件名，其次上下文推断"
+        },
+        "default": {
+          "strategy": "infer",
+          "rule": "从上下文推断事件类型",
+          "fallback": "ask"
+        },
+        "multi_candidate": {
+          "strategy": "score",
+          "ranking": ["explicit", "context", "history"],
+          "threshold": 0.2,
+          "question_template": "发生了什么事件？",
+          "options_source": "EventType.values",
+          "max_options": 3,
+          "fallback": "ask"
+        }
+      }
+    }
+  },
+
+  "peripheral_fe": {
+    "time": {
+      "definition": "事件发生的时间。",
+      "required": false,
+      "constraint": {
+        "type": {
+          "kind": "primitive",
+          "ref": "timestamp",
+          "cardinality": "one"
+        },
+        "fillers": {
+          "sources": ["explicit", "context", "system"],
+          "system_queries": ["current_time"]
+        },
+        "default": {
+          "strategy": "query_system",
+          "rule": "使用当前时间",
+          "fallback": "use_default",
+          "assumptions": ["使用当前时间"]
+        },
+        "multi_candidate": {
+          "strategy": "default_top1",
+          "question_template": "事件发生在什么时间？",
+          "max_options": 1,
+          "fallback": "ask"
+        }
+      }
+    },
+    "place": {
+      "definition": "事件发生的地点。",
+      "required": false,
+      "constraint": {
+        "type": {
+          "kind": "primitive",
+          "ref": "string",
+          "cardinality": "one"
+        },
+        "fillers": {
+          "sources": ["explicit", "context", "system"],
+          "system_queries": ["default_environment"]
+        },
+        "default": {
+          "strategy": "query_system",
+          "rule": "使用默认环境",
+          "fallback": "use_default",
+          "assumptions": ["使用默认环境"]
+        },
+        "multi_candidate": {
+          "strategy": "default_top1",
+          "question_template": "事件发生在什么地点？",
+          "max_options": 1,
+          "fallback": "ask"
+        }
+      }
+    },
+    "duration": {
+      "definition": "事件持续的时间。",
+      "required": false,
+      "constraint": {
+        "type": {
+          "kind": "primitive",
+          "ref": "number",
+          "cardinality": "one",
+          "note": "单位为秒"
+        },
+        "fillers": {
+          "sources": ["explicit", "inferred", "system"],
+          "system_queries": ["event.duration"]
+        },
+        "default": {
+          "strategy": "infer",
+          "rule": "从起止时间推断",
+          "fallback": "ask"
+        },
+        "multi_candidate": {
+          "strategy": "default_top1",
+          "question_template": "事件持续多久？",
+          "max_options": 1,
+          "fallback": "ask"
+        }
+      }
+    },
+    "frequency": {
+      "definition": "事件发生的频率。",
+      "required": false,
+      "constraint": {
+        "type": {
+          "kind": "primitive",
+          "ref": "string",
+          "cardinality": "one",
+          "note": "如 once / daily / weekly 或频次数值"
+        },
+        "fillers": {
+          "sources": ["explicit", "inferred", "system"],
+          "system_queries": ["event.frequency"]
+        },
+        "default": {
+          "strategy": "infer",
+          "rule": "从历史发生记录推断",
+          "fallback": "ask"
+        },
+        "multi_candidate": {
+          "strategy": "default_top1",
+          "question_template": "事件发生频率如何？",
+          "max_options": 1,
+          "fallback": "ask"
+        }
+      }
+    },
+    "manner": {
+      "definition": "事件发生的方式。",
+      "required": false,
+      "constraint": {
+        "type": {
+          "kind": "primitive",
+          "ref": "string",
+          "cardinality": "one"
+        },
+        "fillers": {
+          "sources": ["explicit", "inferred"]
+        },
+        "default": {
+          "strategy": "use_default",
+          "rule": "使用默认方式",
+          "fallback": "ask"
+        },
+        "multi_candidate": {
+          "strategy": "default_top1",
+          "question_template": "事件以什么方式发生？",
+          "max_options": 1,
+          "fallback": "ask"
+        }
+      }
+    },
+    "particular_iteration": {
+      "definition": "事件的特定一次实例，用于区分同一类事件的不同发生。",
+      "required": false,
+      "constraint": {
+        "type": {
+          "kind": "primitive",
+          "ref": "string",
+          "cardinality": "one",
+          "note": "实例标识或序号"
+        },
+        "fillers": {
+          "sources": ["explicit", "system", "inferred"],
+          "system_queries": ["event.instance_id"]
+        },
+        "default": {
+          "strategy": "query_system",
+          "rule": "系统生成实例 id",
+          "fallback": "use_default",
+          "assumptions": ["系统自动生成实例 id"]
+        },
+        "multi_candidate": {
+          "strategy": "default_top1",
+          "question_template": "指定哪一次实例？",
+          "max_options": 1,
+          "fallback": "ask"
+        }
+      }
+    }
+  },
+
+  "lus": ["event", "happen", "occur", "take place", "come about", "transpire", "come off", "befall"],
+  "lus_zh": ["事件", "发生", "出现", "举行", "产生", "降临", "降临于", "降临到"]
+}

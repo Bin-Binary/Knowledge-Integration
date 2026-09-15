@@ -1,0 +1,311 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:spec:frame-inheritance-spec:v1",
+  "metadata": {
+    "name": "frame-inheritance-spec",
+    "version": "v1",
+    "description": "定义框架继承机制，包括 inherit / override / promote_to_core / added_constraints / inheritance_notes。用于子框架对父框架的增量扩展。",
+    "scope": "frame.metadata 与 frame.core_fe / frame.peripheral_fe 中的继承语法"
+  },
+
+  "structure": {
+    "child_frame_fe": {
+      "inherit": "string",
+      "override": "object",
+      "promote_to_core": "boolean",
+      "added_constraints": "array"
+    },
+    "child_frame_metadata": {
+      "inheritance_notes": "object"
+    }
+  },
+
+  "fields": {
+    "inherit": {
+      "required": false,
+      "description": "引用父框架 FE 路径。子框架 FE 声明它继承自哪个父 FE。",
+      "type": "string",
+      "pattern": "^{parent_frame_schema_name}\\.(core_fe|peripheral_fe)\\.{fe_name}$",
+      "usage_examples": [
+        "F-ACT-00.core_fe.agent",
+        "F-ACT-00.core_fe.act",
+        "F-ACT-00.peripheral_fe.time",
+        "F-ACT-00.peripheral_fe.purpose"
+      ],
+      "semantics": {
+        "resolution": "解析器根据 inherit 路径，从父框架文件中读取对应 FE 的完整 constraint 定义。",
+        "merge": "先取父 FE 定义，再用 override 覆盖。",
+        "missing_parent": "若父框架文件缺失或路径不存在，继承失败，触发校验错误。"
+      }
+    },
+
+    "override": {
+      "required": false,
+      "description": "覆盖父框架 FE 中的字段。只写需要变更的部分，未写字段继承父定义。",
+      "type": "object",
+      "allowed_keys": ["definition", "required", "constraint", "note"],
+      "merge_rules": {
+        "definition": "整体替换父定义。",
+        "required": "整体替换父值。",
+        "note": "整体替换父值。",
+        "constraint": "深度合并。子框架只写要覆盖的子字段，未写字段保留父值。"
+      },
+      "usage_examples": [
+        {
+          "definition": "施事，必须有意图地参与行动。",
+          "required": true,
+          "constraint": {
+            "type": {
+              "kind": "role",
+              "ref": "AgentRole",
+              "cardinality": "one",
+              "note": "值域见 R-ROLES-00，意向性由框架约束保证"
+            }
+          }
+        }
+      ],
+      "constraint_merge_usage_example": {
+        "parent": {
+          "type": { "kind": "role", "ref": "AgentRole", "cardinality": "one" },
+          "fillers": { "sources": ["explicit", "context", "default"] },
+          "default": { "strategy": "use_default", "fallback": "ask" },
+          "multi_candidate": { "strategy": "ask", "max_options": 3, "fallback": "ask" }
+        },
+        "child_override": {
+          "type": { "kind": "role", "ref": "AgentRole", "cardinality": "one", "note": "值域见 R-ROLES-00，意向性由框架约束保证" }
+        },
+        "merged_result": {
+          "type": { "kind": "role", "ref": "AgentRole", "cardinality": "one", "note": "值域见 R-ROLES-00，意向性由框架约束保证" },
+          "fillers": { "sources": ["explicit", "context", "default"] },
+          "default": { "strategy": "use_default", "fallback": "ask" },
+          "multi_candidate": { "strategy": "ask", "max_options": 3, "fallback": "ask" }
+        }
+      }
+    },
+
+    "promote_to_core": {
+      "required": false,
+      "description": "把父框架的外围 FE 提升为子框架的核心 FE。只对 peripheral_fe 中的 FE 有效。",
+      "type": "boolean",
+      "default": false,
+      "semantics": {
+        "true": "子框架中该 FE 出现在 core_fe 下，required 通常设为 true。",
+        "false": "保持父框架的角色层级。"
+      },
+      "constraints": [
+        "只能对父框架 peripheral_fe 中已存在的 FE 使用。",
+        "提升后，子框架的 core_fe 与 peripheral_fe 不应同时包含同一 FE。",
+        "提升通常与 override 搭配，覆盖 required 和 constraint。"
+      ],
+      "usage_example": {
+        "inherit": "F-ACT-00.peripheral_fe.purpose",
+        "promote_to_core": true,
+        "override": {
+          "definition": "施事意图通过行动达成的未来状态、事件或结果。",
+          "required": true,
+          "constraint": {}
+        }
+      }
+    },
+
+    "added_constraints": {
+      "required": false,
+      "description": "在继承父 FE constraint 的基础上，追加额外约束。不覆盖父约束，只累加。",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "intentional",
+              "future_oriented",
+              "agent_desired",
+              "agent_controlled",
+              "means_end",
+              "implementable",
+              "state_dependent",
+              "permission",
+              "dependency",
+              "environment"
+            ]
+          },
+          "expression": {
+            "type": "string"
+          }
+        },
+        "required": ["type", "expression"]
+      },
+      "usage_examples": [
+        [
+          { "type": "intentional", "expression": "施事必须有意图地行动" },
+          { "type": "agent_controlled", "expression": "行动必须由施事控制" }
+        ]
+      ],
+      "semantics": {
+        "merge": "父 FE 的 constraint 保持不变，added_constraints 附加在子 FE 上。",
+        "validation": "下游校验时，added_constraints 与父 constraint 同时生效。"
+      }
+    },
+
+    "inheritance_notes": {
+      "required": false,
+      "description": "人类可读的继承摘要，记录从父框架继承、提升、新增、覆盖了哪些内容。供审计和维护参考，不参与运行时解析。",
+      "type": "object",
+      "properties": {
+        "from_parent": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "原样继承的 FE 路径列表。不含被 override、promote、或 newly_added 的 FE。"
+        },
+        "promoted_to_core": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "从 peripheral 提升到 core 的 FE 列表，格式为 `peripheral_fe.X → core_fe.X`。"
+        },
+        "newly_added": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "子框架新增的 FE 路径列表。"
+        },
+        "overridden": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "子框架覆盖的 FE 路径列表。"
+        }
+      },
+      "usage_example": {
+        "from_parent": [
+          "peripheral_fe.time",
+          "peripheral_fe.place",
+          "peripheral_fe.duration"
+        ],
+        "promoted_to_core": [
+          "peripheral_fe.purpose → core_fe.purpose",
+          "peripheral_fe.means → core_fe.means"
+        ],
+        "newly_added": [
+          "peripheral_fe.condition",
+          "peripheral_fe.goal"
+        ],
+        "overridden": [
+          "core_fe.agent",
+          "core_fe.act",
+          "core_fe.purpose",
+          "core_fe.means",
+          "peripheral_fe.manner"
+        ]
+      }
+    }
+  },
+
+  "resolution_rules": {
+    "inherit_resolution": "解析器按 inherit 路径定位父 FE，取其完整定义作为基线。",
+    "override_merge": "在父 FE 基线上应用 override。constraint 深度合并，其余字段整体替换。",
+    "promote_application": "若 promote_to_core 为 true，把该 FE 从 peripheral_fe 移动到 core_fe。",
+    "added_constraints_append": "added_constraints 追加到父 FE 的约束上，不覆盖。",
+    "inheritance_notes_ignored": "inheritance_notes 仅供人读，不参与运行时解析。",
+    "cycle_detection": "若 inherit 形成循环，触发校验错误。",
+    "depth_limit": "继承链默认最多 5 层，超过触发校验警告。"
+  },
+
+  "validation_rules": [
+    {
+      "rule": "inherit 必填或 FE 完整定义二者取一",
+      "expression": "若 FE 使用了 inherit，则 override 可空；若未使用 inherit，则 FE 必须包含完整 constraint。"
+    },
+    {
+      "rule": "promote_to_core 只能对父 peripheral_fe 使用",
+      "expression": "若 inherit 指向 core_fe，promote_to_core 必须为 false 或不写。"
+    },
+    {
+      "rule": "core_fe 与 peripheral_fe 不重叠",
+      "expression": "同一 FE 不能同时出现在子框架的 core_fe 和 peripheral_fe 中。"
+    },
+    {
+      "rule": "added_constraints 不与父约束冲突",
+      "expression": "若父约束与 added_constraints 存在语义冲突（如父为 non_intentional，子加 intentional），触发校验警告。"
+    },
+    {
+      "rule": "inheritance_notes 与实际继承一致",
+      "expression": "inheritance_notes 中列出的路径必须与实际 inherit / override / promote 行为一致。"
+    }
+  ],
+
+  "usage_examples": {
+    "simple_override": {
+      "frame": "F-INTENTIONALLY-ACT-00",
+      "fe": "core_fe.agent",
+      "inherit": "F-ACT-00.core_fe.agent",
+      "override": {
+        "definition": "施事，必须有意图地参与行动。",
+        "required": true,
+        "constraint": {
+          "type": {
+            "kind": "role",
+            "ref": "AgentRole",
+            "cardinality": "one",
+            "note": "值域见 R-ROLES-00，意向性由框架约束保证"
+          }
+        }
+      },
+      "added_constraints": [
+        { "type": "intentional", "expression": "施事必须有意图地行动" },
+        { "type": "agent_controlled", "expression": "行动必须由施事控制" }
+      ]
+    },
+
+    "pure_inherit": {
+      "frame": "F-INTENTIONALLY-ACT-00",
+      "fe": "peripheral_fe.time",
+      "inherit": "F-ACT-00.peripheral_fe.time"
+    },
+
+    "promote_and_override": {
+      "frame": "F-INTENTIONALLY-ACT-00",
+      "fe": "core_fe.purpose",
+      "inherit": "F-ACT-00.peripheral_fe.purpose",
+      "promote_to_core": true,
+      "override": {
+        "definition": "施事意图通过行动达成的未来状态、事件或结果。",
+        "required": true,
+        "constraint": {
+          "type": {
+            "kind": "role",
+            "ref": "PurposeType",
+            "cardinality": "one",
+            "note": "值域见 R-ROLES-00，选中后惰性激活对应框架"
+          }
+        }
+      },
+      "added_constraints": [
+        { "type": "intentional", "expression": "目的必须是施事意图达成的" },
+        { "type": "future_oriented", "expression": "目的必须尚未实现" },
+        { "type": "agent_desired", "expression": "施事希望目的实现" }
+      ]
+    },
+
+    "newly_added_fe": {
+      "frame": "F-INTENTIONALLY-ACT-00",
+      "fe": "peripheral_fe.condition",
+      "inherit": null,
+      "override": null,
+      "note": "新增 FE，不继承父框架，需写完整 constraint。"
+    }
+  },
+
+  "conventions": {
+    "inherit_path_format": "{parent_frame_schema_name}.{core_fe|peripheral_fe}.{fe_name}",
+    "override_allowed_keys": ["definition", "required", "constraint", "note"],
+    "constraint_merge_mode": "deep",
+    "other_field_merge_mode": "replace",
+    "promote_to_core_scope": "peripheral_to_core_only",
+    "added_constraints_allowed_types": [
+      "intentional", "future_oriented", "agent_desired",
+      "agent_controlled", "means_end", "implementable",
+      "state_dependent", "permission", "dependency", "environment"
+    ],
+    "inheritance_notes_purpose": "human_readable_only",
+    "max_inheritance_depth": 5
+  }
+}

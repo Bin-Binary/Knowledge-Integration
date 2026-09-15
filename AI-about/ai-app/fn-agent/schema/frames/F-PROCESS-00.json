@@ -1,0 +1,193 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:frame:F-PROCESS-00:v1-draft",
+  "metadata": {
+    "frame_schema_id": "F-PROCESS-00",
+    "frame_schema_name": "F-PROCESS",
+    "parent_frame_schema_id": null,
+    "definition": "刻画一个过程在一段时间内展开。描述持续进行的事件，不预设特定施事或状态变化。",
+    "type": "frame",
+    "version": "v1-draft",
+    "external_refs": [
+      {
+        "target_schema_id": "system-queries",
+        "source_file": "./system-queries.json",
+        "source_version": "v1",
+        "imported_at": "2026-09-15",
+        "usage": "引用 current_time、default_environment、process.duration、process.rate"
+      }
+    ]
+  },
+
+  "core_fe": {
+    "process": {
+      "definition": "正在展开的过程本身，开放语义槽。",
+      "required": true,
+      "constraint": {
+        "type": {
+          "kind": "primitive",
+          "ref": "string",
+          "cardinality": "one",
+          "note": "过程名称或标识，不递归激活框架"
+        },
+        "fillers": {
+          "sources": ["explicit", "inferred", "context"],
+          "notes": "优先显式过程名，其次上下文推断"
+        },
+        "default": {
+          "strategy": "infer",
+          "rule": "从上下文或激活词元推断过程",
+          "fallback": "ask"
+        },
+        "multi_candidate": {
+          "strategy": "score",
+          "ranking": ["explicit", "context", "history"],
+          "threshold": 0.2,
+          "question_template": "描述的是哪个过程？",
+          "options_source": "process.vocabulary",
+          "max_options": 3,
+          "fallback": "ask"
+        }
+      }
+    }
+  },
+
+  "peripheral_fe": {
+    "duration": {
+      "definition": "过程持续的时间。",
+      "required": false,
+      "constraint": {
+        "type": {
+          "kind": "primitive",
+          "ref": "number",
+          "cardinality": "one",
+          "note": "单位为秒"
+        },
+        "fillers": {
+          "sources": ["explicit", "inferred", "system"],
+          "system_queries": ["process.duration"]
+        },
+        "default": {
+          "strategy": "infer",
+          "rule": "从起止时间推断",
+          "fallback": "ask"
+        },
+        "multi_candidate": {
+          "strategy": "default_top1",
+          "question_template": "过程持续多久？",
+          "max_options": 1,
+          "fallback": "ask"
+        }
+      }
+    },
+    "time": {
+      "definition": "过程发生的时间。",
+      "required": false,
+      "constraint": {
+        "type": {
+          "kind": "primitive",
+          "ref": "timestamp",
+          "cardinality": "one"
+        },
+        "fillers": {
+          "sources": ["explicit", "context", "system"],
+          "system_queries": ["current_time"]
+        },
+        "default": {
+          "strategy": "query_system",
+          "rule": "使用当前时间",
+          "fallback": "use_default",
+          "assumptions": ["使用当前时间"]
+        },
+        "multi_candidate": {
+          "strategy": "default_top1",
+          "question_template": "过程发生在什么时间？",
+          "max_options": 1,
+          "fallback": "ask"
+        }
+      }
+    },
+    "place": {
+      "definition": "过程发生的地点。",
+      "required": false,
+      "constraint": {
+        "type": {
+          "kind": "primitive",
+          "ref": "string",
+          "cardinality": "one"
+        },
+        "fillers": {
+          "sources": ["explicit", "context", "system"],
+          "system_queries": ["default_environment"]
+        },
+        "default": {
+          "strategy": "query_system",
+          "rule": "使用默认环境",
+          "fallback": "use_default",
+          "assumptions": ["使用默认环境"]
+        },
+        "multi_candidate": {
+          "strategy": "default_top1",
+          "question_template": "过程发生在什么地点？",
+          "max_options": 1,
+          "fallback": "ask"
+        }
+      }
+    },
+    "manner": {
+      "definition": "过程展开的方式。",
+      "required": false,
+      "constraint": {
+        "type": {
+          "kind": "primitive",
+          "ref": "string",
+          "cardinality": "one"
+        },
+        "fillers": {
+          "sources": ["explicit", "inferred"]
+        },
+        "default": {
+          "strategy": "use_default",
+          "rule": "使用默认方式",
+          "fallback": "ask"
+        },
+        "multi_candidate": {
+          "strategy": "default_top1",
+          "question_template": "过程以什么方式展开？",
+          "max_options": 1,
+          "fallback": "ask"
+        }
+      }
+    },
+    "rate": {
+      "definition": "过程展开的速率。",
+      "required": false,
+      "constraint": {
+        "type": {
+          "kind": "primitive",
+          "ref": "number",
+          "cardinality": "one",
+          "note": "如单位时间完成量"
+        },
+        "fillers": {
+          "sources": ["explicit", "inferred", "system"],
+          "system_queries": ["process.rate"]
+        },
+        "default": {
+          "strategy": "infer",
+          "rule": "从完成量和持续时间推断",
+          "fallback": "ask"
+        },
+        "multi_candidate": {
+          "strategy": "default_top1",
+          "question_template": "过程速率是多少？",
+          "max_options": 1,
+          "fallback": "ask"
+        }
+      }
+    }
+  },
+
+  "lus": ["process", "proceed", "unfold", "develop", "evolve", "play out", "go on", "pan out"],
+  "lus_zh": ["过程", "进行", "展开", "发展", "演化", "推进", "持续", "演变"]
+}

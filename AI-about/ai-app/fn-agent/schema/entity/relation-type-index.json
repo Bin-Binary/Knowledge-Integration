@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:index:relation-type-index:v1",
+  "metadata": {
+    "name": "relation-type-index",
+    "version": "v1",
+    "description": "定义 EntityRelation 允许的关系类型清单。from_hint / to_hint 为 advisory，不阻塞校验。",
+    "scope": "EntityRelation.type",
+    "layer": "domain-layer/entity"
+  },
+
+  "relation_types": {
+    "produces": {
+      "type": "produces",
+      "description": "A 产生 B",
+      "from_hint": ["Pipeline", "Tool"],
+      "to_hint": ["Artifact", "Version"],
+      "symmetric": false
+    },
+    "depends_on": {
+      "type": "depends_on",
+      "description": "A 依赖 B",
+      "from_hint": ["Version", "Artifact", "ConfigUnit"],
+      "to_hint": ["CodeRepo", "Branch", "Tool"],
+      "symmetric": false
+    },
+    "uses": {
+      "type": "uses",
+      "description": "A 使用 B",
+      "from_hint": ["ConfigUnit", "Pipeline"],
+      "to_hint": ["Tool", "Pipeline"],
+      "symmetric": false
+    },
+    "owns": {
+      "type": "owns",
+      "description": "A 拥有 B",
+      "from_hint": ["Product"],
+      "to_hint": ["Version", "CodeRepo"],
+      "symmetric": false
+    },
+    "part_of": {
+      "type": "part_of",
+      "description": "A 属于 B",
+      "from_hint": ["Branch", "Version"],
+      "to_hint": ["CodeRepo", "Product"],
+      "symmetric": false
+    }
+  },
+
+  "conventions": {
+    "type_name_style": "snake_case",
+    "hint_enforcement": "advisory",
+    "hint_note": "from_hint / to_hint 仅作提示；若 relation.type 与实际起止类型不匹配，触发 warning，不阻塞。",
+    "symmetric_semantics": "symmetric=true 表示 A→B 与 B→A 语义等价，可只声明一条。",
+    "inverse_derivation": "反向关系由查询时动态推导，不要求在数据中显式声明。",
+    "inverse_map": {
+      "produces": "produced_by",
+      "depends_on": "depended_on_by",
+      "uses": "used_by",
+      "owns": "owned_by",
+      "part_of": "contains"
+    },
+    "inverse_map_note": "inverse_map 为运行时约定，不作为数据层强制。",
+    "inverse_name_rule": "反向命名不强制统一后缀。语义自然优先。例如 part_of 的反向为 contains，而非 part_of_by。"
+  },
+
+  "external_refs": [
+    {
+      "target_schema_id": "entity-spec",
+      "source_file": "./specs/entity-spec.json",
+      "source_version": "v1",
+      "imported_at": "2026-09-15",
+      "usage": "引用通用约束、校验规则"
+    }
+  ]
+}

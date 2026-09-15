@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:example:unit-registry-example:v1",
+  "metadata": {
+    "name": "unit-registry-example",
+    "version": "v1",
+    "description": "Unit 注册表示例，覆盖标准构建配置单元。",
+    "scope": "演示 Unit / QualiaInstance / EntityRelation 的完整写法",
+    "layer": "domain-layer/unit"
+  },
+
+  "spec_ref": {
+    "unit_spec": "./specs/unit-spec.json",
+    "unit_registry_schema": "./unit/unit-registry.schema.json",
+    "entity_registry": "./entity/entity-registry-example.json",
+    "relation_type_index": "./entity/relation-type-index.json"
+  },
+
+  "units": [
+    {
+      "id": "unit:staging:standard-build",
+      "type": "ConfigUnit",
+      "name": "标准构建配置",
+      "qualia": {
+        "formal": "配置单元",
+        "constitutive": ["参数", "环境", "脚本"],
+        "telic": ["驱动构建", "驱动部署"],
+        "agentive": ["由配置管理生成"]
+      },
+      "parameters": {
+        "jdk": "17",
+        "maven": "3.8",
+        "profile": "prod"
+      },
+      "environment": "staging",
+      "code_repo_refs": [
+        "entity:CodeRepo:R"
+      ],
+      "script_repo_ref": null,
+      "script_refs": [],
+      "dependencies": [],
+      "state": "active",
+      "domain": "ci",
+      "tags": ["config", "standard"],
+      "relations": [
+        {
+          "id": "rel:201",
+          "type": "uses",
+          "target": "entity:Tool:MAVEN",
+          "label": "使用 Maven 构建",
+          "direction": "outbound",
+          "weight": 1.0,
+          "confidence": 1.0,
+          "source": "explicit"
+        }
+      ]
+    }
+  ],
+
+  "conventions": {
+    "note": "本文件仅作示例，不参与校验。",
+    "covered_units": ["unit:staging:standard-build"],
+    "covered_relation_types": ["uses"],
+    "cross_ref_demo": [
+      "Unit.code_repo_refs → entity:CodeRepo:R",
+      "Unit.relations[uses] → entity:Tool:MAVEN"
+    ]
+  }
+}

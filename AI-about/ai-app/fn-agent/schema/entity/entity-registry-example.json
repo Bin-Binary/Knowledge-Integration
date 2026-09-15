@@ -1,0 +1,227 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:example:entity-registry-example:v1",
+  "metadata": {
+    "name": "entity-registry-example",
+    "version": "v1",
+    "description": "Entity 注册表示例，覆盖 Product / CodeRepo / Version / Pipeline / ConfigUnit / Tool / Artifact 七个实体与多种关系。",
+    "scope": "演示 Entity / QualiaInstance / EntityRelation 的完整写法",
+    "layer": "domain-layer/entity"
+  },
+
+  "spec_ref": {
+    "entity_spec": "./specs/entity-spec.json",
+    "entity_registry_schema": "./entity/entity-registry.schema.json",
+    "entity_attribute_index": "./entity/entity-attribute-index.json",
+    "relation_type_index": "./entity/relation-type-index.json"
+  },
+
+  "entities": [
+    {
+      "id": "entity:Product:P",
+      "type": "Product",
+      "name": "订单服务",
+      "qualia": {
+        "formal": "软件产品",
+        "constitutive": ["模块", "组件", "依赖"],
+        "telic": ["发布", "部署", "被用户使用"],
+        "agentive": ["团队开发", "流水线构建"]
+      },
+      "attributes": {
+        "owner": "order-team",
+        "group": "backend",
+        "lifecycle": "active",
+        "description": "订单处理核心产品"
+      },
+      "state": "active",
+      "domain": "ci",
+      "tags": ["backend", "order"],
+      "relations": []
+    },
+    {
+      "id": "entity:CodeRepo:R",
+      "type": "CodeRepo",
+      "name": "order-service-repo",
+      "qualia": {
+        "formal": "代码仓库",
+        "constitutive": ["分支", "tag", "commit", "文件", "目录"],
+        "telic": ["存储代码", "供构建使用"],
+        "agentive": ["开发者创建", "持续维护"]
+      },
+      "attributes": {
+        "url": "git@example.com:order/order-service.git",
+        "default_branch": "main",
+        "maintainer": "order-team",
+        "language": "Java",
+        "size": 1048576
+      },
+      "state": "active",
+      "domain": "ci",
+      "tags": ["repo", "backend"],
+      "relations": []
+    },
+    {
+      "id": "entity:Version:V2.3.0",
+      "type": "Version",
+      "name": "v2.3.0",
+      "qualia": {
+        "formal": "版本标识",
+        "constitutive": ["commit", "tag", "branch"],
+        "telic": ["发布", "回滚", "追溯"],
+        "agentive": ["由构建过程产生"]
+      },
+      "attributes": {
+        "commit": "abc123",
+        "tag": "v2.3.0",
+        "branch": "release/v2.3",
+        "release_date": "2026-09-10",
+        "status": "ready",
+        "changelog": "修复订单同步延迟问题"
+      },
+      "state": "ready",
+      "domain": "ci",
+      "tags": ["release", "stable"],
+      "relations": [
+        {
+          "id": "rel:001",
+          "type": "depends_on",
+          "target": "entity:CodeRepo:R",
+          "label": "来源于代码仓",
+          "direction": "outbound",
+          "weight": 1.0,
+          "confidence": 1.0,
+          "source": "explicit",
+          "evidence": [],
+          "created_at": "2026-09-15T10:00:00Z",
+          "updated_at": "2026-09-15T10:00:00Z",
+          "valid_from": "2026-09-10"
+        },
+        {
+          "id": "rel:002",
+          "type": "part_of",
+          "target": "entity:Product:P",
+          "label": "属于产品",
+          "direction": "outbound",
+          "weight": 1.0,
+          "confidence": 1.0,
+          "source": "explicit"
+        }
+      ]
+    },
+    {
+      "id": "entity:Pipeline:PL1",
+      "type": "Pipeline",
+      "name": "标准构建流水线",
+      "qualia": {
+        "formal": "自动化执行流程",
+        "constitutive": ["阶段", "任务", "触发条件"],
+        "telic": ["构建", "测试", "产出 artifact"],
+        "agentive": ["由配置单元定义", "由系统运行"]
+      },
+      "attributes": {
+        "stages": ["checkout", "build", "test", "package"],
+        "trigger": "push",
+        "timeout": 1800,
+        "env": "staging",
+        "concurrent": false
+      },
+      "state": "ready",
+      "domain": "ci",
+      "tags": ["standard"],
+      "relations": [
+        {
+          "id": "rel:101",
+          "type": "produces",
+          "target": "entity:Artifact:A1",
+          "label": "构建产出",
+          "direction": "outbound",
+          "weight": 0.9,
+          "confidence": 0.95,
+          "source": "explicit",
+          "evidence": ["日志:pipeline:PL1:build-123"],
+          "created_at": "2026-09-15T11:00:00Z",
+          "updated_at": "2026-09-15T11:00:00Z",
+          "valid_from": "2026-09-10"
+        }
+      ]
+    },
+    {
+      "id": "entity:ConfigUnit:CU1",
+      "type": "ConfigUnit",
+      "name": "标准构建配置",
+      "qualia": {
+        "formal": "配置单元",
+        "constitutive": ["参数", "环境", "脚本"],
+        "telic": ["驱动构建", "驱动部署"],
+        "agentive": ["由配置管理生成"]
+      },
+      "attributes": {
+        "parameters": {
+          "jdk": "17",
+          "maven": "3.8",
+          "profile": "prod"
+        },
+        "environment": "staging",
+        "entry_script": "build.sh"
+      },
+      "state": "active",
+      "domain": "ci",
+      "tags": ["config"],
+      "relations": []
+    },
+    {
+      "id": "entity:Tool:MAVEN",
+      "type": "Tool",
+      "name": "Apache Maven",
+      "qualia": {
+        "formal": "构建工具",
+        "constitutive": ["二进制", "配置文件"],
+        "telic": ["构建 Java 项目", "管理依赖"],
+        "agentive": ["由 Apache 发布"]
+      },
+      "attributes": {
+        "version": "3.8.6",
+        "provider": "Apache",
+        "license": "Apache-2.0",
+        "command": "mvn clean package"
+      },
+      "state": "active",
+      "domain": "general",
+      "tags": ["build", "java"],
+      "relations": []
+    },
+    {
+      "id": "entity:Artifact:A1",
+      "type": "Artifact",
+      "name": "order-service-2.3.0.jar",
+      "qualia": {
+        "formal": "构建产物",
+        "constitutive": ["文件", "元数据", "校验和"],
+        "telic": ["部署", "发布", "交付"],
+        "agentive": ["由流水线构建产生"]
+      },
+      "attributes": {
+        "size": 12345678,
+        "hash": "sha256:abcdef0123456789",
+        "storage": "repo://artifacts/order/2.3.0/order-service-2.3.0.jar",
+        "format": "jar",
+        "produced_at": "2026-09-15T11:30:00Z"
+      },
+      "state": "ready",
+      "domain": "ci",
+      "tags": ["artifact", "jar"],
+      "relations": []
+    }
+  ],
+
+  "conventions": {
+    "note": "本文件仅作示例，不参与校验。",
+    "covered_entities": ["Product", "CodeRepo", "Version", "Pipeline", "ConfigUnit", "Tool", "Artifact"],
+    "covered_relation_types": ["depends_on", "part_of", "produces"],
+    "cross_ref_demo": [
+      "Version.depends_on → CodeRepo",
+      "Version.part_of → Product",
+      "Pipeline.produces → Artifact"
+    ]
+  }
+}

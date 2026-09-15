@@ -1,0 +1,297 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:frame:F-INTENTIONALLY-ACT-00:v1-draft",
+  "metadata": {
+    "frame_schema_id": "F-INTENTIONALLY-ACT-00",
+    "frame_schema_name": "F-INTENTIONALLY-ACT",
+    "parent_frame_schema_id": "F-ACT-00",
+    "definition": "刻画施事带有意图的行动。在 F-ACT-00 之上增加意向性约束。",
+    "type": "frame",
+    "version": "v1-draft",
+    "external_refs": [
+      {
+        "target_schema_id": "F-ACT-00",
+        "source_file": "./F-ACT-00.json",
+        "source_version": "v1-draft",
+        "imported_at": "2026-09-15",
+        "usage": "继承 core_fe.agent、core_fe.act、peripheral_fe.time/place/duration/manner"
+      },
+      {
+        "target_schema_id": "R-ROLES-00",
+        "source_file": "./R-ROLES-00.json",
+        "source_version": "v1-draft",
+        "imported_at": "2026-09-15",
+        "usage": "引用 PurposeType、MeansType"
+      },
+      {
+        "target_schema_id": "system-queries",
+        "source_file": "./system-queries.json",
+        "source_version": "v1",
+        "imported_at": "2026-09-15",
+        "usage": "引用 current_user、unit.list、pipeline.history、permission.check、dependency.check"
+      }
+    ]
+  },
+
+  "core_fe": {
+    "agent": {
+      "inherit": "F-ACT-00.core_fe.agent",
+      "override": {
+        "definition": "施事，必须有意图地参与行动。",
+        "required": true,
+        "constraint": {
+          "type": {
+            "kind": "role",
+            "ref": "AgentRole",
+            "cardinality": "one",
+            "note": "值域见 R-ROLES-00，意向性由框架约束保证"
+          },
+          "fillers": {
+            "sources": ["explicit", "context", "default"],
+            "system_queries": ["current_user"],
+            "notes": "优先显式，其次上下文，最后默认当前用户"
+          },
+          "default": {
+            "strategy": "use_default",
+            "rule": "默认当前用户为施事",
+            "fallback": "ask",
+            "assumptions": ["当前用户为施事"]
+          },
+          "multi_candidate": {
+            "strategy": "ask",
+            "question_template": "是谁在执行这个行动？",
+            "options_source": "AgentRole.values",
+            "max_options": 3,
+            "fallback": "ask"
+          }
+        },
+        "added_constraints": [
+          { "type": "intentional", "expression": "施事必须有意图地行动" },
+          { "type": "agent_controlled", "expression": "行动必须由施事控制" }
+        ]
+      }
+    },
+
+    "act": {
+      "inherit": "F-ACT-00.core_fe.act",
+      "override": {
+        "definition": "行动本身，开放语义槽。选中后按 ActionType.frame 惰性激活对应框架，且带意图约束。",
+        "required": true,
+        "constraint": {
+          "type": {
+            "kind": "role",
+            "ref": "ActionType",
+            "cardinality": "one",
+            "note": "值域见 R-ROLES-00"
+          },
+          "fillers": {
+            "sources": ["explicit", "qualia", "history", "inferred"],
+            "qualia_paths": ["{entity}.qualia.agentive"],
+            "notes": "从动词、历史或患者实体 agentive 角色推断"
+          },
+          "default": {
+            "strategy": "infer",
+            "rule": "从激活词元或历史推断",
+            "fallback": "ask"
+          },
+          "multi_candidate": {
+            "strategy": "score",
+            "ranking": ["explicit", "qualia", "history"],
+            "threshold": 0.2,
+            "question_template": "你是要执行哪个动作？",
+            "options_source": "ActionType.values",
+            "max_options": 3,
+            "fallback": "ask"
+          }
+        },
+        "added_constraints": [
+          { "type": "intentional", "expression": "行动必须是有意为之" }
+        ]
+      }
+    },
+
+    "purpose": {
+      "inherit": "F-ACT-00.peripheral_fe.purpose",
+      "promote_to_core": true,
+      "override": {
+        "definition": "施事意图通过行动达成的未来状态、事件或结果。",
+        "required": true,
+        "constraint": {
+          "type": {
+            "kind": "role",
+            "ref": "PurposeType",
+            "cardinality": "one",
+            "note": "值域见 R-ROLES-00，选中后惰性激活对应框架"
+          },
+          "fillers": {
+            "sources": ["explicit", "qualia", "inferred"],
+            "qualia_paths": ["{entity}.qualia.telic"],
+            "notes": "优先显式目的状语，其次患者实体 telic 推导"
+          },
+          "default": {
+            "strategy": "derive_qualia",
+            "rule": "从患者实体的 telic 推导",
+            "fallback": "ask"
+          },
+          "multi_candidate": {
+            "strategy": "score",
+            "ranking": ["explicit", "qualia", "system_state"],
+            "threshold": 0.15,
+            "question_template": "你希望通过这个行动达成什么目的？",
+            "options_source": "PurposeType.values",
+            "max_options": 3,
+            "fallback": "ask"
+          }
+        },
+        "added_constraints": [
+          { "type": "intentional", "expression": "目的必须是施事意图达成的" },
+          { "type": "future_oriented", "expression": "目的必须尚未实现" },
+          { "type": "agent_desired", "expression": "施事希望目的实现" }
+        ]
+      }
+    },
+
+    "means": {
+      "inherit": "F-ACT-00.peripheral_fe.means",
+      "promote_to_core": true,
+      "override": {
+        "definition": "施事为实现目的而采用的方法、行动、工具或过程。",
+        "required": true,
+        "constraint": {
+          "type": {
+            "kind": "role",
+            "ref": "MeansType",
+            "cardinality": "one",
+            "note": "值域见 R-ROLES-00，选中后惰性激活对应框架"
+          },
+          "fillers": {
+            "sources": ["explicit", "system", "qualia"],
+            "system_queries": ["unit.list", "pipeline.history"],
+            "qualia_paths": ["ConfigUnit.qualia.telic"],
+            "notes": "优先查系统配置单元和历史流水线"
+          },
+          "default": {
+            "strategy": "query_system",
+            "rule": "查系统配置单元和历史流水线",
+            "fallback": "ask"
+          },
+          "multi_candidate": {
+            "strategy": "score",
+            "ranking": ["explicit", "history_success", "permission", "cost"],
+            "threshold": 0.15,
+            "question_template": "你打算用什么方式/工具来完成？",
+            "options_source": "MeansType.values",
+            "max_options": 3,
+            "fallback": "ask"
+          }
+        },
+        "added_constraints": [
+          { "type": "agent_controlled", "expression": "手段必须由施事控制或使用" },
+          { "type": "means_end", "expression": "手段必须能指向目的" },
+          { "type": "implementable", "expression": "手段必须可实施" }
+        ]
+      }
+    }
+  },
+
+  "peripheral_fe": {
+    "time": {
+      "inherit": "F-ACT-00.peripheral_fe.time"
+    },
+    "place": {
+      "inherit": "F-ACT-00.peripheral_fe.place"
+    },
+    "duration": {
+      "inherit": "F-ACT-00.peripheral_fe.duration"
+    },
+    "manner": {
+      "inherit": "F-ACT-00.peripheral_fe.manner",
+      "override": {
+        "definition": "行动执行的方式，可受意图影响。",
+        "required": false
+      }
+    },
+
+    "condition": {
+      "definition": "行动发生所依赖的条件。",
+      "required": false,
+      "constraint": {
+        "type": {
+          "kind": "primitive",
+          "ref": "string",
+          "cardinality": "many"
+        },
+        "fillers": {
+          "sources": ["explicit", "inferred", "system"],
+          "system_queries": ["permission.check", "dependency.check"]
+        },
+        "default": {
+          "strategy": "query_system",
+          "rule": "查权限和依赖条件",
+          "fallback": "ask"
+        },
+        "multi_candidate": {
+          "strategy": "ask",
+          "question_template": "行动需要满足哪些条件？",
+          "max_options": 3,
+          "fallback": "ask"
+        }
+      }
+    },
+
+    "goal": {
+      "definition": "施事希望达成的目标，与 purpose 相近，但更偏向可检验的终态。",
+      "required": false,
+      "constraint": {
+        "type": {
+          "kind": "frame",
+          "ref": "State",
+          "cardinality": "one"
+        },
+        "fillers": {
+          "sources": ["explicit", "qualia", "inferred"],
+          "qualia_paths": ["{entity}.qualia.telic"]
+        },
+        "default": {
+          "strategy": "derive_qualia",
+          "rule": "从患者实体 telic 推导",
+          "fallback": "ask"
+        },
+        "multi_candidate": {
+          "strategy": "score",
+          "ranking": ["explicit", "qualia"],
+          "threshold": 0.15,
+          "question_template": "目标状态是什么？",
+          "max_options": 3,
+          "fallback": "ask"
+        }
+      }
+    }
+  },
+
+  "inheritance_notes": {
+    "from_parent": [
+      "peripheral_fe.time",
+      "peripheral_fe.place",
+      "peripheral_fe.duration"
+    ],
+    "promoted_to_core": [
+      "peripheral_fe.purpose → core_fe.purpose",
+      "peripheral_fe.means → core_fe.means"
+    ],
+    "newly_added": [
+      "peripheral_fe.condition",
+      "peripheral_fe.goal"
+    ],
+    "overridden": [
+      "core_fe.agent",
+      "core_fe.act",
+      "core_fe.purpose",
+      "core_fe.means",
+      "peripheral_fe.manner"
+    ]
+  },
+
+  "lus": ["act", "action", "do", "perform", "carry out", "execute", "commit"],
+  "lus_zh": ["行动", "行为", "做", "执行", "实施", "开展", "从事"]
+}

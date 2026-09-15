@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:example:artifact-registry-example:v1",
+  "metadata": {
+    "name": "artifact-registry-example",
+    "version": "v1",
+    "description": "Artifact 注册表示例，覆盖订单服务构建产物。",
+    "scope": "演示 Artifact / QualiaInstance / EntityRelation 的完整写法",
+    "layer": "domain-layer/artifact"
+  },
+
+  "spec_ref": {
+    "artifact_spec": "./specs/artifact-spec.json",
+    "artifact_registry_schema": "./artifact/artifact-registry.schema.json",
+    "entity_registry": "./entity/entity-registry-example.json",
+    "unit_registry": "./unit/unit-registry-example.json",
+    "relation_type_index": "./entity/relation-type-index.json"
+  },
+
+  "artifacts": [
+    {
+      "id": "artifact:v2.3.0:order-service.jar",
+      "type": "Artifact",
+      "name": "order-service-2.3.0.jar",
+      "qualia": {
+        "formal": "构建产物",
+        "constitutive": ["文件", "元数据", "校验和"],
+        "telic": ["部署", "发布", "交付"],
+        "agentive": ["由流水线构建产生"]
+      },
+      "files": [
+        {
+          "path": "target/order-service-2.3.0.jar",
+          "size": 12345678,
+          "hash": "sha256:abcdef0123456789"
+        },
+        {
+          "path": "target/order-service-2.3.0.pom",
+          "size": 4096,
+          "hash": "sha256:0123456789abcdef"
+        }
+      ],
+      "checksum": "sha256:abcdef0123456789",
+      "storage": "repo://artifacts/order/2.3.0/",
+      "status": "ready",
+      "belongs_to": "entity:Version:V2.3.0",
+      "produced_by": "unit:staging:standard-build",
+      "produced_at": "2026-09-15T11:30:00Z",
+      "format": "jar",
+      "domain": "ci",
+      "tags": ["artifact", "jar", "order"],
+      "relations": [
+        {
+          "id": "rel:301",
+          "type": "produces",
+          "target": "entity:Artifact:A1",
+          "label": "对应语义产物",
+          "direction": "outbound",
+          "weight": 1.0,
+          "confidence": 1.0,
+          "source": "explicit"
+        }
+      ]
+    }
+  ],
+
+  "conventions": {
+    "note": "本文件仅作示例，不参与校验。",
+    "covered_artifacts": ["artifact:v2.3.0:order-service.jar"],
+    "covered_relation_types": ["produces"],
+    "cross_ref_demo": [
+      "Artifact.belongs_to → entity:Version:V2.3.0",
+      "Artifact.produced_by → unit:staging:standard-build",
+      "Artifact.relations[produces] → entity:Artifact:A1"
+    ]
+  }
+}

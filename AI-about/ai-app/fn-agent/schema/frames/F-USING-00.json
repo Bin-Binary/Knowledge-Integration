@@ -1,0 +1,218 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:frame:F-USING-00:v1-draft",
+  "metadata": {
+    "frame_schema_id": "F-USING-00",
+    "frame_schema_name": "F-USING",
+    "parent_frame_schema_id": null,
+    "definition": "刻画施事通过工具作用于某对象以实现目的。",
+    "type": "frame",
+    "version": "v1-draft",
+    "external_refs": [
+      {
+        "target_schema_id": "R-ROLES-00",
+        "source_file": "./R-ROLES-00.json",
+        "source_version": "v1-draft",
+        "imported_at": "2026-09-15",
+        "usage": "引用 AgentRole、PatientType、PurposeType、MeansType"
+      },
+      {
+        "target_schema_id": "system-queries",
+        "source_file": "./system-queries.json",
+        "source_version": "v1",
+        "imported_at": "2026-09-15",
+        "usage": "引用 current_user、entity.resolve、unit.list、pipeline.list、pipeline.history、tool.resolve、tool.list"
+      }
+    ]
+  },
+
+  "core_fe": {
+    "agent": {
+      "definition": "使用工具的施事。",
+      "required": true,
+      "constraint": {
+        "type": {
+          "kind": "role",
+          "ref": "AgentRole",
+          "cardinality": "one",
+          "note": "值域见 R-ROLES-00"
+        },
+        "fillers": {
+          "sources": ["explicit", "context", "default"],
+          "system_queries": ["current_user"],
+          "notes": "优先显式，其次上下文，最后默认当前用户"
+        },
+        "default": {
+          "strategy": "use_default",
+          "rule": "默认当前用户为施事",
+          "fallback": "ask",
+          "assumptions": ["当前用户为施事"]
+        },
+        "multi_candidate": {
+          "strategy": "ask",
+          "question_template": "是谁在使用该工具？",
+          "options_source": "AgentRole.values",
+          "max_options": 3,
+          "fallback": "ask"
+        }
+      }
+    },
+    "instrument": {
+      "definition": "施事用来作用于对象的工具、资源或手段实体。",
+      "required": true,
+      "constraint": {
+        "type": {
+          "kind": "role",
+          "ref": "EntityType",
+          "cardinality": "one",
+          "note": "工具实体，值域见 R-ROLES-00 的 EntityType"
+        },
+        "fillers": {
+          "sources": ["explicit", "system", "qualia"],
+          "system_queries": ["unit.list", "pipeline.list", "tool.resolve"],
+          "qualia_paths": ["{entity}.qualia.agentive"],
+          "notes": "优先显式工具短语，其次查系统配置单元、流水线"
+        },
+        "default": {
+          "strategy": "query_system",
+          "rule": "查系统可用工具或配置单元",
+          "fallback": "ask"
+        },
+        "multi_candidate": {
+          "strategy": "score",
+          "ranking": ["explicit", "history_success", "permission", "cost"],
+          "threshold": 0.15,
+          "question_template": "使用哪个工具？",
+          "options_source": "tool.list",
+          "max_options": 3,
+          "fallback": "ask"
+        }
+      }
+    },
+    "patient": {
+      "definition": "工具所作用的对象。",
+      "required": true,
+      "constraint": {
+        "type": {
+          "kind": "role",
+          "ref": "PatientType",
+          "cardinality": "one",
+          "note": "值域见 R-ROLES-00，引用 EntityType + filter"
+        },
+        "fillers": {
+          "sources": ["explicit", "context", "system"],
+          "system_queries": ["entity.resolve"],
+          "notes": "优先显式宾语，其次上下文注入实体"
+        },
+        "default": {
+          "strategy": "query_system",
+          "rule": "从上下文解析受作用对象",
+          "fallback": "ask"
+        },
+        "multi_candidate": {
+          "strategy": "score",
+          "ranking": ["explicit", "context", "history"],
+          "threshold": 0.15,
+          "question_template": "作用于什么对象？",
+          "options_source": "PatientType.values",
+          "max_options": 3,
+          "fallback": "ask"
+        }
+      }
+    }
+  },
+
+  "peripheral_fe": {
+    "purpose": {
+      "definition": "施事使用工具以实现的目的。",
+      "required": false,
+      "constraint": {
+        "type": {
+          "kind": "role",
+          "ref": "PurposeType",
+          "cardinality": "one",
+          "note": "值域见 R-ROLES-00，选中后惰性激活对应框架"
+        },
+        "fillers": {
+          "sources": ["explicit", "qualia", "inferred"],
+          "qualia_paths": ["{entity}.qualia.telic", "{instrument}.qualia.telic"],
+          "notes": "优先显式目的状语，其次从患者或工具 telic 推导"
+        },
+        "default": {
+          "strategy": "derive_qualia",
+          "rule": "从患者或工具 telic 推导目的",
+          "fallback": "ask"
+        },
+        "multi_candidate": {
+          "strategy": "score",
+          "ranking": ["explicit", "qualia", "system_state"],
+          "threshold": 0.15,
+          "question_template": "使用该工具的目的是什么？",
+          "options_source": "PurposeType.values",
+          "max_options": 3,
+          "fallback": "ask"
+        }
+      }
+    },
+    "manner": {
+      "definition": "使用工具的方式。",
+      "required": false,
+      "constraint": {
+        "type": {
+          "kind": "primitive",
+          "ref": "string",
+          "cardinality": "one"
+        },
+        "fillers": {
+          "sources": ["explicit", "inferred"]
+        },
+        "default": {
+          "strategy": "use_default",
+          "rule": "使用默认方式",
+          "fallback": "ask"
+        },
+        "multi_candidate": {
+          "strategy": "default_top1",
+          "question_template": "以什么方式使用？",
+          "max_options": 1,
+          "fallback": "ask"
+        }
+      }
+    },
+    "means": {
+      "definition": "施事为实现目的所采用的整体手段，可包含工具与过程。",
+      "required": false,
+      "constraint": {
+        "type": {
+          "kind": "role",
+          "ref": "MeansType",
+          "cardinality": "one",
+          "note": "值域见 R-ROLES-00，选中后惰性激活对应框架"
+        },
+        "fillers": {
+          "sources": ["explicit", "system", "qualia"],
+          "system_queries": ["unit.list", "pipeline.history"],
+          "qualia_paths": ["{instrument}.qualia.telic"],
+          "notes": "优先显式方式状语，其次查系统手段"
+        },
+        "default": {
+          "strategy": "query_system",
+          "rule": "查系统配置单元和历史流水线",
+          "fallback": "ask"
+        },
+        "multi_candidate": {
+          "strategy": "score",
+          "ranking": ["explicit", "history_success", "permission", "cost"],
+          "threshold": 0.15,
+          "question_template": "通过什么手段实现？",
+          "options_source": "MeansType.values",
+          "max_options": 3,
+          "fallback": "ask"
+        }
+      }
+    }
+  },
+
+  "lus": ["use", "utilize", "employ", "wield", "leverage", "apply", "operate"],
+  "lus_zh": ["使用", "利用", "采用", "运用", "借助", "操作", "动用"]
+}

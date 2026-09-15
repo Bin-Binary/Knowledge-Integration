@@ -1,0 +1,221 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:index:frame-name-index:v1",
+  "metadata": {
+    "name": "frame-name-index",
+    "version": "v1",
+    "description": "框架名称索引。建立 frame_schema_name 与 frame_schema_id 的双向映射，供解析器把 name 解析为 id。所有框架文件、R-ROLES-00、frame_refs 中出现的 frame 字段均使用 frame_schema_name。",
+    "scope": "frame 引用解析"
+  },
+
+  "resolution_rules": {
+    "input": "输入为 frame_schema_name，如 State、Change、Processing_materials。",
+    "output": "输出为 frame_schema_id，如 F-STATE-00、F-CHANGE-00、F-PROCESSING-MATERIALS-00。",
+    "reverse": "支持反向解析，输入 id 输出 name。",
+    "missing": "若 name 不在索引中，触发校验错误。",
+    "case_sensitive": "name 大小写敏感，必须与 frame_schema_name 完全一致。"
+  },
+
+  "frames": [
+    { "frame_schema_name": "Activity",              "frame_schema_id": "F-ACT-00",                    "source_file": "./F-ACT-00.json",                    "version": "v1-draft", "parent": null,        "domain": "general" },
+    { "frame_schema_name": "Intentionally_act",     "frame_schema_id": "F-INTENTIONALLY-ACT-00",      "source_file": "./F-INTENTIONALLY-ACT-00.json",      "version": "v1-draft", "parent": "F-ACT-00",  "domain": "general" },
+    { "frame_schema_name": "State",                 "frame_schema_id": "F-STATE-00",                  "source_file": "./F-STATE-00.json",                  "version": "v1-draft", "parent": null,        "domain": "general" },
+    { "frame_schema_name": "Event",                 "frame_schema_id": "F-EVENT-00",                  "source_file": "./F-EVENT-00.json",                  "version": "v1-draft", "parent": null,        "domain": "general" },
+    { "frame_schema_name": "Process",               "frame_schema_id": "F-PROCESS-00",                "source_file": "./F-PROCESS-00.json",                "version": "v1-draft", "parent": null,        "domain": "general" },
+    { "frame_schema_name": "Change",                "frame_schema_id": "F-CHANGE-00",                 "source_file": "./F-CHANGE-00.json",                 "version": "v1-draft", "parent": null,        "domain": "general" },
+    { "frame_schema_name": "Choosing",              "frame_schema_id": "F-CHOOSING-00",               "source_file": "./F-CHOOSING-00.json",               "version": "v1-draft", "parent": null,        "domain": "general" },
+    { "frame_schema_name": "Using",                 "frame_schema_id": "F-USING-00",                  "source_file": "./F-USING-00.json",                  "version": "v1-draft", "parent": null,        "domain": "general" },
+    { "frame_schema_name": "Processing_materials",  "frame_schema_id": "F-PROCESSING-MATERIALS-00",   "source_file": "./F-PROCESSING-MATERIALS-00.json",   "version": "v1-draft", "parent": null,        "domain": "general" },
+    { "frame_schema_name": "Communication",         "frame_schema_id": "F-COMMUNICATION-00",          "source_file": "./F-COMMUNICATION-00.json",          "version": "v1-draft", "parent": null,        "domain": "general" }
+  ],
+
+  "name_to_id": {
+    "Activity": "F-ACT-00",
+    "Intentionally_act": "F-INTENTIONALLY-ACT-00",
+    "State": "F-STATE-00",
+    "Event": "F-EVENT-00",
+    "Process": "F-PROCESS-00",
+    "Change": "F-CHANGE-00",
+    "Choosing": "F-CHOOSING-00",
+    "Using": "F-USING-00",
+    "Processing_materials": "F-PROCESSING-MATERIALS-00",
+    "Communication": "F-COMMUNICATION-00"
+  },
+
+  "id_to_name": {
+    "F-ACT-00": "Activity",
+    "F-INTENTIONALLY-ACT-00": "Intentionally_act",
+    "F-STATE-00": "State",
+    "F-EVENT-00": "Event",
+    "F-PROCESS-00": "Process",
+    "F-CHANGE-00": "Change",
+    "F-CHOOSING-00": "Choosing",
+    "F-USING-00": "Using",
+    "F-PROCESSING-MATERIALS-00": "Processing_materials",
+    "F-COMMUNICATION-00": "Communication"
+  },
+
+  "reference_map": {
+    "description": "记录各框架文件、R-ROLES-00、system-queries.json 中出现的所有引用，用于交叉校验一致性。",
+    "by_role": {
+      "ActionType.values[build].frame": "Processing_materials",
+      "ActionType.values[release].frame": "Change",
+      "ActionType.values[rollback].frame": "Change",
+      "ActionType.values[verify].frame": "State",
+      "ActionType.values[deploy].frame": "Using",
+      "ActionType.values[test].frame": "State",
+      "ActionType.values[configure].frame": "Using",
+      "ActionType.values[notify].frame": "Communication",
+      "PurposeType.values[State].frame": "State",
+      "PurposeType.values[Event].frame": "Event",
+      "PurposeType.values[Change].frame": "Change",
+      "PurposeType.values[Process].frame": "Process",
+      "MeansType.values[Process].frame": "Process",
+      "MeansType.values[Using].frame": "Using",
+      "MeansType.values[Instrument].frame": "Using",
+      "EventType.values[Process].frame": "Process",
+      "EventType.values[Change].frame": "Change"
+    },
+    "by_frame_refs": {
+      "F-CHANGE-00.final_state.frame_refs[0]": { "frame": "Intentionally_act", "fe": "purpose" },
+      "F-CHANGE-00.cause.frame_refs[0]": { "frame": "Intentionally_act", "fe": "act" },
+      "F-CHANGE-00.cause.frame_refs[1]": { "frame": "Processing_materials", "fe": "product" },
+      "F-PROCESSING-MATERIALS-00.product.frame_refs[0]": { "frame": "Intentionally_act", "fe": "purpose" },
+      "F-PROCESSING-MATERIALS-00.product.frame_refs[1]": { "frame": "Change", "fe": "final_state" },
+      "F-PROCESSING-MATERIALS-00.agent.frame_refs[0]": { "frame": "Intentionally_act", "fe": "agent" },
+      "F-PROCESSING-MATERIALS-00.means.frame_refs[0]": { "frame": "Using", "fe": "instrument" },
+      "F-COMMUNICATION-00.communicator.frame_refs[0]": { "frame": "Intentionally_act", "fe": "agent" },
+      "F-COMMUNICATION-00.message.frame_refs[0]": { "frame": "State", "fe": "state" },
+      "F-COMMUNICATION-00.message.frame_refs[1]": { "frame": "Change", "fe": "final_state" },
+      "F-COMMUNICATION-00.message.frame_refs[2]": { "frame": "Processing_materials", "fe": "product" },
+      "F-COMMUNICATION-00.topic.frame_refs[0]": { "frame": "Intentionally_act", "fe": "purpose" }
+    },
+    "by_type_refs": {
+      "description": "记录 fillers.constraint.type.kind=frame 的引用。与 frame_refs 不同，type_refs 表示 FE 的填充类型是某框架实例，而非从该框架的 FE 取值。",
+      "F-CHANGE-00.initial_state.type": { "kind": "frame", "ref": "State" },
+      "F-CHANGE-00.final_state.type": { "kind": "frame", "ref": "State" },
+      "F-INTENTIONALLY-ACT-00.goal.type": { "kind": "frame", "ref": "State" }
+    },
+    "by_qualia_paths": {
+      "description": "记录所有框架 fillers.qualia_paths 中的引用。每条目必须且只能有 placeholder / entity / fe_source 之一。",
+      "field_semantics": {
+        "placeholder": "运行时动态解析的实体类型，取值 {entity} / {instrument} / {material} 之一。",
+        "entity": "具体 EntityType 值，必须在 R-ROLES-00.EntityType.values 中。",
+        "fe_source": "框架内其他 FE 名，必须在当前框架的 core_fe 或 peripheral_fe 中存在。"
+      },
+      "removed_entries_note": {
+        "F-PROCESSING-MATERIALS-00.material.qualia_paths[0]": "已移除。原设计从 Product.constitutive 推导字符串值（模块/组件/依赖），与 material FE 的 type_ref（EntityType，即实体）冲突。material 改由 candidate_paths 声明式规则生成，见 by_candidate_paths。"
+      },
+      "entries": {
+        "F-ACT-00.act.qualia_paths[0]":                        { "placeholder": "{entity}",      "qualia": "agentive" },
+        "F-ACT-00.purpose.qualia_paths[0]":                    { "placeholder": "{entity}",      "qualia": "telic" },
+        "F-ACT-00.means.qualia_paths[0]":                      { "entity": "ConfigUnit",         "qualia": "telic" },
+        "F-CHANGE-00.final_state.qualia_paths[0]":             { "placeholder": "{entity}",      "qualia": "telic" },
+        "F-CHOOSING-00.chosen.qualia_paths[0]":                { "fe_source": "alternatives",    "qualia": "telic" },
+        "F-CHOOSING-00.basis.qualia_paths[0]":                 { "fe_source": "chosen",          "qualia": "telic" },
+        "F-CHOOSING-00.purpose.qualia_paths[0]":               { "placeholder": "{entity}",      "qualia": "telic" },
+        "F-CHOOSING-00.purpose.qualia_paths[1]":               { "fe_source": "chosen",          "qualia": "telic" },
+        "F-INTENTIONALLY-ACT-00.act.qualia_paths[0]":          { "placeholder": "{entity}",      "qualia": "agentive" },
+        "F-INTENTIONALLY-ACT-00.purpose.qualia_paths[0]":      { "placeholder": "{entity}",      "qualia": "telic" },
+        "F-INTENTIONALLY-ACT-00.means.qualia_paths[0]":        { "entity": "ConfigUnit",         "qualia": "telic" },
+        "F-INTENTIONALLY-ACT-00.goal.qualia_paths[0]":         { "placeholder": "{entity}",      "qualia": "telic" },
+        "F-PROCESSING-MATERIALS-00.product.qualia_paths[0]":   { "placeholder": "{material}",    "qualia": "telic" },
+        "F-PROCESSING-MATERIALS-00.means.qualia_paths[0]":     { "placeholder": "{material}",    "qualia": "agentive" },
+        "F-STATE-00.state.qualia_paths[0]":                    { "placeholder": "{entity}",      "qualia": "formal" },
+        "F-USING-00.instrument.qualia_paths[0]":               { "placeholder": "{entity}",      "qualia": "agentive" },
+        "F-USING-00.purpose.qualia_paths[0]":                  { "placeholder": "{entity}",      "qualia": "telic" },
+        "F-USING-00.purpose.qualia_paths[1]":                  { "placeholder": "{instrument}",  "qualia": "telic" },
+        "F-USING-00.means.qualia_paths[0]":                    { "placeholder": "{instrument}",  "qualia": "telic" }
+      }
+    },
+    "by_candidate_paths": {
+      "description": "记录所有框架 fillers.candidate_paths 中的声明式规则。与 qualia_paths 平行，用于生成候选。",
+      "field_semantics": {
+        "kind": "entity_relation / unit_field / artifact_field / context_key 之一。",
+        "value_field": "取哪个字段作为候选值。id / self / 具体字段名。",
+        "filter": "过滤条件，value 支持 context.xxx 引用。"
+      },
+      "entries": {
+        "F-PROCESSING-MATERIALS-00.material.candidate_paths[0]": {
+          "kind": "entity_relation",
+          "from": "context.version",
+          "relation": "depends_on",
+          "target_types": ["CodeRepo", "ConfigUnit"],
+          "value_field": "id"
+        },
+        "F-PROCESSING-MATERIALS-00.material.candidate_paths[1]": {
+          "kind": "unit_field",
+          "field": "code_repo_refs",
+          "value_field": "self"
+        },
+        "F-PROCESSING-MATERIALS-00.product.candidate_paths[0]": {
+          "kind": "artifact_field",
+          "field": "id",
+          "filter": {
+            "belongs_to": "context.version"
+          },
+          "value_field": "id"
+        }
+      }
+    },
+    "by_external_refs": {
+      "F-ACT-00.external_refs[0].target_schema_id": "R-ROLES-00",
+      "F-ACT-00.external_refs[1].target_schema_id": "system-queries",
+      "F-INTENTIONALLY-ACT-00.external_refs[0].target_schema_id": "F-ACT-00",
+      "F-INTENTIONALLY-ACT-00.external_refs[1].target_schema_id": "R-ROLES-00",
+      "F-INTENTIONALLY-ACT-00.external_refs[2].target_schema_id": "system-queries",
+      "F-STATE-00.external_refs[0].target_schema_id": "R-ROLES-00",
+      "F-STATE-00.external_refs[1].target_schema_id": "system-queries",
+      "F-EVENT-00.external_refs[0].target_schema_id": "R-ROLES-00",
+      "F-EVENT-00.external_refs[1].target_schema_id": "system-queries",
+      "F-PROCESS-00.external_refs[0].target_schema_id": "system-queries",
+      "F-CHANGE-00.external_refs[0].target_schema_id": "R-ROLES-00",
+      "F-CHANGE-00.external_refs[1].target_schema_id": "system-queries",
+      "F-CHOOSING-00.external_refs[0].target_schema_id": "R-ROLES-00",
+      "F-CHOOSING-00.external_refs[1].target_schema_id": "system-queries",
+      "F-USING-00.external_refs[0].target_schema_id": "R-ROLES-00",
+      "F-USING-00.external_refs[1].target_schema_id": "system-queries",
+      "F-PROCESSING-MATERIALS-00.external_refs[0].target_schema_id": "R-ROLES-00",
+      "F-PROCESSING-MATERIALS-00.external_refs[1].target_schema_id": "system-queries",
+      "F-COMMUNICATION-00.external_refs[0].target_schema_id": "R-ROLES-00",
+      "F-COMMUNICATION-00.external_refs[1].target_schema_id": "system-queries"
+    }
+  },
+
+  "external_schemas": [
+    { "target_schema_id": "R-ROLES-00",                "type": "role-registry", "source_file": "./registries/R-ROLES-00.json",                "version": "v1-draft" },
+    { "target_schema_id": "constraint-field-spec",     "type": "spec",          "source_file": "./specs/constraint-field-spec.json",     "version": "v1" },
+    { "target_schema_id": "frame-inheritance-spec",    "type": "spec",          "source_file": "./specs/frame-inheritance-spec.json",    "version": "v1" },
+    { "target_schema_id": "system-queries",            "type": "spec",          "source_file": "./registries/system-queries.json",            "version": "v1" },
+    { "target_schema_id": "frame-name-index",          "type": "index",         "source_file": "./indexes/frame-name-index.json",          "version": "v1" }
+  ],
+
+  "validation_rules": [
+    { "rule": "name 唯一",             "expression": "所有 frame_schema_name 不允许重复。" },
+    { "rule": "id 唯一",               "expression": "所有 frame_schema_id 不允许重复。" },
+    { "rule": "name 与 id 双向一致",   "expression": "name_to_id 与 id_to_name 必须完全对称，无孤立项。" },
+    { "rule": "引用可解析",            "expression": "reference_map 中所有 frame 引用必须能在 name_to_id 中找到。" },
+    { "rule": "external_refs 可解析",  "expression": "所有框架 external_refs.target_schema_id 必须在 external_schemas 中有定义，或指向其他框架的 frame_schema_id。" },
+    { "rule": "parent 可解析",         "expression": "frames[].parent 若非 null，必须在 name_to_id 或 id_to_name 中有对应项。" },
+    { "rule": "self_recursion_guard 一致", "expression": "reference_map 中不应出现 frame 引用指向当前激活框架自身。" },
+    { "rule": "frame_refs.fe 小写",    "expression": "frame_refs[].fe 使用 FE 名小写形式，与框架文件 core_fe / peripheral_fe 的键一致。" },
+    { "rule": "by_type_refs 可解析",   "expression": "by_type_refs 中所有 ref 必须是 name_to_id 中的 frame_schema_name。" },
+    { "rule": "by_qualia_paths 结构",  "expression": "by_qualia_paths.entries 中每条目必须且只能包含 placeholder / entity / fe_source 之一，且必须含 qualia。" },
+    { "rule": "by_qualia_paths 值可解析", "expression": "placeholder 必须是 {entity} / {instrument} / {material} 之一；entity 必须是 EntityType.values 中的值；fe_source 必须是所属框架中 core_fe 或 peripheral_fe 的键名。" },
+    { "rule": "qualia 值合法",         "expression": "by_qualia_paths.entries 中 qualia 必须是 formal / constitutive / telic / agentive 之一。" },
+    { "rule": "by_candidate_paths 结构", "expression": "by_candidate_paths.entries 中每条目必须含 kind 字段，kind ∈ {entity_relation, unit_field, artifact_field, context_key}。" },
+    { "rule": "by_candidate_paths 字段匹配", "expression": "kind=entity_relation 时必含 from 与 relation；kind=unit_field / artifact_field 时必含 field；kind=context_key 时必含 key。" }
+  ],
+
+  "conventions": {
+    "name_style": "PascalCase 或 snake_case，与各框架文件 frame_schema_name 完全一致",
+    "id_style": "F-{NAME}-NN，NAME 为大写、下划线分隔",
+    "source_file_style": "./{frame_schema_id}.json",
+    "version_style": "v1-draft",
+    "parent_field": "引用 frame_schema_id，非 name",
+    "frame_refs_fe_style": "小写，与 FE 键名一致",
+    "qualia_paths_style": "实体名 / 占位符 / FE 名开头，后接 .qualia.{formal|constitutive|telic|agentive}",
+    "qualia_values": ["formal", "constitutive", "telic", "agentive"],
+    "candidate_paths_style": "kind 决定字段；value_field 取值 id / self / 字段名；filter value 支持 context.xxx"
+  }
+}

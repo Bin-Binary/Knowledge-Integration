@@ -1,0 +1,195 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:roles:R-ROLES-00:v1-draft",
+  "metadata": {
+    "role_schema_id": "R-ROLES-00",
+    "role_schema_name": "R-ROLES",
+    "definition": "定义通用框架与具体领域之间的角色值域与框架映射。",
+    "type": "role-registry",
+    "version": "v1-draft",
+    "extension": "append-only",
+    "note": "暂不拆分 CI 角色，通用角色与 CI 角色同文件管理，用 domain 字段区分。角色值域可引用其他角色，避免重复列举。values[].frame 使用 frame_schema_name。"
+  },
+
+  "role_structure": {
+    "role_id": "string",
+    "description": "string",
+    "domain": "general | ci | general+ci",
+    "extension": "append-only",
+    "ref": "可选。引用另一个 role_id，表示值域继承自该角色。",
+    "filter": "可选。当 ref 存在时，用于筛选 ref 角色中的子集。为空表示全部。",
+    "values": "本角色自有值域。ref 存在时，values 可为空。"
+  },
+
+  "roles": {
+    "AgentRole": {
+      "role_id": "AgentRole",
+      "description": "施事角色类型，用于 Agent / Cognizer / Communicator。",
+      "domain": "general",
+      "extension": "append-only",
+      "ref": null,
+      "filter": [],
+      "values": [
+        { "value": "human",        "frame": null, "domain": "general", "note": "自然人" },
+        { "value": "system",       "frame": null, "domain": "general", "note": "系统自身" },
+        { "value": "organization", "frame": null, "domain": "general", "note": "组织" },
+        { "value": "team",         "frame": null, "domain": "general", "note": "团队" }
+      ]
+    },
+
+    "ActionType": {
+      "role_id": "ActionType",
+      "description": "动作类型值域，用于 Act。选中后按 frame 惰性激活对应框架。通用动作 frame 为 null，不激活框架，避免自递归。",
+      "domain": "general+ci",
+      "extension": "append-only",
+      "ref": null,
+      "filter": [],
+      "values": [
+        { "value": "perform",   "frame": null,                   "domain": "general", "note": "通用执行，不激活框架" },
+        { "value": "do",        "frame": null,                   "domain": "general", "note": "通用做，不激活框架" },
+        { "value": "carry out", "frame": null,                   "domain": "general", "note": "通用开展，不激活框架" },
+        { "value": "engage in", "frame": null,                   "domain": "general", "note": "通用从事，不激活框架" },
+        { "value": "conduct",   "frame": null,                   "domain": "general", "note": "通用进行，不激活框架" },
+        { "value": "undertake", "frame": null,                   "domain": "general", "note": "通用承担，不激活框架" },
+        { "value": "practice",  "frame": null,                   "domain": "general", "note": "通用练习，不激活框架" },
+
+        { "value": "build",     "frame": "Processing_materials", "domain": "ci", "note": "构建新版本" },
+        { "value": "release",   "frame": "Change",               "domain": "ci", "note": "发布版本" },
+        { "value": "rollback",  "frame": "Change",               "domain": "ci", "note": "回滚版本" },
+        { "value": "verify",    "frame": "State",                "domain": "ci", "note": "验证版本状态" },
+        { "value": "deploy",    "frame": "Using",                "domain": "ci", "note": "部署版本" },
+        { "value": "test",      "frame": "State",                "domain": "ci", "note": "测试" },
+        { "value": "configure", "frame": "Using",                "domain": "ci", "note": "配置" },
+        { "value": "notify",    "frame": "Communication",        "domain": "ci", "note": "通知" }
+      ]
+    },
+
+    "PurposeType": {
+      "role_id": "PurposeType",
+      "description": "目的类型值域，用于 Purpose / Goal / Final_state。",
+      "domain": "general",
+      "extension": "append-only",
+      "ref": null,
+      "filter": [],
+      "values": [
+        { "value": "State",   "frame": "State",   "domain": "general", "note": "目标状态" },
+        { "value": "Event",   "frame": "Event",   "domain": "general", "note": "目标事件" },
+        { "value": "Change",  "frame": "Change",  "domain": "general", "note": "目标变化" },
+        { "value": "Process", "frame": "Process", "domain": "general", "note": "目标过程" }
+      ]
+    },
+
+    "MeansType": {
+      "role_id": "MeansType",
+      "description": "手段类型值域，用于 Means。",
+      "domain": "general",
+      "extension": "append-only",
+      "ref": null,
+      "filter": [],
+      "values": [
+        { "value": "Process",    "frame": "Process", "domain": "general", "note": "过程手段" },
+        { "value": "Using",      "frame": "Using",   "domain": "general", "note": "工具使用" },
+        { "value": "Instrument", "frame": "Using",   "domain": "general", "note": "工具" },
+        { "value": "Resource",   "frame": null,      "domain": "general", "note": "资源" },
+        { "value": "Method",     "frame": null,      "domain": "general", "note": "方法" }
+      ]
+    },
+
+    "EntityType": {
+      "role_id": "EntityType",
+      "description": "实体类型值域。作为实体分类的唯一来源，供其他角色引用。",
+      "domain": "general+ci",
+      "extension": "append-only",
+      "ref": null,
+      "filter": [],
+      "values": [
+        { "value": "Tool",       "frame": null, "domain": "general", "note": "工具" },
+        { "value": "Product",    "frame": null, "domain": "ci", "note": "产品" },
+        { "value": "Version",    "frame": null, "domain": "ci", "note": "版本" },
+        { "value": "CodeRepo",   "frame": null, "domain": "ci", "note": "代码仓" },
+        { "value": "ConfigUnit", "frame": null, "domain": "ci", "note": "配置单元" },
+        { "value": "Artifact",   "frame": null, "domain": "ci", "note": "产物" },
+        { "value": "Branch",     "frame": null, "domain": "ci", "note": "分支" },
+        { "value": "Pipeline",   "frame": null, "domain": "ci", "note": "流水线" }
+      ]
+    },
+
+    "PatientType": {
+      "role_id": "PatientType",
+      "description": "受作用对象类型值域，用于 Patient。",
+      "domain": "general+ci",
+      "extension": "append-only",
+      "ref": "EntityType",
+      "filter": ["Version", "Artifact", "ConfigUnit", "CodeRepo", "Product", "Tool"],
+      "values": []
+    },
+
+    "ChosenType": {
+      "role_id": "ChosenType",
+      "description": "被选中项类型值域，用于 Chosen。",
+      "domain": "general+ci",
+      "extension": "append-only",
+      "ref": "EntityType",
+      "filter": ["ConfigUnit", "Pipeline", "Branch", "Version", "Artifact", "Tool"],
+      "values": []
+    },
+
+    "AlternativeType": {
+      "role_id": "AlternativeType",
+      "description": "备选项类型值域，用于 Alternatives。",
+      "domain": "general+ci",
+      "extension": "append-only",
+      "ref": "EntityType",
+      "filter": ["ConfigUnit", "Pipeline", "Branch", "Version", "Tool"],
+      "values": []
+    },
+
+    "EventType": {
+      "role_id": "EventType",
+      "description": "事件类型值域，用于 Event / Cause。通用事件 frame 为 null，不激活框架，避免自递归。",
+      "domain": "general",
+      "extension": "append-only",
+      "ref": null,
+      "filter": [],
+      "values": [
+        { "value": "Event",   "frame": null,      "domain": "general", "note": "通用事件，不激活框架" },
+        { "value": "Process", "frame": "Process", "domain": "general", "note": "过程" },
+        { "value": "Change",  "frame": "Change",  "domain": "general", "note": "变化" }
+      ]
+    },
+
+    "MediumType": {
+      "role_id": "MediumType",
+      "description": "媒介类型值域，用于 Medium。",
+      "domain": "general+ci",
+      "extension": "append-only",
+      "ref": null,
+      "filter": [],
+      "values": [
+        { "value": "text",    "frame": null, "domain": "general", "note": "文本" },
+        { "value": "voice",   "frame": null, "domain": "general", "note": "语音" },
+        { "value": "email",   "frame": null, "domain": "general", "note": "邮件" },
+        { "value": "api",     "frame": null, "domain": "ci",      "note": "接口" },
+        { "value": "ui",      "frame": null, "domain": "ci",      "note": "界面" },
+        { "value": "webhook", "frame": null, "domain": "ci",      "note": "回调" }
+      ]
+    }
+  },
+
+  "resolution_rules": {
+    "ref_resolution": "当 role.ref 非空时，该角色的可用值域 = ref 角色 values 中符合 filter 的子集。filter 为空表示不过滤。",
+    "value_override": "本角色 values 与 ref 解析结果合并，本角色 values 优先。",
+    "append_only": "所有角色扩展只追加，不删除已有值。",
+    "frame_activation": "role 类型被选中后，按 values[].frame 惰性激活对应框架。frame 为 null 表示不激活框架。",
+    "self_recursion_guard": "若 values[].frame 指向的框架等于当前激活框架自身，则不激活，视为通用值。"
+  },
+
+  "conventions": {
+    "role_id_pattern": "^[A-Z][A-Za-z]+Type$|^AgentRole$",
+    "extension": "append-only",
+    "domain_values": ["general", "ci"],
+    "frame_mapping": "values[].frame 使用 frame_schema_name，指向具体框架；null 表示不激活框架",
+    "lazy_activation": "role 类型选中后，按 values[].frame 惰性激活对应框架",
+    "frame_name": "使用 frame_schema_name，不使用 frame_schema_id"
+  }
+}

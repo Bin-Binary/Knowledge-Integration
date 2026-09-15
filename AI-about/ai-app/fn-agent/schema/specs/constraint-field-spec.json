@@ -1,0 +1,369 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:spec:constraint-field-spec:v1",
+  "metadata": {
+    "name": "constraint-field-spec",
+    "version": "v1",
+    "description": "定义框架 FE 中 constraint 的字段结构、取值与含义。用于所有 F-XXX 框架 schema 的 FE 填充。",
+    "scope": "FE.constraint 与 frame 级字段"
+  },
+
+  "structure": {
+    "FE": {
+      "constraint": {
+        "type": {},
+        "fillers": {},
+        "default": {},
+        "multi_candidate": {}
+      }
+    }
+  },
+
+  "fields": {
+    "type": {
+      "required": true,
+      "description": "这个槽接受什么类型的值。",
+      "properties": {
+        "kind": {
+          "required": true,
+          "description": "类型大类。",
+          "enum": ["entity", "frame", "role", "primitive"],
+          "enum_meaning": {
+            "entity": "指向实体类型，查实体层，不递归激活框架。",
+            "frame": "指向框架，立即递归激活该框架。",
+            "role": "指向角色类型，只约束值域，选中后惰性映射到框架。",
+            "primitive": "基础类型，不激活框架。"
+          }
+        },
+        "ref": {
+          "required": true,
+          "description": "具体类型名。",
+          "usage_examples": ["Human", "Version", "State", "ActionType", "string", "timestamp", "number"]
+        },
+        "allow": {
+          "required": false,
+          "description": "允许多个类型时列出。",
+          "type": "array",
+          "items": "string",
+          "usage_examples": [["State", "Event", "Change"]]
+        },
+        "cardinality": {
+          "required": false,
+          "description": "单值或多值。",
+          "enum": ["one", "many"],
+          "default": "one"
+        },
+        "note": {
+          "required": false,
+          "description": "补充说明。",
+          "type": "string"
+        }
+      }
+    },
+
+    "fillers": {
+      "required": true,
+      "description": "这个值可以从哪里来。",
+      "properties": {
+        "sources": {
+          "required": true,
+          "description": "填充来源清单。",
+          "type": "array",
+          "items": {
+            "enum": ["explicit", "implicit", "qualia", "system", "default", "inferred", "frame", "context", "history"],
+            "enum_meaning": {
+              "explicit": "用户显式说出。",
+              "implicit": "句法省略但可推断。",
+              "qualia": "从 entity qualia 推导。",
+              "system": "从 entity / unit / artifact 查询。",
+              "default": "默认策略。",
+              "inferred": "上下文推理。",
+              "frame": "来自其他框架的 FE。",
+              "context": "从当前会话/请求上下文直接注入。",
+              "history": "从历史行为或历史版本记录获取。"
+            }
+          }
+        },
+        "qualia_paths": {
+          "required": false,
+          "description": "从哪个 qualia 路径推导。路径支持具体实体名，也支持 {entity} 占位符表示运行时动态解析的实体类型。",
+          "type": "array",
+          "items": "string",
+          "usage_examples": [
+            ["Patient.qualia.telic", "ConfigUnit.qualia.telic"],
+            ["{entity}.qualia.telic"],
+            ["{entity}.qualia.formal"]
+          ],
+          "placeholder_convention": {
+            "{entity}": "运行时动态解析的实体类型，用于通用框架。",
+            "{instrument}": "运行时动态解析的工具实体类型。",
+            "{material}": "运行时动态解析的原材料实体类型。"
+          }
+        },
+        "candidate_paths": {
+          "required": false,
+          "description": "从运行时注册表或上下文生成候选的声明式规则。与 qualia_paths 平行。",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": ["entity_relation", "unit_field", "artifact_field", "context_key"]
+              },
+              "value_field": {
+                "type": "string",
+                "description": "取哪个字段作为候选值。id / self / 具体字段名。默认 id 或 self。"
+              },
+              "from": {
+                "type": "string",
+                "description": "kind=entity_relation 时：源实体路径，如 context.version。"
+              },
+              "relation": {
+                "type": "string",
+                "description": "kind=entity_relation 时：关系类型，如 depends_on。"
+              },
+              "target_types": {
+                "type": "array",
+                "items": "string",
+                "description": "kind=entity_relation 时：目标实体类型过滤。空表示不过滤。"
+              },
+              "field": {
+                "type": "string",
+                "description": "kind=unit_field / artifact_field 时：取该字段。"
+              },
+              "key": {
+                "type": "string",
+                "description": "kind=context_key 时：从 context 取该 key。"
+              },
+              "filter": {
+                "type": "object",
+                "description": "kind=unit_field / artifact_field 时：过滤条件。value 支持 context.xxx 引用。"
+              },
+              "note": {
+                "type": "string"
+              }
+            },
+            "required": ["kind"],
+            "additionalProperties": false
+          },
+          "usage_examples": [
+            [
+              {
+                "kind": "entity_relation",
+                "from": "context.version",
+                "relation": "depends_on",
+                "target_types": ["CodeRepo", "ConfigUnit"],
+                "value_field": "id"
+              },
+              {
+                "kind": "unit_field",
+                "field": "code_repo_refs",
+                "value_field": "self"
+              },
+              {
+                "kind": "artifact_field",
+                "field": "id",
+                "filter": {"belongs_to": "context.version"},
+                "value_field": "id"
+              }
+            ]
+          ]
+        },
+        "system_queries": {
+          "required": false,
+          "description": "查哪些系统接口。接口清单见 system-queries.json。",
+          "type": "array",
+          "items": "string",
+          "usage_examples": [["unit.list", "pipeline.history", "current_user"]]
+        },
+        "frame_refs": {
+          "required": false,
+          "description": "引用其他框架的 FE。frame 使用 frame_schema_name，不使用 frame_schema_id。",
+          "type": "array",
+          "items": {
+            "frame": "string",
+            "fe": "string"
+          },
+          "usage_examples": [[{ "frame": "State", "fe": "State" }]]
+        },
+        "entity_refs": {
+          "required": false,
+          "description": "引用实体层字段。",
+          "type": "array",
+          "items": "string",
+          "usage_examples": [["Version.status", "CodeRepo.branch"]]
+        },
+        "notes": {
+          "required": false,
+          "description": "补充说明。",
+          "type": "string"
+        }
+      }
+    },
+
+    "default": {
+      "required": true,
+      "description": "没有显式值时怎么办。",
+      "properties": {
+        "strategy": {
+          "required": true,
+          "description": "缺省策略。",
+          "enum": ["query_system", "derive_qualia", "use_default", "infer", "ask", "block"],
+          "enum_meaning": {
+            "query_system": "查 entity / unit / artifact。",
+            "derive_qualia": "从 qualia 推导。",
+            "use_default": "直接用默认值。",
+            "infer": "从上下文推理。",
+            "ask": "直接提问。",
+            "block": "阻塞，不执行。"
+          }
+        },
+        "rule": {
+          "required": false,
+          "description": "具体规则。",
+          "type": "string",
+          "usage_examples": ["从 Patient.qualia.telic 推导", "查系统配置单元和历史流水线"]
+        },
+        "fallback": {
+          "required": true,
+          "description": "策略失败后怎么办。",
+          "enum": ["ask", "use_default", "block", "escalate"]
+        },
+        "assumptions": {
+          "required": false,
+          "description": "默认假设，需告知用户。",
+          "type": "array",
+          "items": "string",
+          "usage_examples": [["默认使用 main 分支", "当前用户为施事"]]
+        },
+        "priority": {
+          "required": false,
+          "description": "多策略优先级。",
+          "type": "number",
+          "usage_examples": [1, 2, 3]
+        }
+      }
+    },
+
+    "multi_candidate": {
+      "required": true,
+      "description": "多个候选时怎么收敛。",
+      "properties": {
+        "strategy": {
+          "required": true,
+          "description": "收敛策略。",
+          "enum": ["score", "ask", "confirm", "default_top1", "block"],
+          "enum_meaning": {
+            "score": "打分排序，top1 默认。",
+            "ask": "直接提问。",
+            "confirm": "默认 top1，请用户确认。",
+            "default_top1": "直接用 top1。",
+            "block": "阻塞。"
+          }
+        },
+        "ranking": {
+          "required": false,
+          "description": "打分维度及顺序。",
+          "type": "array",
+          "items": "string",
+          "usage_examples": [["explicit", "qualia", "history", "permission", "cost"]]
+        },
+        "threshold": {
+          "required": false,
+          "description": "top1 与 top2 差值阈值。",
+          "type": "number",
+          "default": 0.15
+        },
+        "question_template": {
+          "required": false,
+          "description": "提问模板。",
+          "type": "string",
+          "usage_examples": ["找到多个可用配置，请选择：", "你是要执行哪个动作？"]
+        },
+        "options_source": {
+          "required": false,
+          "description": "选项来源。接口清单见 system-queries.json。",
+          "type": "string",
+          "usage_examples": ["unit.list", "ActionType.values", "candidate.list"]
+        },
+        "max_options": {
+          "required": false,
+          "description": "最多展示几个。",
+          "type": "number",
+          "default": 3
+        },
+        "fallback": {
+          "required": false,
+          "description": "收敛失败怎么办。",
+          "enum": ["ask", "default_top1", "block"]
+        }
+      }
+    }
+  },
+
+  "frame_level_fields": {
+    "lus": {
+      "required": false,
+      "description": "英文词元清单，框架级字段，不属于 FE.constraint。",
+      "type": "array",
+      "items": "string"
+    },
+    "lus_zh": {
+      "required": false,
+      "description": "中文词元清单，框架级字段，不属于 FE.constraint。与 lus 建议一一对应。",
+      "type": "array",
+      "items": "string"
+    }
+  },
+
+  "summary": [
+    { "layer": "type", "field": "kind", "required": true, "role": "类型大类" },
+    { "layer": "type", "field": "ref", "required": true, "role": "具体类型名" },
+    { "layer": "type", "field": "allow", "required": false, "role": "允许多类型" },
+    { "layer": "type", "field": "cardinality", "required": false, "role": "单值或多值" },
+    { "layer": "type", "field": "note", "required": false, "role": "补充说明" },
+    { "layer": "fillers", "field": "sources", "required": true, "role": "填充来源" },
+    { "layer": "fillers", "field": "qualia_paths", "required": false, "role": "qualia 推导路径" },
+    { "layer": "fillers", "field": "candidate_paths", "required": false, "role": "声明式候选来源" },
+    { "layer": "fillers", "field": "system_queries", "required": false, "role": "系统查询接口" },
+    { "layer": "fillers", "field": "frame_refs", "required": false, "role": "引用其他框架 FE" },
+    { "layer": "fillers", "field": "entity_refs", "required": false, "role": "引用实体层字段" },
+    { "layer": "fillers", "field": "notes", "required": false, "role": "补充说明" },
+    { "layer": "default", "field": "strategy", "required": true, "role": "缺省策略" },
+    { "layer": "default", "field": "rule", "required": false, "role": "具体规则" },
+    { "layer": "default", "field": "fallback", "required": true, "role": "失败后处理" },
+    { "layer": "default", "field": "assumptions", "required": false, "role": "默认假设" },
+    { "layer": "default", "field": "priority", "required": false, "role": "多策略优先级" },
+    { "layer": "multi_candidate", "field": "strategy", "required": true, "role": "收敛策略" },
+    { "layer": "multi_candidate", "field": "ranking", "required": false, "role": "打分维度" },
+    { "layer": "multi_candidate", "field": "threshold", "required": false, "role": "阈值" },
+    { "layer": "multi_candidate", "field": "question_template", "required": false, "role": "提问模板" },
+    { "layer": "multi_candidate", "field": "options_source", "required": false, "role": "选项来源" },
+    { "layer": "multi_candidate", "field": "max_options", "required": false, "role": "最多选项数" },
+    { "layer": "multi_candidate", "field": "fallback", "required": false, "role": "失败处理" },
+    { "layer": "frame_level", "field": "lus", "required": false, "role": "英文词元" },
+    { "layer": "frame_level", "field": "lus_zh", "required": false, "role": "中文词元" }
+  ],
+
+  "conventions": {
+    "type.kind": ["entity", "frame", "role", "primitive"],
+    "type.cardinality.default": "one",
+    "fillers.sources": ["explicit", "implicit", "qualia", "system", "default", "inferred", "frame", "context", "history"],
+    "fillers.qualia_paths.placeholders": ["{entity}", "{instrument}", "{material}"],
+    "fillers.candidate_paths.kind": ["entity_relation", "unit_field", "artifact_field", "context_key"],
+    "fillers.candidate_paths.value_field": ["id", "self", "<具体字段名>"],
+    "fillers.candidate_paths.filter.reference": "value 支持 context.xxx 引用",
+    "default.strategy": ["query_system", "derive_qualia", "use_default", "infer", "ask", "block"],
+    "default.fallback": ["ask", "use_default", "block", "escalate"],
+    "default.use_default_no_silent": "use_default 不允许静默执行；必须显式告知用户并记录到执行计划。",
+    "multi_candidate.strategy": ["score", "ask", "confirm", "default_top1", "block"],
+    "multi_candidate.threshold.default": 0.15,
+    "multi_candidate.max_options.default": 3,
+    "frame_refs.frame": "使用 frame_schema_name，不使用 frame_schema_id",
+    "role_values.frame": "使用 frame_schema_name，不使用 frame_schema_id",
+    "system_queries": "统一清单见 system-queries.json",
+    "frame_level_fields": ["lus", "lus_zh"],
+    "extended_fields": "none"
+  }
+}

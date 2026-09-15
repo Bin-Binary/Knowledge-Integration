@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:index:entity-attribute-index:v1",
+  "metadata": {
+    "name": "entity-attribute-index",
+    "version": "v1",
+    "description": "按 type 定义 Entity.attributes 的字段清单。校验器据此约束每个 type 允许哪些 attributes。",
+    "scope": "Entity.attributes",
+    "layer": "domain-layer/entity"
+  },
+
+  "attribute_index": {
+    "Product": {
+      "type": "Product",
+      "attributes": [
+        { "name": "owner",       "required": false, "type": "string", "description": "归属团队或组织" },
+        { "name": "group",       "required": false, "type": "string", "description": "产品分组" },
+        { "name": "lifecycle",   "required": false, "type": "string", "description": "生命周期阶段", "enum": ["active", "deprecated", "archived"] },
+        { "name": "description", "required": false, "type": "string", "description": "描述" }
+      ]
+    },
+    "Version": {
+      "type": "Version",
+      "attributes": [
+        { "name": "commit",       "required": false, "type": "string", "description": "对应 commit" },
+        { "name": "tag",          "required": false, "type": "string", "description": "对应 tag" },
+        { "name": "branch",       "required": false, "type": "string", "description": "来源分支" },
+        { "name": "release_date", "required": false, "type": "string", "description": "发布日期", "format": "YYYY-MM-DD" },
+        { "name": "status",       "required": false, "type": "string", "description": "构建状态", "enum": ["pending", "building", "ready", "failed"] },
+        { "name": "changelog",    "required": false, "type": "string", "description": "变更摘要" }
+      ]
+    },
+    "CodeRepo": {
+      "type": "CodeRepo",
+      "attributes": [
+        { "name": "url",            "required": true,  "type": "string", "description": "仓库地址" },
+        { "name": "default_branch", "required": false, "type": "string", "description": "默认分支" },
+        { "name": "maintainer",     "required": false, "type": "string", "description": "维护者" },
+        { "name": "language",       "required": false, "type": "string", "description": "主要语言" },
+        { "name": "size",           "required": false, "type": "number", "description": "仓库大小（字节）" }
+      ]
+    },
+    "Branch": {
+      "type": "Branch",
+      "attributes": [
+        { "name": "name",        "required": true,  "type": "string",  "description": "分支名" },
+        { "name": "head_commit", "required": false, "type": "string",  "description": "最新 commit" },
+        { "name": "is_default",  "required": false, "type": "boolean", "description": "是否默认分支" },
+        { "name": "base_branch", "required": false, "type": "string",  "description": "来源分支" }
+      ]
+    },
+    "Pipeline": {
+      "type": "Pipeline",
+      "attributes": [
+        { "name": "stages",     "required": false, "type": "array",   "items": "string", "description": "阶段清单" },
+        { "name": "trigger",    "required": false, "type": "string",  "description": "触发方式", "enum": ["manual", "push", "schedule", "api"] },
+        { "name": "timeout",    "required": false, "type": "number",  "description": "超时时间（秒）" },
+        { "name": "env",        "required": false, "type": "string",  "description": "运行环境" },
+        { "name": "concurrent", "required": false, "type": "boolean", "description": "是否允许并发" }
+      ]
+    },
+    "Tool": {
+      "type": "Tool",
+      "attributes": [
+        { "name": "version",  "required": false, "type": "string", "description": "工具版本" },
+        { "name": "provider", "required": false, "type": "string", "description": "提供者" },
+        { "name": "license",  "required": false, "type": "string", "description": "许可类型" },
+        { "name": "command",  "required": false, "type": "string", "description": "调用命令" }
+      ]
+    },
+    "Artifact": {
+      "type": "Artifact",
+      "attributes": [
+        { "name": "size",        "required": false, "type": "number", "description": "文件大小（字节）" },
+        { "name": "hash",        "required": false, "type": "string", "description": "校验和" },
+        { "name": "storage",     "required": false, "type": "string", "description": "存储位置" },
+        { "name": "format",      "required": false, "type": "string", "description": "格式", "enum": ["jar", "war", "docker", "tgz", "zip"] },
+        { "name": "produced_at", "required": false, "type": "string", "description": "产出时间", "format": "ISO8601" }
+      ]
+    },
+    "ConfigUnit": {
+      "type": "ConfigUnit",
+      "attributes": [
+        { "name": "parameters",   "required": false, "type": "object", "description": "参数键值对" },
+        { "name": "environment",  "required": false, "type": "string", "description": "目标环境" },
+        { "name": "entry_script", "required": false, "type": "string", "description": "入口脚本" }
+      ]
+    }
+  },
+
+  "conventions": {
+    "attribute_name_style": "snake_case",
+    "type_values": ["string", "number", "boolean", "object", "array"],
+    "enum_semantics": "若字段值受控，提供 enum 清单",
+    "default_semantics": "本文件不定义 default；默认值由框架层 fillers.default 决定",
+    "required_semantics": "required=true 表示该 type 的实例应包含该字段，但不阻塞校验（advisory）"
+  },
+
+  "external_refs": [
+    {
+      "target_schema_id": "R-ROLES-00",
+      "source_file": "./registries/R-ROLES-00.json",
+      "source_version": "v1-draft",
+      "imported_at": "2026-09-15",
+      "usage": "引用 EntityType.values 作为 attribute_index 的 key 来源"
+    },
+    {
+      "target_schema_id": "entity-spec",
+      "source_file": "./specs/entity-spec.json",
+      "source_version": "v1",
+      "imported_at": "2026-09-15",
+      "usage": "引用通用约束、命名约定"
+    }
+  ]
+}

@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:spec:entity-spec:v1",
+  "metadata": {
+    "name": "entity-spec",
+    "version": "v1",
+    "description": "定义 entity 注册表的通用约束、命名约定、校验规则与扩展指引。字段级定义见 entity-registry.schema.json。",
+    "scope": "Entity / QualiaInstance / EntityRelation 的通用规范",
+    "layer": "domain-layer/entity"
+  },
+
+  "file_layout": {
+    "entity-spec.json":                 "通用规范（本文件）",
+    "entity-attribute-index.json":      "按 type 的 attributes 定义",
+    "relation-type-index.json":         "关系类型清单",
+    "entity-registry.schema.json":      "Entity / QualiaInstance / EntityRelation 的字段定义",
+    "entity-registry-example.json":     "完整实例示例"
+  },
+
+  "structure_ref": {
+    "note": "结构定义见 ./entity-registry.schema.json#/registry_structure。本文件只做人类可读摘要。",
+    "summary": {
+      "EntityRegistry": "实体注册表，含 entities: Entity[]",
+      "Entity": "实体主结构，9 个字段：id / type / name / qualia / attributes / state / relations / domain / tags",
+      "QualiaInstance": "四角色语义增强：formal / constitutive / telic / agentive",
+      "EntityRelation": "关系结构，12 个字段"
+    }
+  },
+
+  "validation_rules": [
+    { "rule": "entity.id 唯一",           "expression": "EntityRegistry.Entity[] 中 id 不重复。" },
+    { "rule": "entity.id 格式",           "expression": "Entity.id 必须匹配 ^entity:[A-Z][A-Za-z]+:[A-Za-z0-9._-]+$。" },
+    { "rule": "entity.type 合法",         "expression": "Entity.type 必须 ∈ R-ROLES-00.EntityType.values。" },
+    { "rule": "entity.qualia 完整",       "expression": "QualiaInstance 必须含 formal、telic、agentive；constitutive 可选。" },
+    { "rule": "entity.attributes 匹配类型", "expression": "Entity.attributes 的字段必须在 entity-attribute-index.json#/attribute_index/{type} 中有定义。required 为 advisory，不阻塞。" },
+    { "rule": "entity.domain 合法",       "expression": "Entity.domain ∈ {general, ci}。" },
+    { "rule": "relation.id 同一实体内唯一", "expression": "同一实体的 relations[] 中 relation.id 不重复。" },
+    { "rule": "relation.id 格式",         "expression": "EntityRelation.id 必须匹配 ^rel:[0-9]+$。" },
+    { "rule": "relation.type 合法",       "expression": "EntityRelation.type 必须 ∈ relation-type-index.json#/relation_types。" },
+    { "rule": "relation.target 可解析",   "expression": "EntityRelation.target 必须能在 EntityRegistry.Entity[] 中解析到。" },
+    { "rule": "relation.direction 合法",  "expression": "EntityRelation.direction ∈ {outbound, inbound, bidirectional}。" },
+    { "rule": "relation.weight 合法",     "expression": "0 ≤ EntityRelation.weight ≤ 1。" },
+    { "rule": "relation.confidence 合法", "expression": "0 ≤ EntityRelation.confidence ≤ 1。" },
+    { "rule": "relation.source 合法",     "expression": "EntityRelation.source ∈ {explicit, inferred, imported}。" },
+    { "rule": "relation 时间格式",        "expression": "created_at / updated_at 为 ISO8601 时间；valid_from 为 ISO8601 日期。" },
+    { "rule": "relation 软约束",          "expression": "relation.type 与 relation-type-index 中 from_hint / to_hint 不匹配时，触发 warning，不阻塞。" }
+  ],
+
+  "validation_rules_and_field_constraints": {
+    "validation_rules": "本文件定义跨字段、跨实体的校验规则清单，是校验器的规则来源。",
+    "field_constraints": "entity-registry.schema.json 定义单字段的结构属性（required / type / pattern / enum / ref）。",
+    "relationship": "field_constraints 表达单字段约束；validation_rules 表达校验器的执行项。两者不重复，字段级约束的执行依赖 validation_rules 中对应条目。若两处冲突，以 validation_rules 为准。"
+  },
+
+  "reference_conventions": {
+    "cross_file_ref_format": "文档级引用，写法 './{file}#/{path}' 或 '{SCHEMA_ID}.{path}'",
+    "entity_type_ref": "R-ROLES-00.EntityType.values",
+    "attribute_ref": "./entity-attribute-index.json#/attribute_index/{type}",
+    "relation_type_ref": "./relation-type-index.json#/relation_types",
+    "entity_id_ref": "Entity.id",
+    "note": "以上为文档级引用，不作为 JSON Schema $ref 解析。"
+  },
+
+  "naming_conventions": {
+    "entity_id": "entity:{type}:{name}，type 为 PascalCase，name 允许字母数字点下划线连字符",
+    "relation_id": "rel:{seq}，seq 为递增整数",
+    "type": "PascalCase，与 EntityType.values 一致",
+    "attribute_name": "snake_case",
+    "relation_type_name": "snake_case",
+    "domain": "general / ci",
+    "timestamps": "ISO8601；日期粒度用 YYYY-MM-DD",
+    "inverse_name_note": "反向关系命名不强制统一后缀（如 part_of 的反向为 contains 而非 part_of_by），语义自然优先。具体映射见 relation-type-index.json#/conventions/inverse_map。"
+  },
+
+  "extension_guide": {
+    "new_entity_type": [
+      "1. 在 R-ROLES-00.EntityType.values 追加 {value, frame: null, domain, note}",
+      "2. 在 entity-attribute-index.json#/attribute_index 追加该 type 的 attributes 定义",
+      "3. 若该 type 属于某角色 filter（如 PatientType），同步追加"
+    ],
+    "new_relation_type": [
+      "1. 在 relation-type-index.json#/relation_types 追加 {type, description, from_hint, to_hint, symmetric}",
+      "2. 若需要反向推导，在 relation-type-index.json#/conventions/inverse_map 追加映射"
+    ],
+    "new_attribute": [
+      "1. 在 entity-attribute-index.json#/attribute_index/{type}/attributes 追加 {name, required, type, description, enum?}"
+    ],
+    "new_qualia_role": [
+      "1. 在 entity-registry.schema.json 的 registry_structure.QualiaInstance 与 field_constraints.QualiaInstance 增加字段",
+      "2. 在 entity-spec 的 validation_rules 中更新 entity.qualia 完整规则，将新角色加入必填或可选清单",
+      "3. 在 entity-spec 的 structure_ref.summary.QualiaInstance 更新人类可读摘要",
+      "4. 在框架层 constraint-field-spec 的 qualia_paths 增加占位符（若需要）"
+    ],
+    "new_top_level_field": [
+      "1. 评估对现有数据的影响",
+      "2. 在 entity-registry.schema.json 的 registry_structure 与 field_constraints 增加",
+      "3. 在 entity-spec 的 structure_ref.summary 更新",
+      "4. 若需要新的校验规则，在 entity-spec 的 validation_rules 增加",
+      "5. 更新示例文件"
+    ]
+  },
+
+  "conventions": {
+    "required_entity_fields": ["id", "type", "name", "qualia"],
+    "required_qualia_fields": ["formal", "telic", "agentive"],
+    "required_relation_fields": ["id", "type", "target"],
+    "default_relation_direction": "outbound",
+    "relation_weight_range": [0, 1],
+    "relation_confidence_range": [0, 1],
+    "relation_source_values": ["explicit", "inferred", "imported"],
+    "attribute_required_enforcement": "advisory",
+    "hint_enforcement": "advisory",
+    "max_label_length": 256,
+    "timestamp_format": "ISO8601",
+    "date_format": "YYYY-MM-DD"
+  },
+
+  "external_refs_note": "本文件依赖的外部 schema，按依赖顺序排列。不引用 entity-registry-example.json（示例文件）。",
+
+  "external_refs": [
+    {
+      "target_schema_id": "R-ROLES-00",
+      "source_file": "./R-ROLES-00.json",
+      "source_version": "v1-draft",
+      "imported_at": "2026-09-15",
+      "usage": "引用 EntityType.values 作为 type 值域"
+    },
+    {
+      "target_schema_id": "entity-attribute-index",
+      "source_file": "./entity-attribute-index.json",
+      "source_version": "v1",
+      "imported_at": "2026-09-15",
+      "usage": "引用 attributes 定义"
+    },
+    {
+      "target_schema_id": "relation-type-index",
+      "source_file": "./relation-type-index.json",
+      "source_version": "v1",
+      "imported_at": "2026-09-15",
+      "usage": "引用关系类型清单"
+    },
+    {
+      "target_schema_id": "entity-registry",
+      "source_file": "./entity-registry.schema.json",
+      "source_version": "v1",
+      "imported_at": "2026-09-15",
+      "usage": "引用字段级定义"
+    }
+  ]
+}

@@ -1,0 +1,271 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:frame:F-CHANGE-00:v1-draft",
+  "metadata": {
+    "frame_schema_id": "F-CHANGE-00",
+    "frame_schema_name": "F-CHANGE",
+    "parent_frame_schema_id": null,
+    "definition": "刻画一个实体从初始状态转变为终状态。",
+    "type": "frame",
+    "version": "v1-draft",
+    "external_refs": [
+      {
+        "target_schema_id": "R-ROLES-00",
+        "source_file": "./R-ROLES-00.json",
+        "source_version": "v1-draft",
+        "imported_at": "2026-09-15",
+        "usage": "引用 EntityType、EventType"
+      },
+      {
+        "target_schema_id": "system-queries",
+        "source_file": "./system-queries.json",
+        "source_version": "v1",
+        "imported_at": "2026-09-15",
+        "usage": "引用 current_time、default_environment、entity.resolve、entity.current_state、entity.history、change.rate"
+      }
+    ]
+  },
+
+  "core_fe": {
+    "entity": {
+      "definition": "发生状态变化的实体。",
+      "required": true,
+      "constraint": {
+        "type": {
+          "kind": "role",
+          "ref": "EntityType",
+          "cardinality": "one",
+          "note": "实体类型值域见 R-ROLES-00"
+        },
+        "fillers": {
+          "sources": ["explicit", "context", "system"],
+          "system_queries": ["entity.resolve"],
+          "notes": "优先显式主语，其次上下文注入实体"
+        },
+        "default": {
+          "strategy": "query_system",
+          "rule": "从上下文解析当前实体",
+          "fallback": "ask"
+        },
+        "multi_candidate": {
+          "strategy": "ask",
+          "question_template": "哪个实体发生变化？",
+          "options_source": "EntityType.values",
+          "max_options": 3,
+          "fallback": "ask"
+        }
+      }
+    },
+    "initial_state": {
+      "definition": "实体变化前的初始状态。",
+      "required": true,
+      "constraint": {
+        "type": {
+          "kind": "frame",
+          "ref": "State",
+          "cardinality": "one",
+          "note": "立即激活 F-STATE-00，填充其 entity 和 state"
+        },
+        "fillers": {
+          "sources": ["explicit", "system", "inferred"],
+          "system_queries": ["entity.current_state", "entity.history"],
+          "notes": "优先查系统当前状态或历史快照"
+        },
+        "default": {
+          "strategy": "query_system",
+          "rule": "查询实体当前状态作为初始状态",
+          "fallback": "ask"
+        },
+        "multi_candidate": {
+          "strategy": "score",
+          "ranking": ["explicit", "system", "history"],
+          "threshold": 0.15,
+          "question_template": "初始状态是什么？",
+          "options_source": "state.vocabulary",
+          "max_options": 3,
+          "fallback": "ask"
+        }
+      }
+    },
+    "final_state": {
+      "definition": "实体变化后的终状态。",
+      "required": true,
+      "constraint": {
+        "type": {
+          "kind": "frame",
+          "ref": "State",
+          "cardinality": "one",
+          "note": "立即激活 F-STATE-00，填充其 entity 和 state"
+        },
+        "fillers": {
+          "sources": ["explicit", "qualia", "inferred", "frame"],
+          "qualia_paths": ["{entity}.qualia.telic"],
+          "frame_refs": [
+            { "frame": "Intentionally_act", "fe": "purpose" }
+          ],
+          "notes": "优先显式目标状态，其次从实体 telic 或 Purpose 推导"
+        },
+        "default": {
+          "strategy": "derive_qualia",
+          "rule": "从实体 telic 推导目标状态",
+          "fallback": "ask"
+        },
+        "multi_candidate": {
+          "strategy": "score",
+          "ranking": ["explicit", "qualia", "frame"],
+          "threshold": 0.15,
+          "question_template": "最终状态是什么？",
+          "options_source": "state.vocabulary",
+          "max_options": 3,
+          "fallback": "ask"
+        }
+      }
+    }
+  },
+
+  "peripheral_fe": {
+    "time": {
+      "definition": "变化发生的时间。",
+      "required": false,
+      "constraint": {
+        "type": {
+          "kind": "primitive",
+          "ref": "timestamp",
+          "cardinality": "one"
+        },
+        "fillers": {
+          "sources": ["explicit", "context", "system"],
+          "system_queries": ["current_time"]
+        },
+        "default": {
+          "strategy": "query_system",
+          "rule": "使用当前时间",
+          "fallback": "use_default",
+          "assumptions": ["使用当前时间"]
+        },
+        "multi_candidate": {
+          "strategy": "default_top1",
+          "question_template": "变化发生在什么时间？",
+          "max_options": 1,
+          "fallback": "ask"
+        }
+      }
+    },
+    "place": {
+      "definition": "变化发生的地点。",
+      "required": false,
+      "constraint": {
+        "type": {
+          "kind": "primitive",
+          "ref": "string",
+          "cardinality": "one"
+        },
+        "fillers": {
+          "sources": ["explicit", "context", "system"],
+          "system_queries": ["default_environment"]
+        },
+        "default": {
+          "strategy": "query_system",
+          "rule": "使用默认环境",
+          "fallback": "use_default",
+          "assumptions": ["使用默认环境"]
+        },
+        "multi_candidate": {
+          "strategy": "default_top1",
+          "question_template": "变化发生在什么地点？",
+          "max_options": 1,
+          "fallback": "ask"
+        }
+      }
+    },
+    "manner": {
+      "definition": "变化发生的方式。",
+      "required": false,
+      "constraint": {
+        "type": {
+          "kind": "primitive",
+          "ref": "string",
+          "cardinality": "one"
+        },
+        "fillers": {
+          "sources": ["explicit", "inferred"]
+        },
+        "default": {
+          "strategy": "use_default",
+          "rule": "使用默认方式",
+          "fallback": "ask"
+        },
+        "multi_candidate": {
+          "strategy": "default_top1",
+          "question_template": "变化以什么方式发生？",
+          "max_options": 1,
+          "fallback": "ask"
+        }
+      }
+    },
+    "cause": {
+      "definition": "导致变化的原因事件或过程。",
+      "required": false,
+      "constraint": {
+        "type": {
+          "kind": "role",
+          "ref": "EventType",
+          "cardinality": "one",
+          "note": "值域见 R-ROLES-00，选中后惰性激活对应框架"
+        },
+        "fillers": {
+          "sources": ["explicit", "inferred", "frame"],
+          "frame_refs": [
+            { "frame": "Intentionally_act", "fe": "act" },
+            { "frame": "Processing_materials", "fe": "product" }
+          ],
+          "notes": "优先显式原因，其次从上游事件或行动推断"
+        },
+        "default": {
+          "strategy": "infer",
+          "rule": "从上下文上游事件推断原因",
+          "fallback": "ask"
+        },
+        "multi_candidate": {
+          "strategy": "score",
+          "ranking": ["explicit", "frame", "history"],
+          "threshold": 0.2,
+          "question_template": "变化的原因是什么？",
+          "options_source": "EventType.values",
+          "max_options": 3,
+          "fallback": "ask"
+        }
+      }
+    },
+    "rate": {
+      "definition": "变化发生的速率。",
+      "required": false,
+      "constraint": {
+        "type": {
+          "kind": "primitive",
+          "ref": "number",
+          "cardinality": "one",
+          "note": "如单位时间变化量"
+        },
+        "fillers": {
+          "sources": ["explicit", "inferred", "system"],
+          "system_queries": ["change.rate"]
+        },
+        "default": {
+          "strategy": "infer",
+          "rule": "从变化量和时间推断",
+          "fallback": "ask"
+        },
+        "multi_candidate": {
+          "strategy": "default_top1",
+          "question_template": "变化速率是多少？",
+          "max_options": 1,
+          "fallback": "ask"
+        }
+      }
+    }
+  },
+
+  "lus": ["change", "turn", "become", "transform", "shift", "convert", "alter", "modify", "switch"],
+  "lus_zh": ["变化", "变成", "转变", "转换", "变动", "转化", "改变", "修改", "切换"]
+}

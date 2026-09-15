@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:spec:artifact-spec:v1",
+  "metadata": {
+    "name": "artifact-spec",
+    "version": "v1",
+    "description": "定义 artifact 注册表的通用约束、命名约定、校验规则与扩展指引。artifact 记录代码仓文件的物理存储，与配置单元解耦。",
+    "scope": "Artifact / QualiaInstance / EntityRelation 的通用规范",
+    "layer": "domain-layer/artifact"
+  },
+
+  "file_layout": {
+    "artifact-spec.json":                 "通用规范（本文件，位于 specs/）",
+    "artifact-registry.schema.json":      "Artifact / QualiaInstance / EntityRelation 的字段定义（位于 artifact/）",
+    "artifact-registry-example.json":     "完整实例示例（位于 artifact/）"
+  },
+
+  "structure_ref": {
+    "note": "结构定义见 ../artifact/artifact-registry.schema.json#/registry_structure。本文件只做人类可读摘要。",
+    "summary": {
+      "ArtifactRegistry": "artifact 注册表，含 artifacts: Artifact[]",
+      "Artifact": "artifact 主结构，15 个字段：id / type / name / qualia / files / checksum / storage / status / belongs_to / produced_by / produced_at / format / domain / tags / relations",
+      "QualiaInstance": "四角色语义增强：formal / constitutive / telic / agentive",
+      "EntityRelation": "关系结构，12 个字段（与 entity 层共用同一结构）"
+    }
+  },
+
+  "validation_rules": [
+    { "rule": "artifact.id 唯一",              "expression": "ArtifactRegistry.Artifact[] 中 id 不重复。" },
+    { "rule": "artifact.id 格式",              "expression": "Artifact.id 必须匹配 ^artifact:[A-Za-z0-9._-]+:[A-Za-z0-9._-]+$。" },
+    { "rule": "artifact.type 固定",            "expression": "Artifact.type 必须为 \"Artifact\"。" },
+    { "rule": "artifact.qualia 完整",          "expression": "QualiaInstance 必须含 formal、telic、agentive；constitutive 可选。" },
+    { "rule": "artifact.files 非空",           "expression": "Artifact.files 至少含一个文件项。" },
+    { "rule": "artifact.files[] 结构",         "expression": "Artifact.files[] 每项必须含 path 字段；size、hash 可选。" },
+    { "rule": "artifact.checksum 合法",        "expression": "Artifact.checksum 必须是非空字符串。" },
+    { "rule": "artifact.storage 合法",         "expression": "Artifact.storage 必须是非空字符串。" },
+    { "rule": "artifact.status 合法",          "expression": "Artifact.status ∈ {pending, building, ready, failed}。" },
+    { "rule": "artifact.belongs_to 可解析",    "expression": "Artifact.belongs_to 若非空，必须能在 EntityRegistry 中解析到，type ∈ {Version, Artifact}。" },
+    { "rule": "artifact.produced_by 可解析",   "expression": "Artifact.produced_by 若非空，必须能在 UnitRegistry 中解析到。" },
+    { "rule": "artifact.produced_at 格式",     "expression": "Artifact.produced_at 若非空，必须为 ISO8601。" },
+    { "rule": "artifact.format 合法",          "expression": "Artifact.format 若非空，必须 ∈ {jar, war, docker, tgz, zip}。" },
+    { "rule": "artifact.domain 合法",          "expression": "Artifact.domain ∈ {general, ci}。" },
+    { "rule": "relation.id 同一 artifact 内唯一", "expression": "同一 artifact 的 relations[] 中 relation.id 不重复。" },
+    { "rule": "relation.type 合法",            "expression": "EntityRelation.type 必须 ∈ relation-type-index.json#/relation_types。" },
+    { "rule": "relation.target 可解析",        "expression": "EntityRelation.target 必须能在 EntityRegistry / UnitRegistry / ArtifactRegistry 中之一解析到。" }
+  ],
+
+  "validation_rules_and_field_constraints": {
+    "validation_rules": "本文件定义跨字段、跨 artifact 的校验规则清单，是校验器的规则来源。",
+    "field_constraints": "../artifact/artifact-registry.schema.json 定义单字段的结构属性。",
+    "relationship": "field_constraints 表达单字段约束；validation_rules 表达校验器的执行项。若两处冲突，以 validation_rules 为准。"
+  },
+
+  "reference_conventions": {
+    "cross_file_ref": "../{layer-dir}/{file}#/{path}",
+    "entity_ref": "EntityRegistry 中的 entity id，格式 entity:{type}:{name}",
+    "unit_ref": "UnitRegistry 中的 unit id，格式 unit:{env}:{name}",
+    "artifact_ref": "ArtifactRegistry 中的 artifact id，格式 artifact:{version}:{name}",
+    "note": "以上为文档级引用，不作为 JSON Schema $ref 解析。"
+  },
+
+  "naming_conventions": {
+    "artifact_id": "artifact:{version}:{name}，version 与 name 均允许字母数字点下划线连字符",
+    "type": "固定为 Artifact",
+    "attribute_name": "snake_case",
+    "relation_type_name": "snake_case",
+    "domain": "general / ci",
+    "status": "pending / building / ready / failed",
+    "format": "jar / war / docker / tgz / zip",
+    "timestamps": "ISO8601"
+  },
+
+  "extension_guide": {
+    "new_artifact_attribute": [
+      "1. 在 artifact/artifact-registry.schema.json 的 field_constraints.Artifact 增加字段",
+      "2. 在 artifact-spec 的 structure_ref.summary 更新字段数",
+      "3. 若需要新的校验规则，在 artifact-spec 的 validation_rules 增加",
+      "4. 更新 artifact/artifact-registry-example.json"
+    ],
+    "new_artifact_format": [
+      "1. 在 conventions.format_values 增加枚举值",
+      "2. 在 validation_rules 的 artifact.format 合法规则中同步"
+    ],
+    "new_artifact_status": [
+      "1. 在 conventions.status_values 增加枚举值",
+      "2. 在 validation_rules 的 artifact.status 合法规则中同步"
+    ]
+  },
+
+  "conventions": {
+    "required_artifact_fields": ["id", "type", "name", "qualia", "files", "checksum", "storage", "status"],
+    "required_qualia_fields": ["formal", "telic", "agentive"],
+    "required_relation_fields": ["id", "type", "target"],
+    "status_values": ["pending", "building", "ready", "failed"],
+    "format_values": ["jar", "war", "docker", "tgz", "zip"],
+    "domain_values": ["general", "ci"],
+    "default_relation_direction": "outbound",
+    "max_label_length": 256,
+    "timestamp_format": "ISO8601",
+    "date_format": "YYYY-MM-DD"
+  },
+
+  "external_refs_note": "本文件依赖的外部 schema，按依赖顺序排列。",
+  "external_refs": [
+    {
+      "target_schema_id": "entity-spec",
+      "source_file": "./specs/entity-spec.json",
+      "source_version": "v1",
+      "imported_at": "2026-09-16",
+      "usage": "引用 EntityRelation 结构"
+    },
+    {
+      "target_schema_id": "relation-type-index",
+      "source_file": "./entity/relation-type-index.json",
+      "source_version": "v1",
+      "imported_at": "2026-09-16",
+      "usage": "引用关系类型清单"
+    },
+    {
+      "target_schema_id": "R-ROLES-00",
+      "source_file": "./registries/R-ROLES-00.json",
+      "source_version": "v1-draft",
+      "imported_at": "2026-09-16",
+      "usage": "引用 EntityType.values 作为 refs 解析依据"
+    }
+  ]
+}

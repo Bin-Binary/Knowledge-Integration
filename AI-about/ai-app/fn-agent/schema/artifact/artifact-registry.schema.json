@@ -1,0 +1,268 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:registry:artifact-registry:v1",
+  "metadata": {
+    "name": "artifact-registry",
+    "version": "v1",
+    "description": "Artifact 注册表模式。定义 Artifact / QualiaInstance / EntityRelation 的字段结构与约束。",
+    "scope": "domain-layer/artifact 的实例数据",
+    "layer": "domain-layer/artifact"
+  },
+
+  "external_refs": [
+    {
+      "target_schema_id": "artifact-spec",
+      "source_file": "./specs/artifact-spec.json",
+      "source_version": "v1",
+      "imported_at": "2026-09-16",
+      "usage": "引用通用约束、命名、校验规则"
+    },
+    {
+      "target_schema_id": "entity-spec",
+      "source_file": "./specs/entity-spec.json",
+      "source_version": "v1",
+      "imported_at": "2026-09-16",
+      "usage": "引用 EntityRelation 结构"
+    },
+    {
+      "target_schema_id": "relation-type-index",
+      "source_file": "./entity/relation-type-index.json",
+      "source_version": "v1",
+      "imported_at": "2026-09-16",
+      "usage": "引用关系类型清单"
+    },
+    {
+      "target_schema_id": "R-ROLES-00",
+      "source_file": "./registries/R-ROLES-00.json",
+      "source_version": "v1-draft",
+      "imported_at": "2026-09-16",
+      "usage": "引用 EntityType.values"
+    }
+  ],
+
+  "registry_structure": {
+    "ArtifactRegistry": {
+      "artifacts": {
+        "type": "Artifact[]",
+        "required": true
+      }
+    },
+    "Artifact": {
+      "id":          "string",
+      "type":        "string",
+      "name":        "string",
+      "qualia":      "QualiaInstance",
+      "files":       "FileItem[]",
+      "checksum":    "string",
+      "storage":     "string",
+      "status":      "string",
+      "belongs_to":  "string",
+      "produced_by": "string",
+      "produced_at": "string",
+      "format":      "string",
+      "domain":      "string",
+      "tags":        "string[]",
+      "relations":   "EntityRelation[]"
+    },
+    "FileItem": {
+      "path": "string",
+      "size": "number",
+      "hash": "string"
+    },
+    "QualiaInstance": {
+      "formal":       "string",
+      "constitutive": "string[]",
+      "telic":        "string[]",
+      "agentive":     "string[]"
+    },
+    "EntityRelation": {
+      "id":         "string",
+      "type":       "string",
+      "target":     "string",
+      "label":      "string",
+      "direction":  "string",
+      "weight":     "number",
+      "confidence": "number",
+      "source":     "string",
+      "evidence":   "string[]",
+      "created_at": "string",
+      "updated_at": "string",
+      "valid_from": "string"
+    }
+  },
+
+  "field_constraints": {
+    "Artifact": {
+      "id": {
+        "required": true,
+        "pattern": "^artifact:[A-Za-z0-9._-]+:[A-Za-z0-9._-]+$"
+      },
+      "type": {
+        "required": true,
+        "enum": ["Artifact"]
+      },
+      "name": {
+        "required": true,
+        "type": "string",
+        "max_length": 256
+      },
+      "qualia": {
+        "required": true,
+        "ref": "QualiaInstance"
+      },
+      "files": {
+        "required": true,
+        "type": "array",
+        "items": "FileItem",
+        "min_items": 1
+      },
+      "checksum": {
+        "required": true,
+        "type": "string"
+      },
+      "storage": {
+        "required": true,
+        "type": "string"
+      },
+      "status": {
+        "required": true,
+        "enum": ["pending", "building", "ready", "failed"]
+      },
+      "belongs_to": {
+        "required": false,
+        "type": "string",
+        "ref": "./entity/entity-registry-example.json#/entities[type=Version or type=Artifact]/id"
+      },
+      "produced_by": {
+        "required": false,
+        "type": "string",
+        "ref": "./unit/unit-registry-example.json#/units/id"
+      },
+      "produced_at": {
+        "required": false,
+        "format": "ISO8601"
+      },
+      "format": {
+        "required": false,
+        "enum": ["jar", "war", "docker", "tgz", "zip"]
+      },
+      "domain": {
+        "required": false,
+        "enum": ["general", "ci"]
+      },
+      "tags": {
+        "required": false,
+        "type": "array",
+        "items": "string"
+      },
+      "relations": {
+        "required": false,
+        "ref": "EntityRelation[]"
+      }
+    },
+    "FileItem": {
+      "path": {
+        "required": true,
+        "type": "string"
+      },
+      "size": {
+        "required": false,
+        "type": "number",
+        "min": 0
+      },
+      "hash": {
+        "required": false,
+        "type": "string"
+      }
+    },
+    "QualiaInstance": {
+      "formal": {
+        "required": true,
+        "type": "string"
+      },
+      "constitutive": {
+        "required": false,
+        "type": "array",
+        "items": "string"
+      },
+      "telic": {
+        "required": true,
+        "type": "array",
+        "items": "string"
+      },
+      "agentive": {
+        "required": true,
+        "type": "array",
+        "items": "string"
+      }
+    },
+    "EntityRelation": {
+      "id": {
+        "required": true,
+        "pattern": "^rel:[0-9]+$"
+      },
+      "type": {
+        "required": true,
+        "ref": "./entity/relation-type-index.json#/relation_types"
+      },
+      "target": {
+        "required": true,
+        "ref": "EntityRegistry / UnitRegistry / ArtifactRegistry"
+      },
+      "label": {
+        "required": false,
+        "type": "string",
+        "max_length": 256
+      },
+      "direction": {
+        "required": false,
+        "enum": ["outbound", "inbound", "bidirectional"],
+        "default": "outbound"
+      },
+      "weight": {
+        "required": false,
+        "type": "number",
+        "min": 0,
+        "max": 1
+      },
+      "confidence": {
+        "required": false,
+        "type": "number",
+        "min": 0,
+        "max": 1
+      },
+      "source": {
+        "required": false,
+        "enum": ["explicit", "inferred", "imported"]
+      },
+      "evidence": {
+        "required": false,
+        "type": "array",
+        "items": "string"
+      },
+      "created_at": {
+        "required": false,
+        "format": "ISO8601"
+      },
+      "updated_at": {
+        "required": false,
+        "format": "ISO8601"
+      },
+      "valid_from": {
+        "required": false,
+        "format": "ISO8601-date"
+      }
+    }
+  },
+
+  "validation_rules_ref": "见 ./specs/artifact-spec.json#/validation_rules",
+
+  "conventions": {
+    "required_artifact_fields_ref": "见 ./specs/artifact-spec.json#/conventions/required_artifact_fields",
+    "required_qualia_fields_ref":   "见 ./specs/artifact-spec.json#/conventions/required_qualia_fields",
+    "required_relation_fields_ref": "见 ./specs/artifact-spec.json#/conventions/required_relation_fields",
+    "registry_container": "ArtifactRegistry.artifacts 为 Artifact[] 顶层列表，required = true",
+    "relation_storage": "relation 内嵌于 Artifact.relations，不单独注册",
+    "cross_file_refs": "文档级引用；不作为 JSON Schema $ref"
+  }
+}

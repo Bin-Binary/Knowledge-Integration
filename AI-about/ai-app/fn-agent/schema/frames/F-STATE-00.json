@@ -1,0 +1,179 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:frame:F-STATE-00:v1-draft",
+  "metadata": {
+    "frame_schema_id": "F-STATE-00",
+    "frame_schema_name": "F-STATE",
+    "parent_frame_schema_id": null,
+    "definition": "刻画一个实体处于某种持续的状态。",
+    "type": "frame",
+    "version": "v1-draft",
+    "external_refs": [
+      {
+        "target_schema_id": "R-ROLES-00",
+        "source_file": "./R-ROLES-00.json",
+        "source_version": "v1-draft",
+        "imported_at": "2026-09-15",
+        "usage": "引用 EntityType"
+      },
+      {
+        "target_schema_id": "system-queries",
+        "source_file": "./system-queries.json",
+        "source_version": "v1",
+        "imported_at": "2026-09-15",
+        "usage": "引用 current_time、default_environment、entity.resolve、entity.current_state、state.duration"
+      }
+    ]
+  },
+
+  "core_fe": {
+    "entity": {
+      "definition": "处于某状态的实体。",
+      "required": true,
+      "constraint": {
+        "type": {
+          "kind": "role",
+          "ref": "EntityType",
+          "cardinality": "one",
+          "note": "实体类型值域见 R-ROLES-00"
+        },
+        "fillers": {
+          "sources": ["explicit", "context", "system"],
+          "system_queries": ["entity.resolve"],
+          "notes": "优先显式主语，其次上下文注入实体"
+        },
+        "default": {
+          "strategy": "query_system",
+          "rule": "从上下文获取当前实体",
+          "fallback": "ask"
+        },
+        "multi_candidate": {
+          "strategy": "ask",
+          "question_template": "哪个实体处于该状态？",
+          "options_source": "EntityType.values",
+          "max_options": 3,
+          "fallback": "ask"
+        }
+      }
+    },
+    "state": {
+      "definition": "实体所处的持续状态。",
+      "required": true,
+      "constraint": {
+        "type": {
+          "kind": "primitive",
+          "ref": "string",
+          "cardinality": "one",
+          "note": "状态值，可用受控词表"
+        },
+        "fillers": {
+          "sources": ["explicit", "qualia", "system", "inferred"],
+          "qualia_paths": ["{entity}.qualia.formal"],
+          "system_queries": ["entity.current_state"],
+          "notes": "优先显式状态词，其次查系统当前状态"
+        },
+        "default": {
+          "strategy": "query_system",
+          "rule": "查询实体当前状态",
+          "fallback": "ask"
+        },
+        "multi_candidate": {
+          "strategy": "score",
+          "ranking": ["explicit", "system", "qualia"],
+          "threshold": 0.15,
+          "question_template": "实体处于什么状态？",
+          "options_source": "state.vocabulary",
+          "max_options": 3,
+          "fallback": "ask"
+        }
+      }
+    }
+  },
+
+  "peripheral_fe": {
+    "duration": {
+      "definition": "状态持续的时间。",
+      "required": false,
+      "constraint": {
+        "type": {
+          "kind": "primitive",
+          "ref": "number",
+          "cardinality": "one",
+          "note": "单位为秒"
+        },
+        "fillers": {
+          "sources": ["explicit", "inferred", "system"],
+          "system_queries": ["state.duration"]
+        },
+        "default": {
+          "strategy": "infer",
+          "rule": "从状态起止时间推断",
+          "fallback": "ask"
+        },
+        "multi_candidate": {
+          "strategy": "default_top1",
+          "question_template": "状态持续多久？",
+          "max_options": 1,
+          "fallback": "ask"
+        }
+      }
+    },
+    "time": {
+      "definition": "状态发生的时间。",
+      "required": false,
+      "constraint": {
+        "type": {
+          "kind": "primitive",
+          "ref": "timestamp",
+          "cardinality": "one"
+        },
+        "fillers": {
+          "sources": ["explicit", "context", "system"],
+          "system_queries": ["current_time"]
+        },
+        "default": {
+          "strategy": "query_system",
+          "rule": "使用当前时间",
+          "fallback": "use_default",
+          "assumptions": ["使用当前时间"]
+        },
+        "multi_candidate": {
+          "strategy": "default_top1",
+          "question_template": "状态发生在什么时间？",
+          "max_options": 1,
+          "fallback": "ask"
+        }
+      }
+    },
+    "place": {
+      "definition": "状态发生的地点。",
+      "required": false,
+      "constraint": {
+        "type": {
+          "kind": "primitive",
+          "ref": "string",
+          "cardinality": "one"
+        },
+        "fillers": {
+          "sources": ["explicit", "context", "system"],
+          "system_queries": ["default_environment"]
+        },
+        "default": {
+          "strategy": "query_system",
+          "rule": "使用默认环境",
+          "fallback": "use_default",
+          "assumptions": ["使用默认环境"]
+        },
+        "multi_candidate": {
+          "strategy": "default_top1",
+          "question_template": "状态发生在什么地点？",
+          "max_options": 1,
+          "fallback": "ask"
+        }
+      }
+    }
+  },
+
+  "lus": ["be", "exist", "remain", "stay", "stand", "lie", "rest"],
+  "lus_zh": ["是", "存在", "保持", "停留", "处于", "位于", "持续"]
+}

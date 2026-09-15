@@ -1,0 +1,507 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:spec:system-queries:v1",
+  "metadata": {
+    "name": "system-queries",
+    "version": "v1",
+    "description": "集中声明所有框架 fillers.system_queries 和 multi_candidate.options_source 可引用的系统接口与选项来源。框架文件只引用本文件中的 id，不自定义接口名。",
+    "scope": "fillers.system_queries 与 multi_candidate.options_source"
+  },
+
+  "query_structure": {
+    "id": "string",
+    "type": "entity | list | value | boolean | timestamp | number | string",
+    "domain": "general | ci",
+    "returns": "string",
+    "description": "string",
+    "consumers": "array of frame fe paths that use this query"
+  },
+
+  "queries": {
+
+    "current_user": {
+      "id": "current_user",
+      "type": "entity",
+      "domain": "general",
+      "returns": "AgentRole",
+      "description": "当前会话用户，作为默认施事。",
+      "consumers": [
+        "F-ACT-00.agent",
+        "F-INTENTIONALLY-ACT-00.agent",
+        "F-CHOOSING-00.cognizer",
+        "F-USING-00.agent",
+        "F-PROCESSING-MATERIALS-00.agent",
+        "F-COMMUNICATION-00.communicator"
+      ]
+    },
+
+    "current_time": {
+      "id": "current_time",
+      "type": "timestamp",
+      "domain": "general",
+      "returns": "ISO8601",
+      "description": "当前系统时间，作为默认时间。",
+      "consumers": [
+        "F-ACT-00.time",
+        "F-STATE-00.time",
+        "F-EVENT-00.time",
+        "F-PROCESS-00.time",
+        "F-CHANGE-00.time",
+        "F-PROCESSING-MATERIALS-00.time"
+      ]
+    },
+
+    "default_environment": {
+      "id": "default_environment",
+      "type": "string",
+      "domain": "general",
+      "returns": "EnvironmentName",
+      "description": "默认环境。CI 场景中常用于表示默认构建/运行环境。",
+      "consumers": [
+        "F-ACT-00.place",
+        "F-STATE-00.place",
+        "F-EVENT-00.place",
+        "F-PROCESS-00.place",
+        "F-CHANGE-00.place",
+        "F-PROCESSING-MATERIALS-00.place"
+      ]
+    },
+
+    "default_language": {
+      "id": "default_language",
+      "type": "string",
+      "domain": "general",
+      "returns": "LanguageCode",
+      "description": "系统默认语言。",
+      "consumers": [
+        "F-COMMUNICATION-00.language"
+      ]
+    },
+
+    "user.language": {
+      "id": "user.language",
+      "type": "string",
+      "domain": "general",
+      "returns": "LanguageCode",
+      "description": "当前用户语言偏好。",
+      "consumers": [
+        "F-COMMUNICATION-00.language"
+      ]
+    },
+
+    "entity.resolve": {
+      "id": "entity.resolve",
+      "type": "entity",
+      "domain": "general",
+      "returns": "Entity",
+      "description": "从上下文解析当前实体实例。",
+      "consumers": [
+        "F-STATE-00.entity",
+        "F-CHANGE-00.entity",
+        "F-CHOOSING-00.chosen",
+        "F-USING-00.patient",
+        "F-PROCESSING-MATERIALS-00.material"
+      ]
+    },
+
+    "entity.current_state": {
+      "id": "entity.current_state",
+      "type": "value",
+      "domain": "general",
+      "returns": "StateValue",
+      "description": "查询实体当前状态。",
+      "consumers": [
+        "F-STATE-00.state",
+        "F-CHANGE-00.initial_state"
+      ]
+    },
+
+    "entity.history": {
+      "id": "entity.history",
+      "type": "list",
+      "domain": "general",
+      "returns": "StateSnapshot[]",
+      "description": "查询实体历史状态快照。",
+      "consumers": [
+        "F-CHANGE-00.initial_state"
+      ]
+    },
+
+    "state.duration": {
+      "id": "state.duration",
+      "type": "number",
+      "domain": "general",
+      "returns": "seconds",
+      "description": "查询状态持续时长。",
+      "consumers": [
+        "F-STATE-00.duration"
+      ]
+    },
+
+    "state.vocabulary": {
+      "id": "state.vocabulary",
+      "type": "list",
+      "domain": "general",
+      "returns": "StateValue[]",
+      "description": "状态受控词表，用于 options_source。",
+      "consumers": [
+        "F-STATE-00.state",
+        "F-CHANGE-00.initial_state",
+        "F-CHANGE-00.final_state"
+      ]
+    },
+
+    "process.duration": {
+      "id": "process.duration",
+      "type": "number",
+      "domain": "general",
+      "returns": "seconds",
+      "description": "查询过程持续时长。",
+      "consumers": [
+        "F-ACT-00.duration",
+        "F-PROCESS-00.duration"
+      ]
+    },
+
+    "process.rate": {
+      "id": "process.rate",
+      "type": "number",
+      "domain": "general",
+      "returns": "unit/time",
+      "description": "查询过程速率。",
+      "consumers": [
+        "F-PROCESS-00.rate"
+      ]
+    },
+
+    "process.vocabulary": {
+      "id": "process.vocabulary",
+      "type": "list",
+      "domain": "general",
+      "returns": "ProcessName[]",
+      "description": "过程名称受控词表。",
+      "consumers": [
+        "F-PROCESS-00.process"
+      ]
+    },
+
+    "event.duration": {
+      "id": "event.duration",
+      "type": "number",
+      "domain": "general",
+      "returns": "seconds",
+      "description": "查询事件持续时长。",
+      "consumers": [
+        "F-EVENT-00.duration"
+      ]
+    },
+
+    "event.frequency": {
+      "id": "event.frequency",
+      "type": "string",
+      "domain": "general",
+      "returns": "FrequencyValue",
+      "description": "查询事件发生频率。",
+      "consumers": [
+        "F-EVENT-00.frequency"
+      ]
+    },
+
+    "event.instance_id": {
+      "id": "event.instance_id",
+      "type": "string",
+      "domain": "general",
+      "returns": "InstanceId",
+      "description": "系统生成的事件实例 id。",
+      "consumers": [
+        "F-EVENT-00.particular_iteration"
+      ]
+    },
+
+    "event.result": {
+      "id": "event.result",
+      "type": "string",
+      "domain": "general",
+      "returns": "MessageText",
+      "description": "上游事件结果，用作通知信息。",
+      "consumers": [
+        "F-COMMUNICATION-00.message"
+      ]
+    },
+
+    "change.rate": {
+      "id": "change.rate",
+      "type": "number",
+      "domain": "general",
+      "returns": "unit/time",
+      "description": "查询变化速率。",
+      "consumers": [
+        "F-CHANGE-00.rate"
+      ]
+    },
+
+    "repo.resolve": {
+      "id": "repo.resolve",
+      "type": "entity",
+      "domain": "ci",
+      "returns": "CodeRepo",
+      "description": "解析代码仓实体。",
+      "consumers": [
+        "F-PROCESSING-MATERIALS-00.material"
+      ]
+    },
+
+    "unit.list": {
+      "id": "unit.list",
+      "type": "list",
+      "domain": "ci",
+      "returns": "ConfigUnit[]",
+      "description": "列出可用配置单元。",
+      "consumers": [
+        "F-ACT-00.means",
+        "F-INTENTIONALLY-ACT-00.means",
+        "F-USING-00.instrument",
+        "F-PROCESSING-MATERIALS-00.means",
+        "F-CHOOSING-00.alternatives"
+      ]
+    },
+
+    "unit.resolve": {
+      "id": "unit.resolve",
+      "type": "entity",
+      "domain": "ci",
+      "returns": "ConfigUnit",
+      "description": "解析配置单元实体。",
+      "consumers": [
+        "F-PROCESSING-MATERIALS-00.material"
+      ]
+    },
+
+    "pipeline.list": {
+      "id": "pipeline.list",
+      "type": "list",
+      "domain": "ci",
+      "returns": "Pipeline[]",
+      "description": "列出可用流水线。",
+      "consumers": [
+        "F-USING-00.instrument",
+        "F-PROCESSING-MATERIALS-00.means",
+        "F-CHOOSING-00.alternatives"
+      ]
+    },
+
+    "pipeline.history": {
+      "id": "pipeline.history",
+      "type": "list",
+      "domain": "ci",
+      "returns": "PipelineRun[]",
+      "description": "查询流水线历史执行记录。",
+      "consumers": [
+        "F-ACT-00.means",
+        "F-INTENTIONALLY-ACT-00.means",
+        "F-USING-00.means"
+      ]
+    },
+
+    "pipeline.environment": {
+      "id": "pipeline.environment",
+      "type": "string",
+      "domain": "ci",
+      "returns": "EnvironmentName",
+      "description": "查询流水线绑定的环境。",
+      "consumers": [
+        "F-PROCESSING-MATERIALS-00.place"
+      ]
+    },
+
+    "pipeline.triggered_by": {
+      "id": "pipeline.triggered_by",
+      "type": "entity",
+      "domain": "ci",
+      "returns": "AgentRole",
+      "description": "查询流水线触发者。",
+      "consumers": [
+        "F-PROCESSING-MATERIALS-00.agent"
+      ]
+    },
+
+    "tool.list": {
+      "id": "tool.list",
+      "type": "list",
+      "domain": "general",
+      "returns": "Tool[]",
+      "description": "列出可用工具。",
+      "consumers": [
+        "F-USING-00.instrument"
+      ]
+    },
+
+    "tool.resolve": {
+      "id": "tool.resolve",
+      "type": "entity",
+      "domain": "general",
+      "returns": "Tool",
+      "description": "解析工具实体。",
+      "consumers": [
+        "F-USING-00.instrument",
+        "F-PROCESSING-MATERIALS-00.means"
+      ]
+    },
+
+    "candidate.list": {
+      "id": "candidate.list",
+      "type": "list",
+      "domain": "general",
+      "returns": "Entity[]",
+      "description": "列出可用候选项。",
+      "consumers": [
+        "F-CHOOSING-00.alternatives",
+        "F-CHOOSING-00.chosen"
+      ]
+    },
+
+    "candidate.resolve": {
+      "id": "candidate.resolve",
+      "type": "entity",
+      "domain": "general",
+      "returns": "Entity",
+      "description": "解析候选项实体。",
+      "consumers": [
+        "F-CHOOSING-00.chosen"
+      ]
+    },
+
+    "default_recipient": {
+      "id": "default_recipient",
+      "type": "entity",
+      "domain": "general",
+      "returns": "AgentRole",
+      "description": "默认信息接收者。",
+      "consumers": [
+        "F-COMMUNICATION-00.addressee"
+      ]
+    },
+
+    "notification.target": {
+      "id": "notification.target",
+      "type": "entity",
+      "domain": "ci",
+      "returns": "AgentRole",
+      "description": "CI 通知目标。",
+      "consumers": [
+        "F-COMMUNICATION-00.addressee"
+      ]
+    },
+
+    "notification.channel": {
+      "id": "notification.channel",
+      "type": "value",
+      "domain": "ci",
+      "returns": "MediumType",
+      "description": "CI 通知渠道。",
+      "consumers": [
+        "F-COMMUNICATION-00.medium"
+      ]
+    },
+
+    "default_medium": {
+      "id": "default_medium",
+      "type": "value",
+      "domain": "general",
+      "returns": "MediumType",
+      "description": "默认通信媒介。",
+      "consumers": [
+        "F-COMMUNICATION-00.medium"
+      ]
+    },
+
+    "permission.check": {
+      "id": "permission.check",
+      "type": "boolean",
+      "domain": "general",
+      "returns": "boolean",
+      "description": "检查当前用户对目标动作的权限。",
+      "consumers": [
+        "F-INTENTIONALLY-ACT-00.condition"
+      ]
+    },
+
+    "dependency.check": {
+      "id": "dependency.check",
+      "type": "boolean",
+      "domain": "general",
+      "returns": "boolean",
+      "description": "检查动作依赖是否满足。",
+      "consumers": [
+        "F-INTENTIONALLY-ACT-00.condition"
+      ]
+    }
+  },
+
+  "options_sources": {
+    "AgentRole.values": {
+      "source": "R-ROLES-00",
+      "role": "AgentRole",
+      "returns": "AgentRole[]",
+      "description": "施事角色值域，供多候选提问使用。"
+    },
+    "ActionType.values": {
+      "source": "R-ROLES-00",
+      "role": "ActionType",
+      "returns": "ActionType[]",
+      "description": "动作类型值域。"
+    },
+    "PurposeType.values": {
+      "source": "R-ROLES-00",
+      "role": "PurposeType",
+      "returns": "PurposeType[]",
+      "description": "目的类型值域。"
+    },
+    "MeansType.values": {
+      "source": "R-ROLES-00",
+      "role": "MeansType",
+      "returns": "MeansType[]",
+      "description": "手段类型值域。"
+    },
+    "EntityType.values": {
+      "source": "R-ROLES-00",
+      "role": "EntityType",
+      "returns": "EntityType[]",
+      "description": "实体类型值域。"
+    },
+    "PatientType.values": {
+      "source": "R-ROLES-00",
+      "role": "PatientType",
+      "returns": "EntityType[]",
+      "description": "受作用对象值域。"
+    },
+    "EventType.values": {
+      "source": "R-ROLES-00",
+      "role": "EventType",
+      "returns": "EventType[]",
+      "description": "事件类型值域。"
+    },
+    "MediumType.values": {
+      "source": "R-ROLES-00",
+      "role": "MediumType",
+      "returns": "MediumType[]",
+      "description": "媒介类型值域。"
+    }
+  },
+
+  "resolution_rules": {
+    "query_id_format": "小写字母开头，允许点分，如 current_user、unit.list、entity.current_state",
+    "options_source_format": "角色值域用 {RoleName}.values；系统列表用查询 id，如 unit.list",
+    "no_inline_definition": "框架文件中出现的 system_queries 与 options_source 必须在本文件中有定义，否则触发校验错误",
+    "unknown_query": "若引用了本文件中不存在的查询，触发校验警告并回退到 fallback 策略",
+    "domain_match": "查询的 domain 必须与引用它的框架 FE 的 domain 兼容；general 可被 ci 与 general 引用，ci 只能被 ci 引用"
+  },
+
+  "conventions": {
+    "query_id_case": "snake_case 或点分小写",
+    "type_values": ["entity", "list", "value", "boolean", "timestamp", "number", "string"],
+    "domain_values": ["general", "ci"],
+    "returns_format": "实体名 / 实体名[] / 值类型 / 原始类型",
+    "consumers_format": "{frame_schema_id}.{fe_path}"
+  }
+}
