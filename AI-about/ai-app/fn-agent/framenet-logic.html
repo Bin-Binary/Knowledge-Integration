@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FrameNet 执行逻辑</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:"Microsoft YaHei","Segoe UI",sans-serif;background:#0f172a;color:#e2e8f0;overflow-x:hidden}
+
+  .section{min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;padding:60px 30px;position:relative}
+  h2{font-size:2.8rem;font-weight:800;text-align:center;margin-bottom:10px;color:#fbbf24}
+  .subtitle{font-size:1.3rem;color:#94a3b8;text-align:center;margin-bottom:40px;max-width:700px}
+
+  /* ═══ PIPELINE HERO ═══ */
+  .hero{background:linear-gradient(160deg,#1e293b,#0f172a)}
+  .hero h1{font-size:4rem;font-weight:900;text-align:center}
+  .hero h1 span{background:linear-gradient(90deg,#38bdf8,#a78bfa,#f472b6);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .hero .pipe-visual{display:flex;align-items:center;gap:10px;margin:50px 0 30px;flex-wrap:wrap;justify-content:center}
+  .pipe-node{background:#334155;border-radius:16px;padding:20px 16px;text-align:center;width:180px;box-shadow:0 6px 20px rgba(0,0,0,.3)}
+  .pipe-node .pn-icon{font-size:3rem;margin-bottom:6px}
+  .pipe-node .pn-label{font-size:1.1rem;font-weight:700;color:#38bdf8}
+  .pipe-arrow{font-size:2.5rem;color:#fbbf24;font-weight:900}
+
+  /* ═══ STEP SECTION ═══ */
+  .step-section{background:#1e293b}
+  .step-flow{display:flex;flex-direction:column;gap:0;max-width:900px;width:100%}
+  .step-card{display:flex;gap:30px;align-items:stretch;padding:30px 0;border-bottom:2px solid #334155}
+  .step-card:last-child{border-bottom:none}
+  .step-num-box{min-width:70px;display:flex;flex-direction:column;align-items:center;gap:8px}
+  .step-circle{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.6rem;font-weight:900;color:#0f172a;flex-shrink:0}
+  .s1 .step-circle{background:#38bdf8}
+  .s2 .step-circle{background:#a78bfa}
+  .s3 .step-circle{background:#f472b6}
+  .s4 .step-circle{background:#34d399}
+  .s5 .step-circle{background:#fbbf24}
+  .step-line{width:3px;flex:1;background:#334155;border-radius:2px}
+  .step-body{flex:1;background:#1e293b;border-radius:16px;padding:24px 28px;border:2px solid #334155}
+  .step-body .sb-title{font-size:1.5rem;font-weight:700;margin-bottom:8px}
+  .s1 .sb-title{color:#38bdf8}
+  .s2 .sb-title{color:#a78bfa}
+  .s3 .sb-title{color:#f472b6}
+  .s4 .sb-title{color:#34d399}
+  .s5 .sb-title{color:#fbbf24}
+  .step-body .sb-desc{font-size:1.05rem;color:#94a3b8;line-height:1.7;margin-bottom:16px}
+  .step-body .sb-visual{background:#0f172a;border-radius:12px;padding:20px;font-size:.92rem;line-height:1.6}
+
+  /* ═══ XML DEMO ═══ */
+  .xml-block{font-family:"Cascadia Code","Fira Code",monospace;font-size:.85rem;color:#94a3b8;white-space:pre-wrap;word-break:break-all}
+  .xt{color:#f472b6}.xa{color:#fbbf24}.xv{color:#34d399}.xc{color:#64748b}
+
+  /* ═══ REAL EXAMPLE ═══ */
+  .real-example{background:#0f172a}
+  .example-panel{max-width:900px;width:100%}
+  .ex-sentence{font-size:1.8rem;font-weight:800;text-align:center;margin-bottom:30px;line-height:1.8}
+  .ex-word{display:inline-block;padding:6px 16px;border-radius:10px;margin:3px 2px;transition:.3s}
+  .ex-word:hover{transform:scale(1.15)}
+  .tag-injestor{background:#7c3aed;color:white}
+  .tag-trigger{background:#ef4444;color:white;position:relative}
+  .tag-trigger::after{content:"触发词";position:absolute;top:-22px;left:50%;transform:translateX(-50%);font-size:.7rem;background:#ef4444;padding:2px 8px;border-radius:4px;white-space:nowrap}
+  .tag-ingestibles{background:#059669;color:white}
+  .tag-degree{background:#d97706;color:white}
+  .tag-place{background:#2563eb;color:white}
+
+  .annotation-arrows{display:flex;justify-content:center;gap:40px;flex-wrap:wrap;margin:20px 0}
+  .anno-item{text-align:center}
+  .anno-item .ai-label{font-size:1.1rem;font-weight:700;color:#fbbf24;margin-bottom:4px}
+  .anno-item .ai-fill{font-size:1.3rem;font-weight:800;color:white}
+  .anno-item .ai-type{font-size:.85rem;color:#64748b;margin-top:2px}
+
+  .fe-table{width:100%;border-collapse:collapse;margin-top:20px}
+  .fe-table th{background:#334155;padding:10px 14px;text-align:left;font-size:.9rem;color:#94a3b8;border-radius:8px}
+  .fe-table td{padding:10px 14px;border-bottom:1px solid #334155;font-size:.95rem}
+  .fe-core{background:#7c3aed22;color:#a78bfa;font-weight:700;border-radius:6px;padding:2px 10px;display:inline-block;font-size:.85rem}
+  .fe-periph{background:#33415588;color:#94a3b8;border-radius:6px;padding:2px 10px;display:inline-block;font-size:.85rem}
+
+  /* ═══ FRAME NETWORK ═══ */
+  .frame-net{background:#1e293b}
+  .net-diagram{max-width:900px;width:100%;display:flex;flex-direction:column;align-items:center;gap:30px}
+  .net-center{background:linear-gradient(135deg,#7c3aed,#a78bfa);border-radius:20px;padding:24px 40px;text-align:center;font-size:1.8rem;font-weight:800;color:white;box-shadow:0 8px 30px rgba(124,58,237,.3)}
+  .net-rel-row{display:flex;gap:16px;flex-wrap:wrap;justify-content:center}
+  .net-rel{background:#334155;border-radius:14px;padding:16px 20px;text-align:center;width:200px;border:2px solid transparent;transition:.3s}
+  .net-rel:hover{border-color:#38bdf8;transform:translateY(-4px)}
+  .net-rel .nr-type{font-size:.8rem;font-weight:700;color:#fbbf24;margin-bottom:6px;text-transform:uppercase}
+  .net-rel .nr-name{font-size:1.2rem;font-weight:700;color:#38bdf8}
+  .net-rel .nr-desc{font-size:.85rem;color:#94a3b8;margin-top:4px}
+  .net-arrow{font-size:2rem;color:#94a3b8;text-align:center}
+
+  /* ═══ HOW PROGRAM USES IT ═══ */
+  .how-program{background:#0f172a}
+  .algo-flow{max-width:900px;width:100%;display:flex;flex-direction:column;gap:16px}
+  .algo-step{display:flex;gap:20px;align-items:center;padding:20px 24px;background:#1e293b;border-radius:16px;border-left:5px solid var(--ac)}
+  .algo-step .as-num{min-width:50px;height:50px;background:var(--ac);color:#0f172a;font-weight:900;font-size:1.3rem;border-radius:50%;display:flex;align-items:center;justify-content:center}
+  .algo-step .as-text{font-size:1.1rem;line-height:1.5}
+  .algo-step .as-text strong{color:var(--ac)}
+  .a1{--ac:#38bdf8}.a2{--ac:#a78bfa}.a3{--ac:#f472b6}.a4{--ac:#34d399}.a5{--ac:#fbbf24}
+
+  /* ═══ SUMMARY ═══ */
+  .summary{background:linear-gradient(160deg,#1e293b,#0f172a);min-height:auto;padding:60px 30px}
+  .summary-box{max-width:700px;text-align:center}
+  .summary-box .sb-big{font-size:2rem;font-weight:800;line-height:1.5;color:#e2e8f0;margin-bottom:20px}
+  .summary-box .sb-small{font-size:1rem;color:#64748b}
+</style>
+</head>
+<body>
+
+<!-- ═══ HERO ═══ -->
+<div class="section hero">
+  <h1><span>FrameNet 执行逻辑</span></h1>
+  <p class="subtitle">一句话触发 → 场景匹配 → 角色标注 → 语义理解</p>
+  <div class="pipe-visual">
+    <div class="pipe-node"><div class="pn-icon">💬</div><div class="pn-label">输入句子</div></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-node"><div class="pn-icon">🔍</div><div class="pn-label">找触发词</div></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-node"><div class="pn-icon">🎬</div><div class="pn-label">激活场景</div></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-node"><div class="pn-icon">🏷️</div><div class="pn-label">标注角色</div></div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-node"><div class="pn-icon">🧠</div><div class="pn-label">语义理解</div></div>
+  </div>
+</div>
+
+<!-- ═══ 五步详解 ═══ -->
+<div class="section step-section">
+  <h2>五步执行流程</h2>
+  <p class="subtitle">从一句自然语言到结构化语义表示</p>
+  <div class="step-flow">
+
+    <div class="step-card s1">
+      <div class="step-num-box"><div class="step-circle">1</div><div class="step-line"></div></div>
+      <div class="step-body">
+        <div class="sb-title">输入原始句子</div>
+        <div class="sb-desc">系统接收到一句话，比如从文章、对话或搜索框中获取。</div>
+        <div class="sb-visual">
+          <div style="font-size:1.6rem;font-weight:800;text-align:center;padding:16px;color:#38bdf8">
+            "The wolves devoured the carcass completely."
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step-card s2">
+      <div class="step-num-box"><div class="step-circle">2</div><div class="step-line"></div></div>
+      <div class="step-body">
+        <div class="sb-title">查找触发词 → 关联词汇单元 (LU)</div>
+        <div class="sb-desc">在句子中找到"动作词"，去 <strong>lu/</strong> 目录的 13,572 个词汇单元中匹配。触发词决定搜索哪个场景。</div>
+        <div class="sb-visual">
+          <div class="xml-block"><span class="xc">&lt;!-- lu/ 目录中查找 "devour" --&gt;</span>
+<span class="xt">&lt;lexUnit</span> <span class="xa">name=</span><span class="xv">"devour.v"</span> <span class="xa">POS=</span><span class="xv">"V"</span><span class="xt">&gt;</span>
+  <span class="xt">&lt;definition&gt;</span>eat hungrily and quickly<span class="xt">&lt;/definition&gt;</span>
+  <span class="xt">&lt;lexeme</span> <span class="xa">name=</span><span class="xv">"devour"</span><span class="xt">/&gt;</span>
+<span class="xt">&lt;/lexUnit&gt;</span>
+
+<span class="xc">&lt;!-- 找到！devour.v 属于 Ingestion 场景 --&gt;</span>
+<span class="xt">&lt;frame&gt;</span>Ingestion<span class="xt">&lt;/frame&gt;</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step-card s3">
+      <div class="step-num-box"><div class="step-circle">3</div><div class="step-line"></div></div>
+      <div class="step-body">
+        <div class="sb-title">激活 Frame（场景） → 获取角色模板</div>
+        <div class="sb-desc">拿到场景名后，去 <strong>frame/</strong> 目录读取该场景的定义。拿到一张"角色空位表"——这个场景有哪些参与者位置需要填写。</div>
+        <div class="sb-visual">
+          <div class="xml-block"><span class="xc">&lt;!-- frame/Ingestion.xml 中定义的角色 --&gt;</span>
+<span class="xt">&lt;FE</span> <span class="xa">coreType=</span><span class="xv">"Core"</span>      <span class="xa">name=</span><span class="xv">"Ingestor"</span><span class="xt">/&gt;</span>     <span class="xc">&lt;!-- ★ 核心: 谁在吃 --&gt;</span>
+<span class="xt">&lt;FE</span> <span class="xa">coreType=</span><span class="xv">"Core"</span>      <span class="xa">name=</span><span class="xv">"Ingestibles"</span><span class="xt">/&gt;</span> <span class="xc">&lt;!-- ★ 核心: 吃什么 --&gt;</span>
+<span class="xt">&lt;FE</span> <span class="xa">coreType=</span><span class="xv">"Peripheral"</span> <span class="xa">name=</span><span class="xv">"Place"</span><span class="xt">/&gt;</span>      <span class="xc">&lt;!-- ○ 边缘: 地点 --&gt;</span>
+<span class="xt">&lt;FE</span> <span class="xa">coreType=</span><span class="xv">"Peripheral"</span> <span class="xa">name=</span><span class="xv">"Time"</span><span class="xt">/&gt;</span>      <span class="xc">&lt;!-- ○ 边缘: 时间 --&gt;</span>
+<span class="xt">&lt;FE</span> <span class="xa">coreType=</span><span class="xv">"Peripheral"</span> <span class="xa">name=</span><span class="xv">"Degree"</span><span class="xt">/&gt;</span>     <span class="xc">&lt;!-- ○ 边缘: 程度 --&gt;</span>
+<span class="xt">&lt;FE</span> <span class="xa">coreType=</span><span class="xv">"Peripheral"</span> <span class="xa">name=</span><span class="xv">"Manner"</span><span class="xt">/&gt;</span>     <span class="xc">&lt;!-- ○ 边缘: 方式 --&gt;</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step-card s4">
+      <div class="step-num-box"><div class="step-circle">4</div><div class="step-line"></div></div>
+      <div class="step-body">
+        <div class="sb-title">标注 Fillers → 把句中成分填入角色</div>
+        <div class="sb-desc">把句子的每个部分"对号入座"——哪个词扮演哪个角色。fulltext/ 中的 107 篇标注文章就是人工标注的范例，机器照此学习。</div>
+        <div class="sb-visual">
+          <div class="ex-sentence" style="font-size:1.4rem;text-align:left">
+            <span class="ex-word tag-injestor">The wolves</span>
+            <span class="ex-word tag-trigger">devoured</span>
+            <span class="ex-word tag-ingestibles">the carcass</span>
+            <span class="ex-word tag-degree">completely</span>
+          </div>
+          <div style="text-align:center;color:#64748b;font-size:.9rem;margin-top:8px">↓ 对号入座 ↓</div>
+          <table class="fe-table" style="margin-top:8px">
+            <tr><th>角色 (FE)</th><th>填入词 (Filler)</th><th>类型</th></tr>
+            <tr><td>Ingestor</td><td><strong style="color:#a78bfa">The wolves</strong></td><td><span class="fe-core">Core</span></td></tr>
+            <tr><td>Ingestibles</td><td><strong style="color:#34d399">the carcass</strong></td><td><span class="fe-core">Core</span></td></tr>
+            <tr><td>Degree</td><td><strong style="color:#fbbf24">completely</strong></td><td><span class="fe-periph">Peripheral</span></td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="step-card s5">
+      <div class="step-num-box"><div class="step-circle">5</div></div>
+      <div class="step-body">
+        <div class="sb-title">输出结构化语义 → 供下游使用</div>
+        <div class="sb-desc">最终得到一组 (场景 + 角色映射) 的结构化数据，可送入问答系统、翻译引擎、情感分析等。</div>
+        <div class="sb-visual">
+          <div class="xml-block" style="font-size:.9rem">{
+  <span class="xa">"frame"</span>: <span class="xv">"Ingestion"</span>,
+  <span class="xa">"trigger"</span>: <span class="xv">"devoured"</span>,
+  <span class="xa">"annotations"</span>: [
+    { <span class="xa">"FE"</span>: <span class="xv">"Ingestor"</span>,     <span class="xa">"text"</span>: <span class="xv">"The wolves"</span>  },
+    { <span class="xa">"FE"</span>: <span class="xv">"Ingestibles"</span>, <span class="xa">"text"</span>: <span class="xv">"the carcass"</span>},
+    { <span class="xa">"FE"</span>: <span class="xv">"Degree"</span>,      <span class="xa">"text"</span>: <span class="xv">"completely"</span>  }
+  ]
+}</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══ 场景关系网 ═══ -->
+<div class="section frame-net">
+  <h2>场景之间的关系网</h2>
+  <p class="subtitle">frRelation.xml 记录了 1,221 个场景间的继承、因果、使用等关系</p>
+  <div class="net-diagram">
+    <div class="net-center">🎬 Ingestion<br><span style="font-size:.9rem;font-weight:400">进食</span></div>
+    <div class="net-arrow">↕ 继承 / 因果 / 使用</div>
+    <div class="net-rel-row">
+      <div class="net-rel">
+        <div class="nr-type">继承自 Inherits</div>
+        <div class="nr-name">Manipulation</div>
+        <div class="nr-desc">"用手操作"是更抽象的父场景</div>
+      </div>
+      <div class="net-rel">
+        <div class="nr-type">继承自 Inherits</div>
+        <div class="nr-name">Ingest_substance</div>
+        <div class="nr-desc">"摄入物质"的另一分支</div>
+      </div>
+      <div class="net-rel">
+        <div class="nr-type">被使用 Used by</div>
+        <div class="nr-name">Food</div>
+        <div class="nr-desc">"食物"场景引用进食场景</div>
+      </div>
+      <div class="net-rel">
+        <div class="nr-type">使用 Uses</div>
+        <div class="nr-name">Cause_motion</div>
+        <div class="nr-desc">"进食"隐含"引起运动"</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 程序视角 ═══ -->
+<div class="section how-program">
+  <h2>程序视角：怎么用这套数据</h2>
+  <p class="subtitle">以 NLTK 加载 FrameNet 为例的算法流程</p>
+  <div class="algo-flow">
+    <div class="algo-step a1">
+      <div class="as-num">1</div>
+      <div class="as-text"><strong>加载 frameIndex.xml</strong> → 得到 1,221 个场景的 ID + 名称索引表</div>
+    </div>
+    <div class="algo-step a2">
+      <div class="as-num">2</div>
+      <div class="as-text"><strong>加载 luIndex.xml</strong> → 得到 13,572 个词汇单元的索引，建立 "词 → 场景ID" 的映射</div>
+    </div>
+    <div class="algo-step a3">
+      <div class="as-num">3</div>
+      <div class="as-text"><strong>对输入句子分词</strong> → 逐词查 luIndex，找到匹配的词汇单元，确定候选场景</div>
+    </div>
+    <div class="algo-step a4">
+      <div class="as-num">4</div>
+      <div class="as-text"><strong>加载 frame/{场景名}.xml</strong> → 读取该场景的 FE 角色列表 + 语义类型约束</div>
+    </div>
+    <div class="algo-step a5">
+      <div class="as-num">5</div>
+      <div class="as-text"><strong>角色消解</strong> → 将句中的名词短语等成分填入对应 FE，结合 fulltext/ 中的标注范例做训练/规则匹配</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SUMMARY ═══ -->
+<div class="section summary">
+  <div class="summary-box">
+    <div class="sb-big">
+      触发词找场景<br>
+      场景给角色模板<br>
+      角色模板套句子成分<br>
+      <span style="color:#38bdf8">= 结构化语义理解</span>
+    </div>
+    <div class="sb-small">FrameNet Release 1.7 · ICSI Berkeley · 此页面仅供概念入门</div>
+  </div>
+</div>
+
+</body>
+</html>
