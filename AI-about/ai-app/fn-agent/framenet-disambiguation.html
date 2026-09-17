@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FrameNet 框架消歧</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"Microsoft YaHei","Segoe UI",sans-serif;background:#0f172a;color:#e2e8f0;overflow-x:hidden}
+.section{min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;padding:50px 30px}
+h2{font-size:2.6rem;font-weight:800;text-align:center;margin-bottom:8px;color:#fbbf24}
+h3{font-size:1.6rem;font-weight:700;margin-bottom:6px}
+.sub{font-size:1.15rem;color:#94a3b8;text-align:center;margin-bottom:36px;max-width:750px}
+
+/* ═══ HERO ═══ */
+.hero{background:linear-gradient(160deg,#1e293b,#0f172a)}
+.hero h1{font-size:3.5rem;font-weight:900;text-align:center}
+.hero h1 span{background:linear-gradient(90deg,#f97316,#ef4444,#f472b6);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero .prob{font-size:1.6rem;font-weight:700;color:#f97316;text-align:center;margin:30px 0 12px}
+.hero .prob-sub{font-size:1.1rem;color:#94a3b8;text-align:center;max-width:600px}
+
+/* ═══ PROBLEM ═══ */
+.problem{background:#1e293b}
+.word-chaos{max-width:900px;width:100%}
+.chaos-header{text-align:center;font-size:2.4rem;font-weight:900;margin-bottom:24px}
+.chaos-header .cw{color:#f97316}
+.chaos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px}
+.chaos-card{background:#0f172a;border-radius:14px;padding:18px 14px;text-align:center;border:2px solid #334155;transition:.3s}
+.chaos-card:hover{border-color:#f97316;transform:translateY(-3px)}
+.chaos-card .cc-frame{font-size:.95rem;font-weight:700;color:#38bdf8;margin-bottom:4px}
+.chaos-card .cc-def{font-size:.8rem;color:#94a3b8;line-height:1.4}
+.chaos-card .cc-status{font-size:.7rem;padding:2px 8px;border-radius:4px;display:inline-block;margin-top:6px}
+.st-done{background:#05966933;color:#34d399}
+.st-partial{background:#d9770633;color:#fbbf24}
+.st-raw{background:#ef444433;color:#f87171}
+
+/* ═══ 5 MECHANISMS ═══ */
+.mechanisms{background:#0f172a}
+.mech-grid{max-width:900px;width:100%;display:flex;flex-direction:column;gap:18px}
+.mech-card{display:flex;gap:20px;background:#1e293b;border-radius:16px;padding:24px;border-left:5px solid var(--ac)}
+.mech-card .mc-icon{font-size:2.8rem;flex-shrink:0}
+.mech-card .mc-body{flex:1}
+.mech-card .mc-title{font-size:1.3rem;font-weight:700;color:var(--ac);margin-bottom:6px}
+.mech-card .mc-desc{font-size:.95rem;color:#94a3b8;line-height:1.6}
+.mech-card .mc-demo{background:#0f172a;border-radius:10px;padding:14px;margin-top:10px;font-size:.85rem;line-height:1.5}
+.m1{--ac:#38bdf8}.m2{--ac:#a78bfa}.m3{--ac:#f472b6}.m4{--ac:#34d399}.m5{--ac:#fbbf24}
+
+/* ═══ FE MATCH ═══ */
+.fe-match{background:#1e293b}
+.match-panel{max-width:900px;width:100%}
+.match-sentence{font-size:1.4rem;font-weight:700;text-align:center;margin-bottom:24px;line-height:1.8}
+.mw{display:inline-block;padding:4px 12px;border-radius:8px;margin:2px}
+.mw-ag{background:#7c3aed;color:white}.mw-victim{background:#059669;color:white}.mw-trigger{background:#ef4444;color:white}.mw-weapon{background:#d97706;color:white}.mw-body{background:#2563eb;color:white}
+
+.match-table{width:100%;border-collapse:collapse;margin-bottom:24px}
+.match-table th{background:#334155;padding:10px;font-size:.85rem;color:#94a3b8;text-align:center}
+.match-table td{padding:10px;font-size:.9rem;text-align:center;border-bottom:1px solid #334155}
+.score-high{color:#34d399;font-weight:800;font-size:1.1rem}
+.score-low{color:#64748b;font-weight:600}
+.fe-found{background:#34d39922;color:#34d399;padding:2px 8px;border-radius:4px;font-size:.8rem;font-weight:700}
+.fe-miss{background:#ef444422;color:#f87171;padding:2px 8px;border-radius:4px;font-size:.8rem;font-weight:700}
+.fe-na{color:#475569;font-size:.8rem}
+.verdict{text-align:center;padding:16px;border-radius:12px;font-size:1.3rem;font-weight:800}
+.verdict-ok{background:#05966922;color:#34d399}
+
+/* ═══ RELATIONS ═══ */
+.relations{background:#0f172a}
+.rel-panel{max-width:900px;width:100%;display:flex;flex-direction:column;gap:20px}
+.rel-card{background:#1e293b;border-radius:16px;padding:24px}
+.rel-card .rc-type{font-size:.85rem;font-weight:700;color:#fbbf24;text-transform:uppercase;margin-bottom:8px;letter-spacing:1px}
+.rel-card .rc-title{font-size:1.3rem;font-weight:700;color:#e2e8f0;margin-bottom:10px}
+.rel-card .rc-diagram{display:flex;align-items:center;gap:12px;justify-content:center;flex-wrap:wrap;margin:16px 0}
+.rel-box{background:#334155;border-radius:12px;padding:14px 20px;text-align:center;font-weight:700;font-size:1.1rem;border:2px solid var(--bc)}
+.rb-a{--bc:#38bdf8;color:#38bdf8}.rb-b{--bc:#a78bfa;color:#a78bfa}.rb-c{--bc:#f472b6;color:#f472b6}
+.rel-arrow{font-size:1.8rem;color:#fbbf24;font-weight:900;white-space:nowrap}
+.rel-fe-map{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+.fe-mapping{background:#0f172a;border-radius:8px;padding:8px 14px;font-size:.85rem}
+.fe-mapping .fm-from{color:#f97316;font-weight:700}
+.fe-mapping .fm-to{color:#38bdf8;font-weight:700}
+
+/* ═══ ALGO ═══ */
+.algo{background:#1e293b}
+.algo-flow{max-width:900px;width:100%;display:flex;flex-direction:column;gap:14px}
+.algo-step{display:flex;gap:18px;align-items:stretch;padding:18px 22px;background:#0f172a;border-radius:14px;border:2px solid #334155}
+.algo-step .as-num{min-width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:900;flex-shrink:0;background:var(--ac);color:#0f172a}
+.algo-step .as-body{flex:1}
+.algo-step .as-title{font-size:1.1rem;font-weight:700;color:var(--ac);margin-bottom:4px}
+.algo-step .as-desc{font-size:.9rem;color:#94a3b8;line-height:1.5}
+.a1{--ac:#38bdf8}.a2{--ac:#a78bfa}.a3{--ac:#f472b6}.a4{--ac:#34d399}.a5{--ac:#fbbf24}.a6{--ac:#f97316}.a7{--ac:#ec4899}
+
+/* ═══ SUMMARY ═══ */
+.summary{background:linear-gradient(160deg,#1e293b,#0f172a);min-height:auto;padding:60px 30px}
+.sum-box{max-width:700px;text-align:center}
+.sum-box .big{font-size:1.8rem;font-weight:800;line-height:1.6;margin-bottom:16px}
+.sum-box .small{font-size:.9rem;color:#64748b}
+</style>
+</head>
+<body>
+
+<!-- ═══ HERO ═══ -->
+<div class="section hero">
+  <h1><span>一个词，多个场景</span></h1>
+  <div class="prob">strike 出现在 11 个不同场景中！</div>
+  <div class="prob-sub">同一个词触发多个候选 Frame，怎么选？这就叫<br><strong style="color:#f97316">框架消歧 (Frame Disambiguation)</strong></div>
+</div>
+
+<!-- ═══ PROBLEM ═══ -->
+<div class="section problem">
+  <h2>问题有多大？</h2>
+  <div class="sub">高频动词几乎都有一词多场景</div>
+  <div class="word-chaos">
+    <div class="chaos-header"><span class="cw">strike.v</span> 的 11 个场景</div>
+    <div class="chaos-grid">
+      <div class="chaos-card"><div class="cc-frame">Cause_harm</div><div class="cc-def">打人致伤</div><div class="cc-status st-done">54 条标注</div></div>
+      <div class="chaos-card"><div class="cc-frame">Impact</div><div class="cc-def">撞击</div><div class="cc-status st-done">53 条标注</div></div>
+      <div class="chaos-card"><div class="cc-frame">Cause_impact</div><div class="cc-def">导致撞击</div><div class="cc-status st-partial">19 条标注</div></div>
+      <div class="chaos-card"><div class="cc-frame">Attack</div><div class="cc-def">攻击</div><div class="cc-status st-done">24 条标注</div></div>
+      <div class="chaos-card"><div class="cc-frame">Cognitive_impact</div><div class="cc-def">给心理震撼</div><div class="cc-status st-done">40 条标注</div></div>
+      <div class="chaos-card"><div class="cc-frame">Light_movement</div><div class="cc-def">光线照射</div><div class="cc-status st-partial">6 条标注</div></div>
+      <div class="chaos-card"><div class="cc-frame">Erasing</div><div class="cc-def">删除撤销</div><div class="cc-status st-raw">1 条标注</div></div>
+      <div class="chaos-card"><div class="cc-frame">Political_actions</div><div class="cc-def">罢工</div><div class="cc-status st-raw">1 条标注</div></div>
+      <div class="chaos-card"><div class="cc-frame">Be_in_agreement</div><div class="cc-def">达成协议</div><div class="cc-status st-raw">0 条标注</div></div>
+      <div class="chaos-card"><div class="cc-frame">Coming_to_believe</div><div class="cc-def">突然意识到</div><div class="cc-status st-raw">0 条标注</div></div>
+      <div class="chaos-card"><div class="cc-frame">Eventive_affecting</div><div class="cc-def">事件性影响</div><div class="cc-status st-partial">9 条标注</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 5 消歧机制 ═══ -->
+<div class="section mechanisms">
+  <h2>5 大消歧机制</h2>
+  <div class="sub">FrameNet 没有单独的"消歧模块"，而是靠多个线索综合判断</div>
+  <div class="mech-grid">
+
+    <div class="mech-card m1">
+      <div class="mc-icon">📖</div>
+      <div class="mc-body">
+        <div class="mc-title">① 释义定义</div>
+        <div class="mc-desc">同一词在不同 Frame 里有不同释义，这是最直接的区分信号。</div>
+        <div class="mc-demo">
+          <strong style="color:#38bdf8">Cause_harm:</strong> "to deliver a blow, causing injury"<br>
+          <strong style="color:#38bdf8">Impact:</strong> "come into forcible contact with"<br>
+          <strong style="color:#38bdf8">Attack:</strong> "attack suddenly"
+        </div>
+      </div>
+    </div>
+
+    <div class="mech-card m2">
+      <div class="mc-icon">🎯</div>
+      <div class="mc-body">
+        <div class="mc-title">② 核心 FE 角色</div>
+        <div class="mc-desc">每个 Frame 的"核心角色"不同。句中出现的角色类型决定了哪个 Frame 更匹配。</div>
+        <div class="mc-demo">
+          <strong style="color:#a78bfa">Cause_harm:</strong> Agent + Victim + Body_part<br>
+          <strong style="color:#a78bfa">Impact:</strong> Impactor + Impactee<br>
+          <strong style="color:#a78bfa">Attack:</strong> Assailant + Victim + Weapon
+        </div>
+      </div>
+    </div>
+
+    <div class="mech-card m3">
+      <div class="mc-icon">📐</div>
+      <div class="mc-body">
+        <div class="mc-title">③ 语义类型约束</div>
+        <div class="mc-desc">semTypes.xml 定义了角色填充物的类型限制。比如 Ingestor 必须是 Sentient（有感知的），而 Impactor 可以是任何 Physical_entity。</div>
+        <div class="mc-demo">
+          <strong style="color:#f472b6">Attack.Assailant →</strong> 必须是 Sentient（人/动物）<br>
+          <strong style="color:#f472b6">Impact.Impactor →</strong> 可以是 Physical_entity（球/车/石头）<br>
+          <strong style="color:#f472b6">→ 主语是"球"？排除 Attack，选 Impact</strong>
+        </div>
+      </div>
+    </div>
+
+    <div class="mech-card m4">
+      <div class="mc-icon">🔗</div>
+      <div class="mc-body">
+        <div class="mc-title">④ 场景关系网</div>
+        <div class="mc-desc">frRelation.xml 记录了 Frame 间的继承、视角、因果等关系，帮助理解候选 Frame 之间的区别。</div>
+        <div class="mc-demo">
+          <strong style="color:#34d399">Perspective_on:</strong> Attack 是 Hostile_encounter 的"攻击方视角"<br>
+          <strong style="color:#34d399">Causative_of:</strong> "He broke the window"(Cause) vs "The window broke"(Change)<br>
+          <strong style="color:#34d399">Inherits:</strong> Attack 和 Cause_harm 都继承自 Intentionally_affect
+        </div>
+      </div>
+    </div>
+
+    <div class="mech-card m5">
+      <div class="mc-icon">📊</div>
+      <div class="mc-body">
+        <div class="mc-title">⑤ 标注语料 + 论元模式</div>
+        <div class="mc-desc">fulltext/ 中的 107 篇人工标注文本提供了每个词-场景对的句法和论元搭配模式，是机器学习的训练数据。</div>
+        <div class="mc-demo">
+          <strong style="color:#fbbf24">strike.v (@ Cause_harm):</strong> 常见 Agent[NP] + Victim[NP] + Body_Partic[PP]<br>
+          <strong style="color:#fbbf24">strike.v (@ Impact):</strong> 常见 Impactor[NP] + Impactee[PP_on]<br>
+          <strong style="color:#fbbf24">status 字段:</strong> "Created"=几乎无标注，优先选 "In_Use"/"Finished" 的场景
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ FE 匹配打分 ═══ -->
+<div class="section fe-match">
+  <h2>消歧核心：FE 角色打分</h2>
+  <div class="sub">检查句中成分能填进哪个 Frame 的核心角色，匹配度最高的胜出</div>
+  <div class="match-panel">
+    <div class="match-sentence">
+      <span class="mw mw-ag">The man</span>
+      <span class="mw mw-trigger">struck</span>
+      <span class="mw mw-victim">the victim</span>
+      <span class="mw mw-weapon">with a bat</span>
+    </div>
+
+    <table class="match-table">
+      <tr>
+        <th>候选 Frame</th>
+        <th>核心 FE</th>
+        <th>Agent<br><span style="font-size:.7rem">The man</span></th>
+        <th>Victim<br><span style="font-size:.7rem">the victim</span></th>
+        <th>Weapon<br><span style="font-size:.7rem">with a bat</span></th>
+        <th>匹配分</th>
+      </tr>
+      <tr>
+        <td style="color:#ef4444;font-weight:700">Attack</td>
+        <td style="font-size:.8rem;color:#94a3b8">Assailant<br>Victim<br>Weapon</td>
+        <td><span class="fe-found">Assailant ✓</span></td>
+        <td><span class="fe-found">Victim ✓</span></td>
+        <td><span class="fe-found">Weapon ✓</span></td>
+        <td><span class="score-high">3/3</span></td>
+      </tr>
+      <tr>
+        <td style="color:#f97316;font-weight:700">Cause_harm</td>
+        <td style="font-size:.8rem;color:#94a3b8">Agent<br>Victim<br>Body_part</td>
+        <td><span class="fe-found">Agent ✓</span></td>
+        <td><span class="fe-found">Victim ✓</span></td>
+        <td><span class="fe-miss">✗</span></td>
+        <td><span class="score-low">2/3</span></td>
+      </tr>
+      <tr>
+        <td style="color:#d97706;font-weight:700">Impact</td>
+        <td style="font-size:.8rem;color:#94a3b8">Impactor<br>Impactee</td>
+        <td><span class="fe-miss">✗</span></td>
+        <td><span class="fe-found">Impactee ✓</span></td>
+        <td><span class="fe-na">—</span></td>
+        <td><span class="score-low">1/2</span></td>
+      </tr>
+    </table>
+
+    <div class="verdict verdict-ok">Attack 胜出 — 3 个核心 FE 全部匹配</div>
+  </div>
+</div>
+
+<!-- ═══ 关系网 ═══ -->
+<div class="section relations">
+  <h2>场景关系辅助消歧</h2>
+  <div class="sub">帧间关系告诉你候选场景之间的结构差异</div>
+  <div class="rel-panel">
+    <div class="rel-card">
+      <div class="rc-type">Perspective_on 视角关系</div>
+      <div class="rc-title">同一事件，不同视角 = 不同 Frame</div>
+      <div class="rc-diagram">
+        <div class="rel-box rb-a">Hostile_encounter<br><span style="font-size:.75rem;font-weight:400;color:#94a3b8">中立视角</span></div>
+        <div class="rel-arrow">← Perspective_on ←</div>
+        <div class="rel-box rb-b">Attack<br><span style="font-size:.75rem;font-weight:400;color:#94a3b8">攻击方视角</span></div>
+      </div>
+      <div class="rel-fe-map">
+        <div class="fe-mapping"><span class="fm-from">Side_1</span> → <span class="fm-to">Assailant</span></div>
+        <div class="fe-mapping"><span class="fm-from">Side_2</span> → <span class="fm-to">Victim</span></div>
+        <div class="fe-mapping"><span class="fm-from">Instrument</span> → <span class="fm-to">Weapon</span></div>
+      </div>
+      <div style="text-align:center;font-size:.9rem;color:#94a3b8;margin-top:12px">如果句子突出"谁打了谁"→ 选 Attack；如果中立叙述"双方交战"→ 选 Hostile_encounter</div>
+    </div>
+
+    <div class="rel-card">
+      <div class="rc-type">Causative_of 因果关系</div>
+      <div class="rc-title">"使发生" vs "自然发生" = 不同 Frame</div>
+      <div class="rc-diagram">
+        <div class="rel-box rb-a">Change_temperature<br><span style="font-size:.75rem;font-weight:400;color:#94a3b8">自然变化</span></div>
+        <div class="rel-arrow">← Causative_of ←</div>
+        <div class="rel-box rb-c">Cause_temperature_change<br><span style="font-size:.75rem;font-weight:400;color:#94a3b8">人为导致</span></div>
+      </div>
+      <div style="text-align:center;font-size:.9rem;color:#94a3b8;margin-top:12px">"The water boiled" → Change_temperature &nbsp;|&nbsp; "She boiled the water" → Cause_temperature_change</div>
+    </div>
+
+    <div class="rel-card">
+      <div class="rc-type">Inherits 继承关系</div>
+      <div class="rc-title">兄弟场景共享父场景，但侧重不同</div>
+      <div class="rc-diagram">
+        <div class="rel-box rb-a" style="font-size:.9rem">Intentionally_affect<br><span style="font-size:.7rem;color:#94a3b8">父场景</span></div>
+        <div class="rel-arrow">↑继承</div>
+        <div style="display:flex;gap:12px">
+          <div class="rel-box rb-b" style="font-size:.85rem">Attack<br><span style="font-size:.7rem;color:#94a3b8">伤害意图</span></div>
+          <div class="rel-box rb-c" style="font-size:.85rem">Cause_harm<br><span style="font-size:.7rem;color:#94a3b8">物理伤害</span></div>
+        </div>
+      </div>
+      <div style="text-align:center;font-size:.9rem;color:#94a3b8;margin-top:12px">有 Weapon → 偏 Attack &nbsp;|&nbsp; 有 Body_part → 偏 Cause_harm</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 算法流程 ═══ -->
+<div class="section algo">
+  <h2>消歧算法流程</h2>
+  <div class="sub">从候选集合到最终选择的 7 步</div>
+  <div class="algo-flow">
+    <div class="algo-step a1">
+      <div class="as-num">1</div>
+      <div class="as-body">
+        <div class="as-title">查找触发词 → 获取候选 LU 列表</div>
+        <div class="as-desc">在 luIndex 中找到该词的所有 LU，每个 LU 对应一个候选 Frame。比如 "strike" → 11 个 LU</div>
+      </div>
+    </div>
+    <div class="algo-step a2">
+      <div class="as-num">2</div>
+      <div class="as-body">
+        <div class="as-title">过滤低质量 LU</div>
+        <div class="as-desc">去掉 status="Created"（无标注语料）的 LU，缩窄候选集。11 → 剩 ~8 个有标注的</div>
+      </div>
+    </div>
+    <div class="algo-step a3">
+      <div class="as-num">3</div>
+      <div class="as-body">
+        <div class="as-title">加载每个候选 Frame 的角色模板</div>
+        <div class="as-desc">读取各 frame/*.xml 中的 Core FE 列表和语义类型约束</div>
+      </div>
+    </div>
+    <div class="algo-step a4">
+      <div class="as-num">4</div>
+      <div class="as-body">
+        <div class="as-title">对句中成分做 FE 角色打分</div>
+        <div class="as-desc">检查句中的名词短语等能否填入各候选 Frame 的 Core FE。能填的 Core FE 越多，分越高</div>
+      </div>
+    </div>
+    <div class="algo-step a5">
+      <div class="as-num">5</div>
+      <div class="as-body">
+        <div class="as-title">语义类型校验</div>
+        <div class="as-desc">检查 FE 填充物是否满足 semTypes 约束。如"球"不是 Sentient，排除 Attack.Assailant</div>
+      </div>
+    </div>
+    <div class="algo-step a6">
+      <div class="as-num">6</div>
+      <div class="as-body">
+        <div class="as-title">参考场景关系做调整</div>
+        <div class="as-desc">如果两个高分候选是 Perspective_on 关系，看句式侧重选视角；如果是 Causative_of 关系，看有无使役动因</div>
+      </div>
+    </div>
+    <div class="algo-step a7">
+      <div class="as-num">7</div>
+      <div class="as-body">
+        <div class="as-title">输出最佳 Frame + FE 标注</div>
+        <div class="as-desc">取综合得分最高的 Frame，将句中成分填入其 FE 槽位，输出结构化语义</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SUMMARY ═══ -->
+<div class="section summary">
+  <div class="sum-box">
+    <div class="big">
+      一词多场景 ≠ 无法判断<br><br>
+      <span style="color:#38bdf8">释义</span> + <span style="color:#a78bfa">角色</span> + <span style="color:#f472b6">类型</span> + <span style="color:#34d399">关系</span> + <span style="color:#fbbf24">语料</span><br><br>
+      五线索打分消歧
+    </div>
+    <div class="small">FrameNet Release 1.7 · 此页面仅供概念入门</div>
+  </div>
+</div>
+
+</body>
+</html>
