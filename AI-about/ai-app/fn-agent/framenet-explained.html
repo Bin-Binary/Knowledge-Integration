@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FrameNet 速懂</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: "Microsoft YaHei", "Segoe UI", sans-serif; background: #0f172a; color: #e2e8f0; overflow-x: hidden; }
+  .section { min-height: 100vh; display: flex; align-items: center; justify-content: center; flex-direction: column; padding: 60px 40px; position: relative; }
+  h1 { font-size: 4.5rem; font-weight: 900; margin-bottom: 20px; text-align: center; }
+  h2 { font-size: 3rem; font-weight: 800; margin-bottom: 16px; text-align: center; color: #fbbf24; }
+  h3 { font-size: 1.5rem; font-weight: 600; margin-bottom: 8px; }
+  p, .desc { font-size: 1.6rem; line-height: 1.7; text-align: center; max-width: 800px; color: #cbd5e1; }
+
+  /* ── Hero ── */
+  .hero { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); }
+  .hero h1 span { background: linear-gradient(90deg, #38bdf8, #a78bfa, #f472b6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .hero .emoji-row { font-size: 6rem; margin: 30px 0; letter-spacing: 20px; }
+
+  /* ── Core Idea ── */
+  .core-idea { background: #1e293b; }
+  .analogy-container { display: flex; align-items: center; gap: 60px; flex-wrap: wrap; justify-content: center; margin-top: 30px; }
+  .analogy-box { background: #334155; border-radius: 24px; padding: 40px 30px; width: 320px; text-align: center; box-shadow: 0 8px 30px rgba(0,0,0,.3); }
+  .analogy-box .big-icon { font-size: 5rem; margin-bottom: 16px; }
+  .analogy-box .label { font-size: 1.8rem; font-weight: 700; color: #fbbf24; }
+
+  /* ── How FrameNet Works ── */
+  .how-it-works { background: #0f172a; }
+  .flow-container { display: flex; align-items: stretch; gap: 16px; margin-top: 30px; flex-wrap: wrap; justify-content: center; }
+  .flow-step { background: linear-gradient(135deg, #1e3a5f, #1e293b); border: 2px solid #38bdf8; border-radius: 20px; padding: 30px 24px; width: 240px; text-align: center; position: relative; }
+  .flow-step .step-num { position: absolute; top: -18px; left: 50%; transform: translateX(-50%); background: #38bdf8; color: #0f172a; font-weight: 900; font-size: 1.2rem; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  .flow-step .icon { font-size: 4rem; margin-bottom: 10px; }
+  .flow-step .title { font-size: 1.4rem; font-weight: 700; color: #38bdf8; margin-bottom: 6px; }
+  .flow-step .detail { font-size: 1rem; color: #94a3b8; }
+  .arrow { display: flex; align-items: center; font-size: 3rem; color: #38bdf8; }
+
+  /* ── Example ── */
+  .example { background: #1e293b; }
+  .scene-card { background: #334155; border-radius: 30px; padding: 50px 40px; max-width: 900px; width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,.4); }
+  .scene-banner { background: linear-gradient(90deg, #7c3aed, #a78bfa); border-radius: 16px; padding: 20px; text-align: center; font-size: 2.2rem; font-weight: 800; color: white; margin-bottom: 30px; }
+  .roles-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; margin-top: 20px; }
+  .role-card { background: #1e293b; border-radius: 16px; padding: 24px 16px; text-align: center; border: 2px solid transparent; transition: .3s; }
+  .role-card:hover { border-color: #fbbf24; transform: translateY(-4px); }
+  .role-card .r-icon { font-size: 3rem; margin-bottom: 8px; }
+  .role-card .r-name { font-size: 1.2rem; font-weight: 700; color: #fbbf24; }
+  .role-card .r-word { font-size: 1.6rem; font-weight: 800; color: #f472b6; margin-top: 4px; }
+
+  /* ── Data Map ── */
+  .data-map { background: #0f172a; }
+  .map-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 30px; max-width: 900px; width: 100%; }
+  .map-card { background: #1e293b; border-radius: 20px; padding: 30px 20px; text-align: center; border-left: 5px solid var(--accent); box-shadow: 0 6px 20px rgba(0,0,0,.25); }
+  .map-card .m-icon { font-size: 3rem; margin-bottom: 10px; }
+  .map-card .m-name { font-size: 1.4rem; font-weight: 700; color: var(--accent); }
+  .map-card .m-count { font-size: 2rem; font-weight: 900; color: white; margin: 6px 0; }
+  .map-card .m-desc { font-size: .95rem; color: #94a3b8; }
+  .c1 { --accent: #38bdf8; }
+  .c2 { --accent: #a78bfa; }
+  .c3 { --accent: #f472b6; }
+  .c4 { --accent: #34d399; }
+  .c5 { --accent: #fbbf24; }
+
+  /* ── Why It Matters ── */
+  .why { background: linear-gradient(135deg, #1e293b, #0f172a); }
+  .use-grid { display: flex; gap: 30px; flex-wrap: wrap; justify-content: center; margin-top: 30px; }
+  .use-card { background: #334155; border-radius: 20px; padding: 30px; width: 260px; text-align: center; }
+  .use-card .u-icon { font-size: 3.5rem; margin-bottom: 12px; }
+  .use-card .u-title { font-size: 1.3rem; font-weight: 700; color: #34d399; }
+  .use-card .u-desc { font-size: .95rem; color: #94a3b8; margin-top: 6px; }
+
+  /* ── Bottom ── */
+  .bottom { background: #0f172a; padding: 40px; min-height: auto; }
+  .bottom p { font-size: 1rem; color: #475569; }
+
+  /* ── Sentence demo ── */
+  .sentence-line { font-size: 2rem; font-weight: 800; text-align: center; margin: 20px 0 10px; }
+  .sentence-line .word { display: inline-block; padding: 6px 14px; border-radius: 12px; margin: 0 4px; transition: .3s; cursor: default; }
+  .w-eater { background: #7c3aed; color: white; }
+  .w-verb { background: #dc2626; color: white; }
+  .w-food { background: #059669; color: white; }
+  .w-place { background: #d97706; color: white; }
+  .w-other { background: #475569; color: #cbd5e1; }
+  .legend { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-top: 16px; }
+  .legend span { display: flex; align-items: center; gap: 6px; font-size: 1rem; font-weight: 600; }
+  .dot { width: 14px; height: 14px; border-radius: 4px; display: inline-block; }
+</style>
+</head>
+<body>
+
+<!-- ═══ HERO ═══ -->
+<div class="section hero">
+  <div class="emoji-row">📖 🧠 💬</div>
+  <h1><span>FrameNet</span></h1>
+  <p class="desc">让计算机读懂"场景"的超级词典</p>
+</div>
+
+<!-- ═══ 核心概念 ═══ -->
+<div class="section core-idea">
+  <h2>一句话搞懂</h2>
+  <p class="desc">普通词典告诉你"词是什么意思"<br>FrameNet 告诉你"词在什么场景里、扮演什么角色"</p>
+  <div class="analogy-container">
+    <div class="analogy-box">
+      <div class="big-icon">📕</div>
+      <div class="label">普通词典</div>
+      <div style="font-size:1.1rem;color:#94a3b8;margin-top:10px">吃 = 把食物放进嘴里咀嚼咽下</div>
+    </div>
+    <div style="font-size:4rem;color:#fbbf24">→</div>
+    <div class="analogy-box">
+      <div class="big-icon">🎬</div>
+      <div class="label">FrameNet</div>
+      <div style="font-size:1.1rem;color:#94a3b8;margin-top:10px">吃饭场景：谁在吃？吃什么？在哪吃？</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 工作原理 ═══ -->
+<div class="section how-it-works">
+  <h2>三层结构</h2>
+  <div class="flow-container">
+    <div class="flow-step">
+      <div class="step-num">1</div>
+      <div class="icon">🎬</div>
+      <div class="title">Frame 场景</div>
+      <div class="detail">一个"事件"或"情境"，定义了参与者和角色</div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="flow-step">
+      <div class="step-num">2</div>
+      <div class="icon">🏷️</div>
+      <div class="title">FE 角色要素</div>
+      <div class="detail">场景里的"位置"：谁做、对谁、用什么、结果怎样</div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="flow-step">
+      <div class="step-num">3</div>
+      <div class="icon">📝</div>
+      <div class="title">LU 词汇单元</div>
+      <div class="detail">能触发这个场景的词：吃、喝、吞、品尝……</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 实例 ═══ -->
+<div class="section example">
+  <h2>看一个例子</h2>
+  <div class="scene-card">
+    <div class="scene-banner">🎬 Ingestion 场景（进食）</div>
+
+    <div style="text-align:center;font-size:1.3rem;color:#94a3b8;margin-bottom:16px">一句话拆解：</div>
+    <div class="sentence-line">
+      <span class="word w-eater">小明</span>
+      <span class="word w-verb">吃了</span>
+      <span class="word w-food">一碗面</span>
+      <span class="word w-place">在食堂</span>
+    </div>
+    <div class="legend">
+      <span><span class="dot" style="background:#7c3aed"></span> Ingestor 进食人</span>
+      <span><span class="dot" style="background:#dc2626"></span> 触发词</span>
+      <span><span class="dot" style="background:#059669"></span> Ingestibles 食物</span>
+      <span><span class="dot" style="background:#d97706"></span> Place 地点</span>
+    </div>
+
+    <div style="margin-top:30px;border-top:1px solid #475569;padding-top:20px;">
+      <div style="text-align:center;font-size:1.1rem;color:#94a3b8;margin-bottom:12px">同一场景的更多词汇 ↓</div>
+      <div class="roles-grid">
+        <div class="role-card">
+          <div class="r-icon">🥄</div>
+          <div class="r-name">吃饭</div>
+          <div class="r-word">吃</div>
+        </div>
+        <div class="role-card">
+          <div class="r-icon">🥤</div>
+          <div class="r-name">喝东西</div>
+          <div class="r-word">喝</div>
+        </div>
+        <div class="role-card">
+          <div class="r-icon">💊</div>
+          <div class="r-name">吞药</div>
+          <div class="r-word">吞</div>
+        </div>
+        <div class="role-card">
+          <div class="r-icon">🍰</div>
+          <div class="r-name">细品</div>
+          <div class="r-word">品尝</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 数据地图 ═══ -->
+<div class="section data-map">
+  <h2>文件夹里有什么</h2>
+  <div class="map-grid">
+    <div class="map-card c1">
+      <div class="m-icon">🎬</div>
+      <div class="m-name">frame/</div>
+      <div class="m-count">1,221</div>
+      <div class="m-desc">个场景</div>
+    </div>
+    <div class="map-card c2">
+      <div class="m-icon">📝</div>
+      <div class="m-name">lu/</div>
+      <div class="m-count">13,572</div>
+      <div class="m-desc">个词汇单元</div>
+    </div>
+    <div class="map-card c3">
+      <div class="m-icon">📄</div>
+      <div class="m-name">fulltext/</div>
+      <div class="m-count">107</div>
+      <div class="m-desc">篇标注文章</div>
+    </div>
+    <div class="map-card c4">
+      <div class="m-icon">📖</div>
+      <div class="m-name">docs/</div>
+      <div class="m-count">129</div>
+      <div class="m-desc">页说明书</div>
+    </div>
+    <div class="map-card c5">
+      <div class="m-icon">🔗</div>
+      <div class="m-name">schema/</div>
+      <div class="m-count">XML</div>
+      <div class="m-desc">数据格式规则</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 有什么用 ═══ -->
+<div class="section why">
+  <h2>能拿来干嘛</h2>
+  <div class="use-grid">
+    <div class="use-card">
+      <div class="u-icon">🤖</div>
+      <div class="u-title">教AI理解语义</div>
+      <div class="u-desc">让机器不只认识词，还懂词背后的场景</div>
+    </div>
+    <div class="use-card">
+      <div class="u-icon">🔍</div>
+      <div class="u-title">智能搜索</div>
+      <div class="u-desc">搜"买"也能找到"购入""采购"的结果</div>
+    </div>
+    <div class="use-card">
+      <div class="u-icon">🌐</div>
+      <div class="u-title">机器翻译</div>
+      <div class="u-desc">不同语言共享场景结构，帮助对齐</div>
+    </div>
+    <div class="use-card">
+      <div class="u-icon">📊</div>
+      <div class="u-title">情感分析</div>
+      <div class="u-desc">判断一句话是抱怨还是夸奖</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 底部 ═══ -->
+<div class="section bottom">
+  <p>FrameNet Release 1.7 · ICSI, Berkeley · Nov 2015</p>
+  <p>此页面仅作概念入门解释用途</p>
+</div>
+
+</body>
+</html>
