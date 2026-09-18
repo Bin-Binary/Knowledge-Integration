@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:struct:frame-relations:v1",
+  "title": "frame-relations (v1) 框架间关系结构",
+  "description": "框架间关系文档（如 frame-relations 数据实例）的纯结构设计，对齐 FrameNet frameRelations.xsd / frRelation.xml 的三层嵌套：frameRelationType（name/superFrameName/subFrameName）包含多个 frameRelation（supID/subID），每个 frameRelation 包含多个 FERelation（superFEName/subFEName/supID/subID）。在本系统中，frameRelationType 对应 relation_type 分组，frameRelation 对应具体帧对（super/sub），FERelation 对应 FE 级对应。关系类型枚举以 inherits_from 为首（即 metadata.parent_frame_schema_id 单链的泛化与显式化）。顶层引用 spec-types.json 的共享类型。",
+  "version": "v1",
+
+  "$defs": {
+    "version": {
+      "type": "string",
+      "pattern": "^v(0|[1-9]\\d*)(-[a-z][a-z0-9]*)?$"
+    },
+    "frameSchemaId": {
+      "type": "string",
+      "pattern": "^F-[A-Z]+(?:-[A-Z]+)*-00$",
+      "description": "框架 ID 引用，对应 frameRelations.xsd 中 supID/subID 的语义化表达（如 F-ACT-00）。"
+    },
+    "frameSchemaName": {
+      "type": "string",
+      "pattern": "^[A-Z][a-zA-Z0-9_-]*$",
+      "description": "框架名称，对应 frameRelations.xsd 中 superFrameName/subFrameName（如 Cause_to_move_in_place）。"
+    },
+    "relationType": {
+      "type": "string",
+      "enum": [
+        "inherits_from",
+        "causative_of",
+        "subframe_of",
+        "using",
+        "precedes"
+      ],
+      "description": "关系类型枚举：inherits_from 对应 FrameNet 的 Inheritance（与 metadata.parent_frame_schema_id 单链一致）；causative_of 对应 Causative_of；subframe_of 对应 Subframe；using 对应 Using；precedes 对应 Precedes。"
+    },
+    "ferelation": {
+      "type": "object",
+      "description": "FE 级对应：子帧某 FE 与父/超帧某 FE 的对应。对应 frameRelations.xsd 的 FERelation（superFEName/subFEName）。",
+      "required": ["super_fe", "sub_fe"],
+      "properties": {
+        "super_fe": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "description": "超帧 FE 名，对应 FERelation 的 superFEName。"
+        },
+        "sub_fe": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "description": "子帧 FE 名（继承语义下为子帧自身 FE），对应 FERelation 的 subFEName。"
+        },
+        "note": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "frameRelation": {
+      "type": "object",
+      "description": "具体帧对关系实例。对应 frameRelations.xsd 的 frameRelation（ID/superFrameName/subFrameName/supID/subID）。",
+      "required": ["super_frame_schema_id", "sub_frame_schema_id"],
+      "properties": {
+        "super_frame_schema_id": { "$ref": "#/$defs/frameSchemaId" },
+        "sub_frame_schema_id": { "$ref": "#/$defs/frameSchemaId" },
+        "super_frame_schema_name": { "$ref": "#/$defs/frameSchemaName" },
+        "sub_frame_schema_name": { "$ref": "#/$defs/frameSchemaName" },
+        "fe_relations": {
+          "type": "array",
+          "description": "该帧对下可选的 FE 级对应清单（0 或多个）。",
+          "items": { "$ref": "#/$defs/ferelation" }
+        },
+        "note": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "frameRelationGroup": {
+      "type": "object",
+      "description": "关系类型分组。对应 frameRelations.xsd 的 frameRelationType（ID/name/superFrameName/subFrameName），其下承载该类型的所有帧对实例。",
+      "required": ["relation_type", "relations"],
+      "properties": {
+        "relation_type": { "$ref": "#/$defs/relationType" },
+        "super_frame_schema_id": {
+          "type": "string",
+          "description": "类型级的约定超帧 ID（可选，用于类型声明而非单个实例）。"
+        },
+        "sub_frame_schema_id": {
+          "type": "string",
+          "description": "类型级的约定子帧 ID（可选，对应 frameRelationType 的 subFrameName）。"
+        },
+        "relations": {
+          "type": "array",
+          "description": "该关系类型下的全部帧对实例（1 个或多个，对应 frameRelation 列表）。",
+          "items": { "$ref": "#/$defs/frameRelation" },
+          "minItems": 1
+        },
+        "validation_rules": {
+          "type": "array",
+          "description": "类型级校验规则：super/sub 帧须可解析；inherits_from 关系必须与子帧 metadata.parent_frame_schema_id 保持一致。",
+          "items": {
+            "type": "object",
+            "required": ["rule", "expression"],
+            "properties": {
+              "rule": { "type": "string" },
+              "expression": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+
+  "type": "object",
+  "description": "frame-relations 文档顶层结构：按关系类型分组的全部帧间关系。",
+  "required": ["$schema", "$id", "groups"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "const": "https://json-schema.org/draft/2020-12/schema"
+    },
+    "$id": {
+      "type": "string",
+      "pattern": "^urn:frame-relations:[a-z0-9-]+:v[0-9]+(-[a-z][a-z0-9]*)?$"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "关系文档元信息。",
+      "required": ["name", "version", "description", "scope"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "$ref": "#/$defs/version" },
+        "description": { "type": "string" },
+        "scope": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "groups": {
+      "type": "array",
+      "description": "按关系类型分组的全部帧间关系（0 个或多个）。",
+      "items": { "$ref": "#/$defs/frameRelationGroup" },
+      "uniqueItems": true
+    },
+    "validation_rules": {
+      "type": "array",
+      "description": "文档级校验规则：inherits_from 关系与 metadata.parent_frame_schema_id 单链一致；super/sub 帧 ID 均须在 frame-name-index 中可解析；同一 (relation_type, super, sub) 三元组不允许重复。",
+      "items": {
+        "type": "object",
+        "required": ["rule", "expression"],
+        "properties": {
+          "rule": { "type": "string" },
+          "expression": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
