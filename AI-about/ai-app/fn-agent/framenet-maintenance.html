@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FrameNet 四大运维机制</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:"Microsoft YaHei","Segoe UI",sans-serif;background:#0f172a;color:#e2e8f0;overflow-x:hidden}
+.section{min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;padding:50px 30px}
+h2{font-size:2.6rem;font-weight:800;text-align:center;margin-bottom:8px;color:#fbbf24}
+h3{font-size:1.5rem;font-weight:700;margin-bottom:6px}
+.sub{font-size:1.1rem;color:#94a3b8;text-align:center;margin-bottom:36px;max-width:750px}
+
+/* NAV */
+.nav{position:fixed;top:0;left:0;right:0;z-index:100;background:#0f172aee;backdrop-filter:blur(10px);border-bottom:1px solid #334155;display:flex;justify-content:center;gap:4px;padding:10px 20px}
+.nav a{color:#94a3b8;text-decoration:none;font-size:.85rem;font-weight:600;padding:6px 16px;border-radius:8px;transition:.3s}
+.nav a:hover{background:#334155;color:#e2e8f0}
+.nav a.ac1:hover{color:#38bdf8}.nav a.ac2:hover{color:#a78bfa}.nav a.ac3:hover{color:#f472b6}.nav a.ac4:hover{color:#34d399}
+
+/* HERO */
+.hero{background:linear-gradient(160deg,#1e293b,#0f172a);padding-top:80px}
+.hero h1{font-size:3.2rem;font-weight:900;text-align:center;margin-bottom:20px}
+.hero h1 span{background:linear-gradient(90deg,#38bdf8,#a78bfa,#f472b6,#34d399);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero-grid{display:flex;gap:20px;flex-wrap:wrap;justify-content:center;margin-top:30px}
+.hero-card{background:#334155;border-radius:16px;padding:24px 20px;width:210px;text-align:center;transition:.3s}
+.hero-card:hover{transform:translateY(-6px);box-shadow:0 8px 30px rgba(0,0,0,.3)}
+.hero-card .hc-icon{font-size:3rem;margin-bottom:8px}
+.hero-card .hc-title{font-size:1.1rem;font-weight:700}
+.hero-card .hc-desc{font-size:.85rem;color:#94a3b8;margin-top:4px}
+.hc1 .hc-title{color:#38bdf8}.hc2 .hc-title{color:#a78bfa}.hc3 .hc-title{color:#f472b6}.hc4 .hc-title{color:#34d399}
+
+/* ═══ SECTION 1: SYNONYM ═══ */
+.sec1{background:#1e293b}
+.panel{max-width:900px;width:100%}
+.frame-box{background:#0f172a;border-radius:20px;padding:36px;margin-bottom:20px;border:2px solid #334155}
+.frame-banner{background:linear-gradient(90deg,#7c3aed,#a78bfa);border-radius:12px;padding:16px;text-align:center;font-size:1.6rem;font-weight:800;color:white;margin-bottom:20px}
+.lu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-top:16px}
+.lu-chip{background:#334155;border-radius:10px;padding:12px 8px;text-align:center;transition:.3s;cursor:default}
+.lu-chip:hover{transform:scale(1.08)}
+.lu-chip .lc-word{font-size:1.1rem;font-weight:700;color:#a78bfa}
+.lu-chip .lc-pos{font-size:.7rem;color:#94a3b8}
+.lu-chip .lc-def{font-size:.72rem;color:#64748b;margin-top:4px;line-height:1.3}
+
+.diff-table{width:100%;border-collapse:collapse;margin-top:16px}
+.diff-table th{background:#334155;padding:8px 10px;font-size:.8rem;color:#94a3b8;text-align:left}
+.diff-table td{padding:8px 10px;border-bottom:1px solid #1e293b;font-size:.9rem}
+.diff-table tr:hover td{background:#33415533}
+
+.mech-row{display:flex;gap:20px;flex-wrap:wrap;margin-top:20px}
+.mech-card{background:#0f172a;border-radius:14px;padding:20px;flex:1;min-width:200px;border-left:4px solid var(--ac)}
+.mech-card .mk-title{font-size:1.1rem;font-weight:700;color:var(--ac);margin-bottom:6px}
+.mech-card .mk-desc{font-size:.88rem;color:#94a3b8;line-height:1.5}
+.mk1{--ac:#38bdf8}.mk2{--ac:#a78bfa}.mk3{--ac:#f472b6}.mk4{--ac:#34d399}
+
+/* ═══ SECTION 2: POLYSEMY ═══ */
+.sec2{background:#0f172a}
+.poly-word{font-size:2.2rem;font-weight:900;text-align:center;margin-bottom:20px;color:#f97316}
+.branch-visual{display:flex;flex-direction:column;align-items:center;gap:6px;margin:20px 0}
+.branch-trunk{background:#f97316;border-radius:12px;padding:14px 30px;font-size:1.5rem;font-weight:800;color:white}
+.branch-arms{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:10px}
+.branch-arm{background:#334155;border-radius:10px;padding:10px 14px;text-align:center;font-size:.9rem;min-width:150px;border:2px solid transparent;transition:.3s}
+.branch-arm:hover{border-color:#f97316}
+.branch-arm .ba-frame{font-weight:700;color:#38bdf8;font-size:.95rem}
+.branch-arm .ba-def{font-size:.75rem;color:#94a3b8;margin-top:4px}
+.branch-arm .ba-ann{font-size:.7rem;margin-top:2px}
+.ba-has{color:#34d399}.ba-none{color:#64748b}
+
+.split-flow{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;margin:24px 0}
+.split-card{background:#1e293b;border-radius:14px;padding:18px;width:210px;text-align:center;border:2px solid var(--bc)}
+.split-card .sc-frame{font-weight:700;color:var(--bc);font-size:1rem;margin-bottom:6px}
+.split-card .sc-fe{font-size:.82rem;color:#94a3b8;line-height:1.4}
+.split-card .sc-key{font-size:.75rem;color:#fbbf24;font-weight:700;margin-top:6px}
+.sp1{--bc:#ef4444}.sp2{--bc:#d97706}.sp3{--bc:#059669}
+
+/* ═══ SECTION 3: CORPUS UPDATE ═══ */
+.sec3{background:#1e293b}
+.diff-visual{max-width:900px;width:100%}
+.version-bar{display:flex;align-items:center;gap:20px;justify-content:center;margin:20px 0;flex-wrap:wrap}
+.ver-box{background:#334155;border-radius:14px;padding:20px 28px;text-align:center}
+.ver-box .vb-label{font-size:.8rem;color:#94a3b8;margin-bottom:4px}
+.ver-box .vb-count{font-size:2rem;font-weight:900;color:white}
+.ver-arrow{font-size:2rem;color:#fbbf24;font-weight:900}
+.change-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:24px}
+.change-card{background:#0f172a;border-radius:14px;padding:20px;text-align:center;border-top:4px solid var(--cc)}
+.change-card .cc-type{font-size:.85rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.change-card .cc-count{font-size:2.5rem;font-weight:900}
+.change-card .cc-example{font-size:.8rem;color:#94a3b8;margin-top:8px;line-height:1.4;text-align:left}
+.cc-add{--cc:#34d399}.cc-add .cc-type,.cc-add .cc-count{color:#34d399}
+.cc-del{--cc:#ef4444}.cc-del .cc-type,.cc-del .cc-count{color:#ef4444}
+.cc-ren{--cc:#fbbf24}.cc-ren .cc-type,.cc-ren .cc-count{color:#fbbf24}
+
+.migrate-box{background:#0f172a;border-radius:16px;padding:24px;margin-top:20px}
+.migrate-box .mb-title{font-size:1.1rem;font-weight:700;color:#f472b6;margin-bottom:12px;text-align:center}
+.migrate-flow{display:flex;align-items:center;gap:8px;justify-content:center;flex-wrap:wrap;font-size:.9rem}
+.migrate-from{background:#ef444433;border-radius:8px;padding:8px 12px;color:#f87171;font-weight:700;text-decoration:line-through}
+.migrate-to{background:#34d39933;border-radius:8px;padding:8px 12px;color:#34d399;font-weight:700}
+.migrate-arrow{color:#f472b6;font-size:1.3rem;font-weight:900}
+
+/* ═══ SECTION 4: WORDNET ALIGNMENT ═══ */
+.sec4{background:#0f172a}
+.align-visual{max-width:900px;width:100%}
+.two-worlds{display:flex;gap:30px;flex-wrap:wrap;justify-content:center;margin:24px 0}
+.world{background:#334155;border-radius:16px;padding:24px;flex:1;min-width:280px;text-align:center}
+.world .ww-icon{font-size:3rem;margin-bottom:8px}
+.world .ww-name{font-size:1.3rem;font-weight:700;margin-bottom:4px}
+.world .ww-desc{font-size:.9rem;color:#94a3b8}
+.ww-fn .ww-name{color:#38bdf8}.ww-wn .ww-name{color:#34d399}
+.bridge{display:flex;align-items:center;font-size:3rem;color:#fbbf24;justify-content:center;padding:0 10px}
+
+.type-tree{background:#1e293b;border-radius:14px;padding:20px;margin-top:20px;font-size:.88rem;line-height:1.8}
+.type-tree .tt-root{color:#fbbf24;font-weight:800;font-size:1rem}
+.type-tree .tt-l1{color:#38bdf8;font-weight:700;margin-left:20px}
+.type-tree .tt-l2{color:#94a3b8;margin-left:40px}
+.type-tree .tt-wn{color:#34d399;font-size:.78rem;font-style:italic}
+
+.align-table{width:100%;border-collapse:collapse;margin-top:20px}
+.align-table th{background:#334155;padding:8px;font-size:.8rem;color:#94a3b8;text-align:left}
+.align-table td{padding:8px 10px;border-bottom:1px solid #334155;font-size:.85rem}
+.at-fn{color:#38bdf8;font-weight:700}
+.at-wn{color:#34d399;font-weight:600;font-style:italic}
+
+/* SUMMARY */
+.summary{background:linear-gradient(160deg,#1e293b,#0f172a);min-height:auto;padding:60px 30px}
+.sum-grid{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;max-width:900px}
+.sum-card{background:#334155;border-radius:14px;padding:20px;flex:1;min-width:190px;text-align:center}
+.sum-card .sc-icon{font-size:2.5rem;margin-bottom:6px}
+.sum-card .sc-title{font-size:1rem;font-weight:700;margin-bottom:4px}
+.sum-card .sc-text{font-size:.82rem;color:#94a3b8;line-height:1.4}
+.sc1 .sc-title{color:#38bdf8}.sc2 .sc-title{color:#a78bfa}.sc3 .sc-title{color:#f472b6}.sc4 .sc-title{color:#34d399}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<div class="nav">
+  <a href="#synonym" class="ac1">同义词归并</a>
+  <a href="#polysemy" class="ac2">多义词拆分</a>
+  <a href="#update" class="ac3">语料更新</a>
+  <a href="#align" class="ac4">框架对齐</a>
+</div>
+
+<!-- ═══ HERO ═══ -->
+<div class="section hero">
+  <h1><span>FrameNet 四大运维机制</span></h1>
+  <div class="sub">一个语义知识库怎么维护、怎么生长？</div>
+  <div class="hero-grid">
+    <div class="hero-card hc1"><div class="hc-icon">📘</div><div class="hc-title">同义词归并</div><div class="hc-desc">不同词，同一场景</div></div>
+    <div class="hero-card hc2"><div class="hc-icon">🔀</div><div class="hc-title">多义词拆分</div><div class="hc-desc">同一词，不同场景</div></div>
+    <div class="hero-card hc3"><div class="hc-icon">🔄</div><div class="hc-title">语料更新</div><div class="hc-desc">版本演进追踪</div></div>
+    <div class="hero-card hc4"><div class="hc-icon">🔗</div><div class="hc-title">框架对齐</div><div class="hc-desc">与 WordNet 映射</div></div>
+  </div>
+</div>
+
+<!-- ═══ 1. SYNONYM ═══ -->
+<div class="section sec1" id="synonym">
+  <h2>① 同义词归并</h2>
+  <div class="sub">意思相近的词 → 归入同一个 Frame，共享角色模板</div>
+  <div class="panel">
+    <div class="frame-box">
+      <div class="frame-banner">🎬 Ingestion（进食）— 36 个同义词</div>
+      <div class="lu-grid">
+        <div class="lu-chip"><div class="lc-word">eat</div><div class="lc-pos">v.</div><div class="lc-def">吃</div></div>
+        <div class="lu-chip"><div class="lc-word">devour</div><div class="lc-pos">v.</div><div class="lc-def">狼吞虎咽</div></div>
+        <div class="lu-chip"><div class="lc-word">gulp</div><div class="lc-pos">v.</div><div class="lc-def">大口吞</div></div>
+        <div class="lu-chip"><div class="lc-word">sip</div><div class="lc-pos">v.</div><div class="lc-def">小口抿</div></div>
+        <div class="lu-chip"><div class="lc-word">slurp</div><div class="lc-pos">v.</div><div class="lc-def">吸溜着吃</div></div>
+        <div class="lu-chip"><div class="lc-word">munch</div><div class="lc-pos">v.</div><div class="lc-def">咔嚓咔嚓嚼</div></div>
+        <div class="lu-chip"><div class="lc-word">guzzle</div><div class="lc-pos">v.</div><div class="lc-def">狂饮</div></div>
+        <div class="lu-chip"><div class="lc-word">swig</div><div class="lc-pos">v.</div><div class="lc-def">大口喝</div></div>
+        <div class="lu-chip"><div class="lc-word">down</div><div class="lc-pos">v.</div><div class="lc-def">一口灌下</div></div>
+        <div class="lu-chip"><div class="lc-word">lap</div><div class="lc-pos">v.</div><div class="lc-def">舔着喝</div></div>
+        <div class="lu-chip"><div class="lc-word">nibble</div><div class="lc-pos">v.</div><div class="lc-def">小口啃</div></div>
+        <div class="lu-chip"><div class="lc-word">feast</div><div class="lc-pos">v.</div><div class="lc-def">大摆宴席</div></div>
+        <div class="lu-chip"><div class="lc-word">sup</div><div class="lc-pos">v.</div><div class="lc-def">吃晚饭</div></div>
+        <div class="lu-chip"><div class="lc-word">nosh</div><div class="lc-pos">v.</div><div class="lc-def">吃零食</div></div>
+        <div class="lu-chip"><div class="lc-word">dine</div><div class="lc-pos">v.</div><div class="lc-def">进餐</div></div>
+        <div class="lu-chip"><div class="lc-word">consume</div><div class="lc-pos">v.</div><div class="lc-def">消耗食物</div></div>
+        <div class="lu-chip"><div class="lc-word">breakfast</div><div class="lc-pos">v.n.</div><div class="lc-def">吃早餐</div></div>
+        <div class="lu-chip"><div class="lc-word">lunch</div><div class="lc-pos">v.n.</div><div class="lc-def">吃午餐</div></div>
+      </div>
+    </div>
+
+    <h3 style="text-align:center;color:#38bdf8;margin-bottom:16px">归并标准：共享同一个"场景骨架"</h3>
+    <div class="mech-row">
+      <div class="mech-card mk1">
+        <div class="mk-title">共享核心角色</div>
+        <div class="mk-desc">eat / devour / sip 都必须有 Ingestor（谁吃）+ Ingestibles（吃什么），所以归入同一个 Frame</div>
+      </div>
+      <div class="mech-card mk2">
+        <div class="mk-title">细微差异靠论元模式区分</div>
+        <div class="mk-desc">sip 常接 PP[at]；eat 常有 CNI（省略食物）；drink 的 Ingestibles 默认是液体 — 这些记录在各自的 LU 文件中</div>
+      </div>
+      <div class="mech-card mk3">
+        <div class="mk-title">incorporatedFE 内嵌角色</div>
+        <div class="mk-desc">某些词的含义已包括某个 FE 值。例如 Self_motion.back.v 内嵌了 FE="Direction"。有此属性的词在 144 个 Frame 中出现</div>
+      </div>
+      <div class="mech-card mk4">
+        <div class="mk-title">语义类型标签</div>
+        <div class="mk-desc">semType 标注进一步区分：Agentive_noun（如 attacker）、Bound_dependent_LU（如 fire 在 Attack 中）、Positive/Negative_judgment</div>
+      </div>
+    </div>
+
+    <div class="frame-box" style="margin-top:20px">
+      <h3 style="color:#f472b6;margin-bottom:12px;text-align:center">同一个 Frame 下的差异对比</h3>
+      <table class="diff-table">
+        <tr><th>词</th><th>核心差异</th><th>典型句式</th><th>独有特征</th></tr>
+        <tr><td style="color:#a78bfa;font-weight:700">eat.v</td><td>最泛化的"吃"</td><td>She ate lunch</td><td>CNI（食物常省略）</td></tr>
+        <tr><td style="color:#a78bfa;font-weight:700">sip.v</td><td>小口慢慢喝</td><td>He sipped at his tea</td><td>PP[at] 搭配唯一</td></tr>
+        <tr><td style="color:#a78bfa;font-weight:700">devour.v</td><td>狼吞虎咽，极度吃</td><td>Wolves devoured the carcass</td><td>Degree FE 常显式出现</td></tr>
+        <tr><td style="color:#a78bfa;font-weight:700">gulp.v</td><td>大口快速吞</td><td>He gulped his tea</td><td>Manner=快速 含义内嵌</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 2. POLYSEMY ═══ -->
+<div class="section sec2" id="polysemy">
+  <h2>② 多义词拆分</h2>
+  <div class="sub">同一个词有多个义项 → 每个义项一个 LU，挂在不同的 Frame</div>
+  <div class="panel">
+    <div class="poly-word">strike.v 🠚 11 个场景</div>
+
+    <div class="branch-visual">
+      <div class="branch-trunk">strike.v</div>
+      <div style="font-size:1.5rem;color:#94a3b8;margin:6px 0">↓ 各义项分挂不同 Frame ↓</div>
+      <div class="branch-arms">
+        <div class="branch-arm"><div class="ba-frame">Cause_harm</div><div class="ba-def">打人致伤</div><div class="ba-ann ba-has">54条标注</div></div>
+        <div class="branch-arm"><div class="ba-frame">Impact</div><div class="ba-def">物理撞击</div><div class="ba-ann ba-has">53条标注</div></div>
+        <div class="branch-arm"><div class="ba-frame">Attack</div><div class="ba-def">攻击</div><div class="ba-ann ba-has">24条标注</div></div>
+        <div class="branch-arm"><div class="ba-frame">Cognitive_impact</div><div class="ba-def">心理震撼</div><div class="ba-ann ba-has">40条标注</div></div>
+        <div class="branch-arm"><div class="ba-frame">Political_actions</div><div class="ba-def">罢工</div><div class="ba-ann ba-none">1条标注</div></div>
+        <div class="branch-arm"><div class="ba-frame">Erasing</div><div class="ba-def">删除</div><div class="ba-ann ba-none">1条标注</div></div>
+        <div class="branch-arm"><div class="ba-frame">Coming_to_believe</div><div class="ba-def">突然意识到</div><div class="ba-ann ba-none">0条标注</div></div>
+      </div>
+    </div>
+
+    <h3 style="text-align:center;color:#a78bfa;margin:30px 0 16px">拆分标准：核心角色不同 = 场景不同</h3>
+
+    <div style="text-align:center;font-size:1.1rem;color:#94a3b8;margin-bottom:16px">"He struck the victim with a bat" — 用什么角色匹配？</div>
+    <div class="split-flow">
+      <div class="split-card sp1">
+        <div class="sc-frame">Attack</div>
+        <div class="sc-fe">Assailant<br>Victim<br>Weapon</div>
+        <div class="sc-key">3/3 核心 FE 全匹配 ✓</div>
+      </div>
+      <div class="split-card sp2">
+        <div class="sc-frame">Cause_harm</div>
+        <div class="sc-fe">Agent<br>Victim<br>Body_part</div>
+        <div class="sc-key">2/3 — "bat"不是Body_part</div>
+      </div>
+      <div class="split-card sp3">
+        <div class="sc-frame">Impact</div>
+        <div class="sc-fe">Impactor<br>Impactee</div>
+        <div class="sc-key">1/2 — "He"不是Impactor类型</div>
+      </div>
+    </div>
+
+    <div class="frame-box" style="margin-top:24px">
+      <h3 style="color:#f97316;margin-bottom:12px;text-align:center">更多多义词一览</h3>
+      <table class="diff-table">
+        <tr><th>词</th><th>义项数</th><th>部分场景</th></tr>
+        <tr><td style="color:#f97316;font-weight:700">get.v</td><td>10</td><td>Getting, Arriving, Grasp, Transition_to_state, Giving_birth, Board_vehicle...</td></tr>
+        <tr><td style="color:#f97316;font-weight:700">make.v</td><td>10</td><td>Causation, Building, Cooking_creation, Manufacturing, Self_motion, Cause_change...</td></tr>
+        <tr><td style="color:#f97316;font-weight:700">run.v</td><td>8</td><td>Self_motion, Leadership, Fluidic_motion, Operating_a_system, Cause_impact...</td></tr>
+        <tr><td style="color:#f97316;font-weight:700">break.v</td><td>7</td><td>Cause_harm, Compliance, Experience_bodily_harm, Cause_to_fragment...</td></tr>
+        <tr><td style="color:#f97316;font-weight:700">address.v</td><td>5</td><td>Statement, Topic, Speak_on_topic, Referring_by_name, Resolve_problem</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 3. CORPUS UPDATE ═══ -->
+<div class="section sec3" id="update">
+  <h2>③ 语料更新</h2>
+  <div class="sub">版次间如何追踪 Frame / FE / LU 的增删改</div>
+  <div class="diff-visual">
+
+    <div class="version-bar">
+      <div class="ver-box"><div class="vb-label">Release 1.6</div><div class="vb-count">1,205</div><div style="font-size:.75rem;color:#94a3b8">Frames</div></div>
+      <div class="ver-arrow">→</div>
+      <div class="ver-box"><div class="vb-label">Release 1.7</div><div class="vb-count">1,221</div><div style="font-size:.75rem;color:#94a3b8">Frames</div></div>
+      <div class="ver-box"><div class="vb-label">Release 1.6</div><div class="vb-count">13,189</div><div style="font-size:.75rem;color:#94a3b8">LUs</div></div>
+      <div class="ver-arrow">→</div>
+      <div class="ver-box"><div class="vb-label">Release 1.7</div><div class="vb-count">13,572</div><div style="font-size:.75rem;color:#94a3b8">LUs</div></div>
+    </div>
+
+    <div class="change-grid">
+      <div class="change-card cc-add">
+        <div class="cc-type">新增</div>
+        <div class="cc-count">+19</div>
+        <div class="cc-example">Frames: Affirm_or_deny, Becoming, Billing, Citing, Come_down_with, Funding, Hedging, Identity...</div>
+      </div>
+      <div class="change-card cc-del">
+        <div class="cc-type">删除</div>
+        <div class="cc-count">-3</div>
+        <div class="cc-example">Frames: Grant_permission, Make_possible_to_do, Permitting → 合并到其他 Frame</div>
+      </div>
+      <div class="change-card cc-ren">
+        <div class="cc-type">改名</div>
+        <div class="cc-count">21</div>
+        <div class="cc-example">Attempting_scenario → Attempting_and_resolving_scenario<br>Becoming → Transition_to_state<br>Deny_permission → Deny_or_grant_permission</div>
+      </div>
+    </div>
+
+    <div class="change-grid" style="margin-top:14px">
+      <div class="change-card cc-add">
+        <div class="cc-type">新增 FE</div>
+        <div class="cc-count">+217</div>
+        <div class="cc-example">Ammunition.Frame 新加 Weapon FE；Artifact 新加 Descriptor FE</div>
+      </div>
+      <div class="change-card cc-del">
+        <div class="cc-type">删除 FE</div>
+        <div class="cc-count">-59</div>
+        <div class="cc-example">大量 "Explanation" FE 被移除；Grant_permission 整个 Frame 的 FE 全删</div>
+      </div>
+      <div class="change-card cc-ren">
+        <div class="cc-type">新增 LU</div>
+        <div class="cc-count">+483</div>
+        <div class="cc-example">Affirm_or_deny 新加 affirm.v, deny.v；Ammunition 新加 shell.n</div>
+      </div>
+    </div>
+
+    <div class="migrate-box">
+      <div class="mb-title">🔄 LU 迁移追踪：词从一个 Frame 搬到另一个</div>
+      <div class="migrate-flow">
+        <div class="migrate-from">Grant_permission.allow.v</div>
+        <div class="migrate-arrow">→</div>
+        <div class="migrate-to">Deny_or_grant_permission.allow.v<br><span style="font-size:.7rem">+ 其他 Frame (ID: 18752, 18784, 18786)</span></div>
+      </div>
+      <div class="migrate-flow" style="margin-top:10px">
+        <div class="migrate-from">Grant_permission.permit.v</div>
+        <div class="migrate-arrow">→</div>
+        <div class="migrate-to">Deny_or_grant_permission.permit.v<br><span style="font-size:.7rem">+ 拆分到 4 个新 LU (ID: 18754, 18771, 18785, 18788)</span></div>
+      </div>
+      <div style="text-align:center;font-size:.85rem;color:#94a3b8;margin-top:14px">
+        <strong style="color:#f472b6">DifferencesR1.6-1.7.xml</strong> 记录了所有增删改，<code>see_r1-6_LexUnit_IDs</code> 属性追踪 LU 迁移路径
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 4. WORDNET ALIGNMENT ═══ -->
+<div class="section sec4" id="align">
+  <h2>④ 与 WordNet 对齐</h2>
+  <div class="sub">semTypes.xml 建立了 FrameNet ←→ WordNet 的类型桥接</div>
+  <div class="align-visual">
+
+    <div class="two-worlds">
+      <div class="world ww-fn">
+        <div class="ww-icon">🎬</div>
+        <div class="ww-name">FrameNet</div>
+        <div class="ww-desc">场景驱动<br>以"事件+角色"组织<br>动词为中心</div>
+      </div>
+      <div class="bridge">↔</div>
+      <div class="world ww-wn">
+        <div class="ww-icon">🌲</div>
+        <div class="ww-name">WordNet</div>
+        <div class="ww-desc">同义词集驱动<br>以"上下位"组织<br>名词为中心</div>
+      </div>
+    </div>
+
+    <div class="type-tree">
+      <div class="tt-root">Ontological_type (根节点)</div>
+      <div class="tt-l1">Physical_entity <span class="tt-wn">← WN synset (top): entity</span></div>
+        <div class="tt-l2">Physical_object <span class="tt-wn">← WN: object, physical object</span></div>
+          <div class="tt-l2">Animate_being <span class="tt-wn">← WN: animal, animate being, beast, creature</span></div>
+            <div class="tt-l2">Sentient</div>
+              <div class="tt-l2">Human <span class="tt-wn">← WN: person, individual, someone, somebody</span></div>
+          <div class="tt-l2">Artifact <span class="tt-wn">← WN: artifact, artefact</span></div>
+      <div class="tt-l1">Location <span class="tt-wn">← WN synset: location</span></div>
+      <div class="tt-l1">Event <span class="tt-wn">← WN synset (top): event</span></div>
+      <div class="tt-l1">State <span class="tt-wn">← WN synset (top): state</span></div>
+      <div class="tt-l1">State_of_affairs</div>
+        <div class="tt-l2">Content <span class="tt-wn">← WN: content, cognitive content, mental object</span></div>
+        <div class="tt-l2">Message <span class="tt-wn">← WN: message, content, subject matter</span></div>
+    </div>
+
+    <div class="frame-box" style="margin-top:20px">
+      <h3 style="color:#34d399;margin-bottom:12px;text-align:center">对齐映射详表</h3>
+      <table class="align-table">
+        <tr><th>FrameNet 语义类型</th><th>WordNet 同义词集</th><th>用途</th></tr>
+        <tr><td class="at-fn">Human</td><td class="at-wn">person, individual, someone...</td><td>约束 Ingestor/Agent 必须是人</td></tr>
+        <tr><td class="at-fn">Physical_object</td><td class="at-wn">object, physical object</td><td>约束 Impactor 可以是任何物体</td></tr>
+        <tr><td class="at-fn">Artifact</td><td class="at-wn">artifact, artefact</td><td>约束 Instrument 必须是人造物</td></tr>
+        <tr><td class="at-fn">Location</td><td class="at-wn">location</td><td>约束 Place FE 的填充类型</td></tr>
+        <tr><td class="at-fn">Body_of_water</td><td class="at-wn">body of water</td><td>区分河流/湖泊/海洋词汇</td></tr>
+        <tr><td class="at-fn">Animate_being</td><td class="at-wn">animal, animate being, beast...</td><td>约束 Sentient FE 的范围</td></tr>
+      </table>
+    </div>
+
+    <div style="text-align:center;margin-top:24px;font-size:1rem;color:#94a3b8;max-width:700px">
+      对齐方式：<strong style="color:#fbbf24">在 semTypes.xml 的 definition 字段中以文本标注 WN synset</strong>，<br>
+      不是结构化属性，而是自然语言描述中的引用。<br>
+      两种引用格式：<code style="color:#34d399">WN synset:</code>（具体同义词集）和 <code style="color:#34d399">WN synset (top):</code>（顶层抽象节点）
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SUMMARY ═══ -->
+<div class="section summary">
+  <div class="sub" style="margin-bottom:24px;font-size:1.3rem;color:#e2e8f0;font-weight:700">一句话总结</div>
+  <div class="sum-grid">
+    <div class="sum-card sc1">
+      <div class="sc-icon">📘</div>
+      <div class="sc-title">同义词归并</div>
+      <div class="sc-text">共享核心角色 → 同一 Frame；细微差异靠 LU 内的论元模式和 semType 区分</div>
+    </div>
+    <div class="sum-card sc2">
+      <div class="sc-icon">🔀</div>
+      <div class="sc-title">多义词拆分</div>
+      <div class="sc-text">核心角色不同 → 不同 Frame；每个义项一个独立 LU，靠 FE 打分消歧</div>
+    </div>
+    <div class="sum-card sc3">
+      <div class="sc-icon">🔄</div>
+      <div class="sc-title">语料更新</div>
+      <div class="sc-text">DifferencesXML 追踪增删改；see_r1-6_LexUnit_IDs 追踪 LU 跨 Frame 迁移</div>
+    </div>
+    <div class="sum-card sc4">
+      <div class="sc-icon">🔗</div>
+      <div class="sc-title">WordNet对齐</div>
+      <div class="sc-text">semTypes 的 definition 字段引用 WN synset；类型树桥接两个知识库</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
