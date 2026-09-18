@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:struct:sem-types:v1",
+  "title": "sem-types (v1) 语义类型结构",
+  "description": "语义类型文档（sem-types 数据实例）的纯结构设计，对齐 FrameNet semTypes.xsd / semTypes.xml：semType 含 ID/name/abbrev 属性 + definition 元素 + superType（superTypeName/supID）层级。在本系统中保留该骨架，并扩展 applies_to 声明语义类型适用于 frame / fe / lu 哪一层。校验规则：name 唯一、superType 可解析、层级无环。顶层引用 spec-types.json 的共享类型。",
+  "version": "v1",
+
+  "$defs": {
+    "version": {
+      "type": "string",
+      "pattern": "^v(0|[1-9]\\d*)(-[a-z][a-z0-9]*)?$"
+    },
+    "superTypeRef": {
+      "type": "object",
+      "description": "父语义类型引用，对应 semTypes.xsd / semTypes.xml 的 superType 元素（superTypeName/supID 两个属性）。",
+      "required": ["super_type_name", "sup_id"],
+      "properties": {
+        "super_type_name": { "type": "string", "minLength": 1 },
+        "sup_id": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "semType": {
+      "type": "object",
+      "description": "单个语义类型，对应 semTypes.xsd 的 semType（ID/name/abbrev + definition + superType）。",
+      "required": ["id", "name", "abbrev", "definition"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "语义类型 ID，对应 semTypes.xml 的 semType/@ID。"
+        },
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Z][a-zA-Z0-9_-]*$",
+          "description": "语义类型名（PascalCase），对应 semTypes.xsd 的 semType/@name。"
+        },
+        "abbrev": {
+          "type": "string",
+          "pattern": "^[A-Z][a-zA-Z0-9_-]*$",
+          "description": "缩写，通常与 name 相同。对应 semTypes.xsd 的 semType/@abbrev。"
+        },
+        "definition": { "type": "string", "minLength": 1 },
+        "super_types": {
+          "type": "array",
+          "description": "父类型层级（可多个），对应 semTypes.xsd 的 superType 元素（superTypeName/supID）。",
+          "items": { "$ref": "#/$defs/superTypeRef" }
+        },
+        "applies_to": {
+          "type": "array",
+          "description": "适用层：语义类型可用在 frame / fe / lu 元素上。FrameNet 的 semType 应用在 frame/fe/lu 元素上，此处扩展为可选。",
+          "items": {
+            "type": "string",
+            "enum": ["frame", "fe", "lu"]
+          },
+          "uniqueItems": true
+        },
+        "note": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  },
+
+  "type": "object",
+  "description": "sem-types 文档顶层结构：语义类型清单。",
+  "required": ["$schema", "$id", "sem_types"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "const": "https://json-schema.org/draft/2020-12/schema"
+    },
+    "$id": {
+      "type": "string",
+      "pattern": "^urn:sem-types:[a-z0-9-]+:v[0-9]+(-[a-z][a-z0-9]*)?$"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "语义类型文档元信息。",
+      "required": ["name", "version", "description", "scope"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "$ref": "#/$defs/version" },
+        "description": { "type": "string" },
+        "scope": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "sem_types": {
+      "type": "array",
+      "description": "语义类型清单，对应 semTypes.xml 的 semType 元素序列。",
+      "items": { "$ref": "#/$defs/semType" },
+      "uniqueItems": true
+    },
+    "validation_rules": {
+      "type": "array",
+      "description": "文档级校验规则：name 全局唯一；super_types 中 sup_id 必须可解析；super_types 层级不允许成环。",
+      "items": {
+        "type": "object",
+        "required": ["rule", "expression"],
+        "properties": {
+          "rule": { "type": "string" },
+          "expression": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
