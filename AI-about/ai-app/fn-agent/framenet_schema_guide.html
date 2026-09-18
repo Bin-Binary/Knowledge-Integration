@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FrameNet Schema 破案笔记</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 36px 24px 80px;
+    background: #f5f1e8;
+    background-image: linear-gradient(rgba(0,0,0,.025) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(0,0,0,.025) 1px, transparent 1px);
+    background-size: 28px 28px;
+    color: #2b2b2b;
+    font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", system-ui, sans-serif;
+  }
+  .wrap { max-width: 1480px; margin: 0 auto; }
+  .hero { text-align: center; margin-bottom: 44px; }
+  .hero h1 { font-size: 44px; margin: 0 0 6px; letter-spacing: 2px; }
+  .hero .sub { font-size: 19px; color: #555; margin: 0; }
+  .stamp {
+    display: inline-block; margin-top: 18px; padding: 8px 22px;
+    border: 3px solid #b3392e; color: #b3392e; font-size: 20px; font-weight: 800;
+    letter-spacing: 6px; border-radius: 8px; transform: rotate(-3deg);
+  }
+  section { margin: 0 0 48px; }
+  .sec-head { display: flex; align-items: center; gap: 14px; margin: 0 0 16px; }
+  .sec-head .no {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 48px; height: 48px; border-radius: 12px; background: #24445f;
+    color: #fff; font-size: 24px; font-weight: 800; flex: none;
+  }
+  .sec-head h2 { font-size: 28px; margin: 0; }
+  .sec-head p { margin: 2px 0 0; color: #666; font-size: 15px; }
+  .big {
+    background: #fff; border: 1px solid #e0d6c3; border-radius: 18px;
+    padding: 18px; box-shadow: 0 6px 22px rgba(90,60,20,.08);
+  }
+  .big svg { display: block; width: 100%; height: auto; }
+  .legend { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 16px; font-size: 14px; color: #444; }
+  .legend .item { display: inline-flex; align-items: center; gap: 8px; }
+  .legend .sw { width: 18px; height: 18px; border-radius: 5px; border: 1px solid rgba(0,0,0,.18); }
+  .introbox {
+    background: #fff; border: 1px solid #e0d6c3; border-radius: 18px;
+    padding: 24px 28px; box-shadow: 0 6px 22px rgba(90,60,20,.08);
+    font-size: 18px; line-height: 1.9;
+  }
+  .introbox strong { color: #24445f; }
+  .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .card {
+    background: #fff; border-radius: 16px; border: 1px solid #e0d6c3;
+    padding: 16px 18px 18px; box-shadow: 0 4px 16px rgba(90,60,20,.07);
+    border-top: 6px solid #c2601f;
+  }
+  .card .num {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 34px; height: 34px; border-radius: 10px; color: #fff;
+    font-weight: 800; font-size: 18px; margin-bottom: 10px; padding: 0 6px;
+  }
+  .card h3 { margin: 0 0 4px; font-size: 19px; }
+  .card .en { font-size: 12.5px; color: #887; margin: 0 0 8px; }
+  .card p { margin: 0; font-size: 14.5px; line-height: 1.7; color: #333; }
+  .idxbox {
+    background: #fff; border: 1px solid #e0d6c3; border-radius: 18px;
+    overflow: hidden; box-shadow: 0 6px 22px rgba(90,60,20,.08);
+  }
+  .idxbox table { width: 100%; border-collapse: collapse; font-size: 16px; }
+  .idxbox th, .idxbox td { text-align: left; padding: 14px 20px; border-bottom: 1px solid #ede5d4; }
+  .idxbox th { background: #24445f; color: #fff; font-size: 15px; }
+  .idxbox tr:last-child td { border-bottom: none; }
+  .idxbox code { background: #eef1f4; padding: 2px 8px; border-radius: 6px; font-size: 14px; color: #24445f; }
+  footer { text-align: center; color: #777; font-size: 13.5px; margin-top: 10px; }
+  svg text { font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif; }
+  @media (max-width: 1100px) { .cards { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 640px) { .cards { grid-template-columns: 1fr; } .hero h1 { font-size: 30px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero">
+    <h1>FrameNet Schema · 语义标注案</h1>
+    <p class="sub">用"查案"的方式，看懂《框架语义数据库》的 11 个 XML 规则文件</p>
+    <div class="stamp">案情笔记 · 零基础</div>
+  </div>
+
+  <section>
+    <div class="sec-head">
+      <div class="no">〇</div>
+      <div>
+        <h2>案件导入：这是什么案？</h2>
+        <p>读懂这三句话，再往下看图</p>
+      </div>
+    </div>
+    <div class="introbox">
+      <p>① <strong>FrameNet</strong> 是"人话的语义词典"：它不管一个词<a>怎么读</a>，只管"这个词背后是件什么事、谁在里面扮演什么角色"。</p>
+      <p>② 这套 <strong>schema</strong> 就是给这些数据划好的<strong>卷宗格式</strong>——11 个 <code>.xsd</code> 文件，规定了每一份 XML 卷宗该长什么样。</p>
+      <p>③ 整件事只有三步循环：<strong>先立案件模板（Frame）</strong> → <strong>把词签进来（LexUnit）</strong> → <strong>拿真实句子当证物做标注（sentence）</strong>。</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <div class="no">壹</div>
+      <div>
+        <h2>卷宗结构：11 个文件怎么分工</h2>
+        <p>先记三种颜色：<span style="color:#b5532a">橙=词典定义</span> · <span style="color:#6b4ba3">紫=注释证据</span> · <span style="color:#1f7a8c">青=检索索引</span></p>
+      </div>
+    </div>
+    <div class="big">
+      <svg viewBox="0 0 1360 700">
+        <defs>
+          <marker id="ah" viewBox="0 -5 10 10" refX="8" refY="0" markerWidth="8" markerHeight="8" orient="auto">
+            <path d="M0,-4 L10,0 L0,4 z" fill="#8a8a8a"/>
+          </marker>
+          <marker id="ahd" viewBox="0 -5 10 10" refX="8" refY="0" markerWidth="8" markerHeight="8" orient="auto">
+            <path d="M0,-4 L10,0 L0,4 z" fill="#b0b0b0"/>
+          </marker>
+        </defs>
+
+        <rect x="40" y="36" width="400" height="250" rx="16" fill="#fff9f4" stroke="#e0a77f"/>
+        <text x="60" y="62" font-size="18" font-weight="700" fill="#b5532a">词典卷宗 · 定义"案件与角色"</text>
+
+          <rect x="80" y="88" width="320" height="52" rx="12" fill="#fff1e6" stroke="#c2601f"/>
+          <text x="240" y="118" text-anchor="middle" font-size="16" font-weight="700" fill="#8a3d14">frame.xsd</text>
+          <text x="240" y="136" text-anchor="middle" font-size="11.5" fill="#9a6a4a">框架定义（主卷宗）</text>
+
+          <rect x="80" y="158" width="320" height="52" rx="12" fill="#fff1e6" stroke="#c2601f"/>
+          <text x="240" y="188" text-anchor="middle" font-size="16" font-weight="700" fill="#8a3d14">frameRelations.xsd</text>
+          <text x="240" y="206" text-anchor="middle" font-size="11.5" fill="#9a6a4a">框架之间的牵连关系</text>
+
+          <rect x="80" y="228" width="320" height="52" rx="12" fill="#fff1e6" stroke="#c2601f"/>
+          <text x="240" y="258" text-anchor="middle" font-size="16" font-weight="700" fill="#8a3d14">semTypes.xsd</text>
+          <text x="240" y="276" text-anchor="middle" font-size="11.5" fill="#9a6a4a">给证据贴的通用标签</text>
+
+        <rect x="520" y="36" width="400" height="180" rx="16" fill="#f8f5ff" stroke="#b9a6e8"/>
+        <text x="540" y="62" font-size="18" font-weight="700" fill="#5b3ea8">注释卷宗 · 真实句子当证物</text>
+
+          <rect x="560" y="88" width="320" height="52" rx="12" fill="#f3edff" stroke="#6b4ba3"/>
+          <text x="720" y="118" text-anchor="middle" font-size="16" font-weight="700" fill="#4b2f95">lexUnit.xsd</text>
+          <text x="720" y="136" text-anchor="middle" font-size="11.5" fill="#7a6ba8">词条 + 配价 + 句子注释</text>
+
+          <rect x="560" y="158" width="320" height="52" rx="12" fill="#f3edff" stroke="#6b4ba3"/>
+          <text x="720" y="188" text-anchor="middle" font-size="16" font-weight="700" fill="#4b2f95">fullText.xsd</text>
+          <text x="720" y="206" text-anchor="middle" font-size="11.5" fill="#7a6ba8">整篇文档的注释</text>
+
+        <rect x="980" y="36" width="340" height="250" rx="16" fill="#eef8fb" stroke="#7cc2d4"/>
+        <text x="1000" y="62" font-size="18" font-weight="700" fill="#126174">检索索引 · 查案快捷目录</text>
+
+          <rect x="1000" y="88" width="300" height="52" rx="12" fill="#e8f7fb" stroke="#1f7a8c"/>
+          <text x="1150" y="118" text-anchor="middle" font-size="16" font-weight="700" fill="#0f5262">frameIndex.xsd</text>
+          <text x="1150" y="136" text-anchor="middle" font-size="11.5" fill="#3d7d8b">框架名 ↔ ID</text>
+
+          <rect x="1000" y="158" width="300" height="52" rx="12" fill="#e8f7fb" stroke="#1f7a8c"/>
+          <text x="1150" y="188" text-anchor="middle" font-size="16" font-weight="700" fill="#0f5262">luIndex.xsd</text>
+          <text x="1150" y="206" text-anchor="middle" font-size="11.5" fill="#3d7d8b">词条 ↔ 框架 ↔ 有无标注</text>
+
+          <rect x="1000" y="228" width="300" height="52" rx="12" fill="#e8f7fb" stroke="#1f7a8c"/>
+          <text x="1150" y="258" text-anchor="middle" font-size="16" font-weight="700" fill="#0f5262">fulltextIndex.xsd</text>
+          <text x="1150" y="276" text-anchor="middle" font-size="11.5" fill="#3d7d8b">语料 / 文档目录</text>
+
+        <rect x="560" y="300" width="320" height="56" rx="12" fill="#e9f6ef" stroke="#2e7d5b"/>
+        <text x="720" y="322" text-anchor="middle" font-size="15" font-weight="700" fill="#1d6a46">header.xsd · 卷首都页</text>
+        <text x="720" y="344" text-anchor="middle" font-size="11.5" fill="#48926f">语料↔文档 档案 + FE 颜色图例</text>
+
+        <rect x="900" y="300" width="320" height="56" rx="12" fill="#e9f6ef" stroke="#2e7d5b"/>
+        <text x="1060" y="322" text-anchor="middle" font-size="15" font-weight="700" fill="#1d6a46">sentence.xsd · 句子注释结构</text>
+        <text x="1060" y="344" text-anchor="middle" font-size="11.5" fill="#48926f">句子 → 注解集 → 层 → 标签</text>
+
+        <path d="M720,140 L720,296" stroke="#8a8a8a" stroke-width="1.6" fill="none" marker-end="url(#ah)"/>
+        <path d="M800,210 C840,244 1010,252 1042,290" stroke="#8a8a8a" stroke-width="1.6" fill="none" marker-end="url(#ah)"/>
+        <path d="M1135,280 C1060,320 950,306 885,302" stroke="#8a8a8a" stroke-width="1.6" fill="none" marker-end="url(#ah)"/>
+        <text x="764" y="243" font-size="12" fill="#777" text-anchor="middle">注释类会拼装这些公共件</text>
+
+        <rect x="480" y="428" width="560" height="100" rx="16" fill="#24445f" stroke="#121f2e"/>
+        <text x="760" y="464" text-anchor="middle" font-size="19" font-weight="800" fill="#fff">commonTypes.xsd · 全库唯一的地基</text>
+        <text x="760" y="494" text-anchor="middle" font-size="12.5" fill="#cfdde8">ID案号 · 时间 · RGB颜色 · 词性POS · 核心度 · 词形/属性组……</text>
+        <text x="760" y="515" text-anchor="middle" font-size="12.5" fill="#9fc0d4">上面每一份文件，第一行都是 include 它</text>
+
+        <text x="760" y="410" text-anchor="middle" font-size="13" font-weight="600" fill="#8a5a30">▲ 任何人都要"引用"这个地基</text>
+        <path d="M600,428 C600,370 250,350 240,284" stroke="#b0b0b0" stroke-width="1.2" stroke-dasharray="6 5" fill="none" marker-end="url(#ahd)"/>
+        <path d="M760,428 C760,340 780,290 770,214" stroke="#b0b0b0" stroke-width="1.2" stroke-dasharray="6 5" fill="none" marker-end="url(#ahd)"/>
+        <path d="M900,428 C900,372 1140,360 1150,284" stroke="#b0b0b0" stroke-width="1.2" stroke-dasharray="6 5" fill="none" marker-end="url(#ahd)"/>
+      </svg>
+      <div class="legend">
+        <span class="item"><span class="sw" style="background:#fff1e6"></span>橙 · 词典卷宗</span>
+        <span class="item"><span class="sw" style="background:#f3edff"></span>紫 · 注释卷宗</span>
+        <span class="item"><span class="sw" style="background:#e8f7fb"></span>青 · 检索索引</span>
+        <span class="item"><span class="sw" style="background:#e9f6ef"></span>绿 · 公共部件（复用）</span>
+        <span class="item"><span class="sw" style="background:#24445f"></span>深蓝 · 类型地基</span>
+        <span class="item">实线箭头 = 拼装复用（include）&nbsp;·&nbsp;虚线箭头 = 兜底的公共引用</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <div class="no">贰</div>
+      <div>
+        <h2>核心关系图：证据链上的"人物关系"</h2>
+        <p>中间橙卡是主角，右侧紫卡是它的词条分身，底部是真实句子证物，两侧是标签与跨案关系</p>
+      </div>
+    </div>
+    <div class="big">
+      <svg viewBox="0 0 1360 1010">
+        <defs>
+          <marker id="bh" viewBox="0 -5 10 10" refX="8" refY="0" markerWidth="8" markerHeight="8" orient="auto">
+            <path d="M0,-4 L10,0 L0,4 z" fill="#8a8a8a"/>
+          </marker>
+          <marker id="bhd" viewBox="0 -5 10 10" refX="8" refY="0" markerWidth="8" markerHeight="8" orient="auto">
+            <path d="M0,-4 L10,0 L0,4 z" fill="#8a8a8a"/>
+          </marker>
+        </defs>
+
+        <!-- ⑧ SemType -->
+        <rect x="60" y="26" width="1240" height="104" rx="16" fill="#fff8dc" stroke="#c9a227"/>
+        <text x="86" y="58" font-size="20" font-weight="800" fill="#8a6d14">⑧ SemType 语义类型</text>
+        <text x="86" y="86" font-size="14" fill="#7a6520">给"证据"贴的通用标签（按 semTypeID 引用，哪个卷宗都能贴）</text>
+        <text x="86" y="112" font-size="12.5" fill="#8d7a38">例：Physical_object 实物 · Substance 物质 · Vehicle 交通工具 · …</text>
+        <path d="M300,132 C300,150 560,150 560,166" stroke="#c9a227" stroke-width="1.6" stroke-dasharray="6 5" fill="none" marker-end="url(#bhd)"/>
+        <path d="M520,132 C520,320 560,330 560,512" stroke="#c9a227" stroke-width="1.6" stroke-dasharray="6 5" fill="none" marker-end="url(#bhd)"/>
+        <path d="M1000,132 C1000,148 1120,148 1120,166" stroke="#c9a227" stroke-width="1.6" stroke-dasharray="6 5" fill="none" marker-end="url(#bhd)"/>
+
+        <!-- ⑦ FrameRelation -->
+        <rect x="60" y="180" width="360" height="330" rx="16" fill="#ffe9dc" stroke="#d9853f"/>
+        <text x="86" y="212" font-size="18" font-weight="800" fill="#b5532a">⑦ FrameRelation 跨案牵连</text>
+        <text x="86" y="236" font-size="12.5" fill="#8f5e3a">两个 Frame 之间关系的"网"（只记 ID 不复制内容）</text>
+
+        <rect x="130" y="260" width="240" height="58" rx="10" fill="#fff" stroke="#c2601f"/>
+        <text x="250" y="284" text-anchor="middle" font-size="14" font-weight="700" fill="#8a3d14">superFrame · Killing 谋杀</text>
+        <text x="250" y="308" text-anchor="middle" font-size="11" fill="#999">superID=5420</text>
+
+        <path d="M250,320 L250,404" stroke="#c2601f" stroke-width="2.4" fill="none" marker-end="url(#bh)"/>
+        <text x="266" y="362" font-size="12.5" font-weight="600" fill="#b5532a">Inheritance 继承</text>
+        <text x="266" y="380" font-size="12" fill="#999">（还有 Use / See also / …）</text>
+
+        <rect x="130" y="412" width="240" height="58" rx="10" fill="#fff" stroke="#c2601f"/>
+        <text x="250" y="436" text-anchor="middle" font-size="14" font-weight="700" fill="#8a3d14">subFrame · Execution 处决</text>
+        <text x="250" y="460" text-anchor="middle" font-size="11" fill="#999">subID=1224</text>
+
+        <text x="86" y="496" font-size="12.5" fill="#8f5e3a">FERelation：连"角色"也绑定——</text>
+        <text x="86" y="516" font-size="12.5" fill="#8f5e3a">"处决的执行者"就是"谋杀里的凶手"。</text>
+
+        <!-- ① Frame -->
+        <rect x="480" y="170" width="460" height="330" rx="16" fill="#fff1e6" stroke="#c2601f"/>
+        <text x="498" y="204" font-size="18" font-weight="800" fill="#8a3d14">① Frame 框架 · 案件主卷宗</text>
+        <text x="498" y="234" font-size="13.5" fill="#6b4a30">ID=5420 · name="Killing"</text>
+        <text x="498" y="264" font-size="13.5" fill="#6b4a30">definition：凶手以某方式致被害人死亡；</text>
+        <text x="498" y="284" font-size="13.5" fill="#6b4a30">整句的场景模板就靠它。</text>
+
+        <rect x="498" y="306" width="424" height="34" rx="8" fill="#ffe2cc" stroke="#e0a77f"/>
+        <text x="514" y="329" font-size="13" font-weight="700" fill="#8a3d14">里面钉着一排角色（FE）：</text>
+        <rect x="700" y="312" width="120" height="22" rx="11" fill="#c2601f"/>
+        <text x="760" y="327" text-anchor="middle" font-size="11" fill="#fff">Perpetrator 凶手</text>
+        <rect x="826" y="312" width="96" height="22" rx="11" fill="#2e7d5b"/>
+        <text x="874" y="327" text-anchor="middle" font-size="11" fill="#fff">Victim 被害人</text>
+
+        <text x="498" y="370" font-size="13" fill="#6b4a30">每个角色=Framepage 框架元素，Core/Peripheral 表示</text>
+        <text x="498" y="390" font-size="13" fill="#6b4a30">"少了它这案子还成立吗"。</text>
+        <text x="498" y="424" font-size="12.5" fill="#a05a2a">→ frameRelation / semType 只按 ID 外链到 ⑦ 和 ⑧</text>
+
+        <!-- ③ LexUnit -->
+        <rect x="980" y="170" width="320" height="180" rx="16" fill="#f3edff" stroke="#6b4ba3"/>
+        <text x="998" y="204" font-size="18" font-weight="800" fill="#4b2f95">③ LexUnit 词汇单元</text>
+        <text x="998" y="226" font-size="13" fill="#4b2f95">一个具体的词，和框架"签约"</text>
+        <text x="1006" y="260" font-size="13.5" fill="#3a3055">　name='murder.v'</text>
+        <text x="1006" y="286" font-size="13.5" fill="#3a3055">　POS=V（动词）· lemmaID=9124</text>
+        <text x="1006" y="312" font-size="13.5" fill="#3a3055">　sentenceCount：有几条例句标注过</text>
+        <text x="1006" y="340" font-size="12" fill="#7a6ba8">读到 "murder" → 触发 Killings 框架</text>
+
+        <!-- ⑥ 证据链 -->
+        <rect x="60" y="830" width="1240" height="168" rx="16" fill="#e3f6f0" stroke="#2e7d5b"/>
+        <text x="86" y="860" font-size="18" font-weight="800" fill="#1d6a46">⑥ 标注证据链 · 一句真话进证物箱</text>
+        <text x="86" y="884" font-size="13" fill="#3d8570">子语料库 → 句子 → 注解（挂回 ①③）→ 层 → 标签</text>
+
+        <rect x="110" y="900" width="168" height="62" rx="10" fill="#fff" stroke="#1f7a8c"/>
+        <text x="194" y="924" text-anchor="middle" font-size="13.5" font-weight="700" fill="#0f5262">subCorpus 子语料库</text>
+        <text x="194" y="946" text-anchor="middle" font-size="11" fill="#6b8a92">例句的箱子</text>
+
+        <path d="M278,931 L316,931" stroke="#1f7a8c" stroke-width="1.8" marker-end="url(#bh)"/>
+
+        <rect x="324" y="900" width="184" height="62" rx="10" fill="#fff" stroke="#1f7a8c"/>
+        <text x="416" y="924" text-anchor="middle" font-size="13.5" font-weight="700" fill="#0f5262">sentence 句子</text>
+        <text x="416" y="946" text-anchor="middle" font-size="11" fill="#6b8a92">'“He killed her.”'</text>
+
+        <path d="M508,931 L546,931" stroke="#1f7a8c" stroke-width="1.8" marker-end="url(#bh)"/>
+
+        <rect x="554" y="900" width="218" height="62" rx="10" fill="#fff" stroke="#1f7a8c"/>
+        <text x="663" y="924" text-anchor="middle" font-size="13.5" font-weight="700" fill="#0f5262">annotationSet 注解集</text>
+        <text x="663" y="946" text-anchor="middle" font-size="11" fill="#6b8a92">frameID · luID · status</text>
+
+        <path d="M772,931 L810,931" stroke="#1f7a8c" stroke-width="1.8" marker-end="url(#bh)"/>
+
+        <rect x="818" y="900" width="140" height="62" rx="10" fill="#fff" stroke="#1f7a8c"/>
+        <text x="888" y="924" text-anchor="middle" font-size="13.5" font-weight="700" fill="#0f5262">layer 层</text>
+        <text x="888" y="946" text-anchor="middle" font-size="11" fill="#6b8a92">目标词/词性/角色</text>
+
+        <path d="M958,931 L996,931" stroke="#1f7a8c" stroke-width="1.8" marker-end="url(#bh)"/>
+
+        <rect x="1004" y="900" width="232" height="62" rx="10" fill="#fff" stroke="#1f7a8c"/>
+        <text x="1120" y="924" text-anchor="middle" font-size="13.5" font-weight="700" fill="#0f5262">label 标签</text>
+        <text x="1120" y="946" text-anchor="middle" font-size="11" fill="#6b8a92">name + start..end 精确位置</text>
+
+        <text x="986" y="984" font-size="12.5" fill="#3d8570" text-anchor="end">label 用 start/end 指回句子里的确切字符 · annotationSet 用 frameID/luID 回查 ① 与 ③</text>
+
+        <!-- ② FE -->
+        <rect x="480" y="540" width="460" height="186" rx="16" fill="#ffe2cc" stroke="#c2601f"/>
+        <text x="498" y="574" font-size="18" font-weight="800" fill="#8a3d14">② FE 框架元素 · 案件里的角色</text>
+        <text x="498" y="600" font-size="13" fill="#6b4a30">coreType 四个档位：</text>
+        <rect x="498" y="616" width="12" height="12" rx="3" fill="#c2601f"/><text x="516" y="627" font-size="12.5" fill="#6b4a30">Core 核心（缺它没这事）</text>
+        <rect x="664" y="616" width="12" height="12" rx="3" fill="#1f7a8c"/><text x="682" y="627" font-size="12.5" fill="#6b4a30">Peripheral 外围（可有可无）</text>
+        <rect x="498" y="644" width="12" height="12" rx="3" fill="#8a8a8a"/><text x="516" y="655" font-size="12.5" fill="#6b4a30">Extra-Thematic 主题外（时间/场合）</text>
+        <rect x="744" y="644" width="12" height="12" rx="3" fill="#b8860b"/><text x="762" y="655" font-size="12.5" fill="#6b4a30">Core-Unexpressed 默认在场但不说出</text>
+        <text x="498" y="690" font-size="12.5" fill="#8a3d14">互相约束：requires 必须一起出现 · excludes 水火不容</text>
+
+        <rect x="480" y="760" width="460" height="58" rx="12" fill="#fff" stroke="#c2601f"/>
+        <text x="498" y="784" font-size="14" font-weight="700" fill="#8a3d14">FEcoreSet 角色互指组</text>
+        <text x="498" y="806" font-size="12.5" fill="#8f6b52">一组 FE 其实指同一人/物 → "本体=凶手" 与 "联想=杀手" 视为同组</text>
+
+        <!-- ④ Lexeme -->
+        <rect x="980" y="390" width="320" height="92" rx="16" fill="#f3edff" stroke="#6b4ba3"/>
+        <text x="998" y="420" font-size="16" font-weight="800" fill="#4b2f95">④ Lexeme 词形基元</text>
+        <text x="1006" y="446" font-size="13" fill="#3a3055">　murder / breakBefore / headword / order</text>
+        <text x="1006" y="468" font-size="12" fill="#7a6ba8">一个词条最少含 1 个词形，按 order 排序</text>
+        <path d="M1140,350 L1140,384" stroke="#6b4ba3" stroke-width="1.6" stroke-dasharray="6 5" fill="none" marker-end="url(#bhd)"/>
+        <text x="1152" y="372" font-size="12" fill="#6b4ba3">1..n</text>
+
+        <!-- ⑤ valences -->
+        <rect x="980" y="512" width="320" height="190" rx="16" fill="#f3edff" stroke="#6b4ba3"/>
+        <text x="998" y="542" font-size="16" font-weight="800" fill="#4b2f95">⑤ valences 配价阵</text>
+        <text x="998" y="564" font-size="12" fill="#7a6ba8">这词在句里"角色怎么被说出来"的全部套路</text>
+        <text x="1006" y="596" font-size="12.5" fill="#3a3055">　governor：这个配价由哪个词主导</text>
+        <text x="1006" y="622" font-size="12.5" fill="#3a3055">　FERealization：FE=Victim</text>
+        <text x="1006" y="648" font-size="12.5" fill="#3a3055">　　pattern → 一组 valenceUnit</text>
+        <rect x="1006" y="662" width="278" height="28" rx="7" fill="#fff" stroke="#b9a6e8"/>
+        <text x="1018" y="681" font-size="12" fill="#4b2f95">valenceUnit：FE=Victim · PT=Obj · GF=Obj</text>
+        <text x="1006" y="704" font-size="12" fill="#7a6ba8">　　PT=实现方式（直接宾语…） GF=语法功能</text>
+
+        <!-- links -->
+        <path d="M700,500 L700,536" stroke="#c2601f" stroke-width="2" fill="none" marker-end="url(#bh)"/>
+        <text x="712" y="524" font-size="12" fill="#c2601f">1..n</text>
+
+        <path d="M480,255 L424,255" stroke="#c2601f" stroke-width="1.6" stroke-dasharray="6 5" fill="none" marker-end="url(#bhd)"/>
+        <text x="452" y="238" font-size="11" fill="#c2601f" text-anchor="end">按ID连入关系网</text>
+
+        <path d="M940,255 L976,255" stroke="#8a8a8a" stroke-width="2" fill="none" marker-end="url(#bh)"/>
+        <text x="958" y="240" font-size="11.5" fill="#666" text-anchor="middle">归属</text>
+
+        <path d="M1330,350 L1330,508" stroke="#6b4ba3" stroke-width="1.6" stroke-dasharray="6 5" fill="none" marker-end="url(#bhd)"/>
+        <path d="M1300,350 L1330,350" stroke="#6b4ba3" stroke-width="1.6" stroke-dasharray="6 5" fill="none"/>
+        <text x="1334" y="432" font-size="12" fill="#6b4ba3">valences</text>
+      </svg>
+
+      <div class="legend">
+        <span class="item"><span class="sw" style="background:#fff1e6;border-color:#c2601f"></span>橙家族 · 框架/角色</span>
+        <span class="item"><span class="sw" style="background:#f3edff;border-color:#6b4ba3"></span>紫家族 · 词条/配价</span>
+        <span class="item"><span class="sw" style="background:#e3f6f0;border-color:#2e7d5b"></span>绿家族 · 句子/证物</span>
+        <span class="item"><span class="sw" style="background:#fff8dc;border-color:#c9a227"></span>黄 · 标签</span>
+        <span class="item">实线箭头 = 包含/从属&nbsp;·&nbsp;虚线箭头 = 按 ID 引用（外键，不复制）</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <div class="no">叁</div>
+      <div>
+        <h2>逐项破译：八个证物卡片</h2>
+        <p>对着上面的关系图，一个卡片一句话看懂</p>
+      </div>
+    </div>
+    <div class="cards">
+
+      <div class="card">
+        <div class="num" style="background:#c2601f">①</div>
+        <h3>Frame 框架</h3>
+        <p class="en">frame.xsd · 主卷宗</p>
+        <p>一个事件/情景的"模板卷宗"，比如 Killing 杀人。ID 是案号，name 首字母大写，所有证据围绕它归档。</p>
+      </div>
+
+      <div class="card">
+        <div class="num" style="background:#c2601f">②</div>
+        <h3>FE 框架元素</h3>
+        <p class="en">frame.xsd · 角色</p>
+        <p>模板里的参与方：凶手/被害人/凶器。Core 丢了案不成立，Peripheral 可有可无；还能用 requires / excludes 互相约束。</p>
+      </div>
+
+      <div class="card">
+        <div class="num" style="background:#6b4ba3">③</div>
+        <h3>LexUnit 词汇单元</h3>
+        <p class="en">lexUnit.xsd · 词条</p>
+        <p>把一个具体词"签进"框架，如 murder.v。日后读到这个词，就能触发对应框架。</p>
+      </div>
+
+      <div class="card">
+        <div class="num" style="background:#6b4ba3">④</div>
+        <h3>Lexeme 词形基元</h3>
+        <p class="en">lexUnit.xsd · 词形</p>
+        <p>词的最小形态单元（murder）。标注是不是句头（headword）、是否要断词。一条词含 1 个以上。</p>
+      </div>
+
+      <div class="card">
+        <div class="num" style="background:#6b4ba3">⑤</div>
+        <h3>valences 配价阵</h3>
+        <p class="en">lexUnit.xsd · 句式</p>
+        <p>这个词在句子里"角色怎么出场"的全部套路：领导词 governor + 每条 pattern（FE + PT 实现方式 + GF 语法关系）。</p>
+      </div>
+
+      <div class="card">
+        <div class="num" style="background:#2e7d5b">⑥</div>
+        <h3>标注证据链</h3>
+        <p class="en">sentence.xsd / fullText.xsd</p>
+        <p>子语料库→句子→注解集（按 frameID/luID 挂回①③）→层（目标词/词性/角色）→标签（精确起止位置）。</p>
+      </div>
+
+      <div class="card">
+        <div class="num" style="background:#b5532a">⑦</div>
+        <h3>FrameRelation</h3>
+        <p class="en">frameRelations.xsd · 牵连网</p>
+        <p>框架之间的"办案牵连"：继承/使用/视角/因果…用 super / sub 两个 ID 把大图连起来；FERelation 把角色也绑定。</p>
+      </div>
+
+      <div class="card">
+        <div class="num" style="background:#c9a227">⑧</div>
+        <h3>SemType 语义标签</h3>
+        <p class="en">semTypes.xsd · 标签库</p>
+        <p>给框架/角色/词条贴通用标签（实体/交通工具…），按标签就能批量调档。</p>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <div class="no">肆</div>
+      <div>
+        <h2>收尾：三种索引怎么配合查案</h2>
+        <p>数据全靠 ID 串联，索引就是把最常用的三条 ID 路改成"目录"</p>
+      </div>
+    </div>
+    <div class="idxbox">
+      <table>
+        <tr><th>索引文件</th><th>查什么</th><th>相当于</th></tr>
+        <tr>
+          <td><code>frameIndex.xsd</code></td>
+          <td>框架名 ↔ 案号（ID）的快速目录</td>
+          <td>卷宗索引卡</td>
+        </tr>
+        <tr>
+          <td><code>luIndex.xsd</code></td>
+          <td>词条 ↔ 归属框架 ↔ 有没有标注（hasAnnotation / numAnnotInstances）</td>
+          <td>词条登记簿</td>
+        </tr>
+        <tr>
+          <td><code>fulltextIndex.xsd</code></td>
+          <td>语料 / 文档级目录，正文按文件归档</td>
+          <td>档案库柜号</td>
+        </tr>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    全套卷宗：<code>D:\nltk_data\corpora\framenet_v17\schema</code> · 11 个 .xsd<br>
+    commonTypes.xsd 是唯一被全库引用的"地基"，header.xsd 与 sentence.xsd 是被复用的公共部件 —— 看懂这三层，整个设计就通了。
+  </footer>
+
+
+</div>
+</body>
+</html>
