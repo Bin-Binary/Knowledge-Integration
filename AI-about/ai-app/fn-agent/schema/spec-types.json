@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:struct:spec-types:v1",
+  "title": "spec-types (v1) 共享顶层结构基线",
+  "description": "对齐 FrameNet commonTypes.xsd 的职责：把所有 schema 文档共享的顶层结构、公共根元素、共享简单类型抽提为基线。后续新增的任一 schema（frame / frame-relations / sem-types / entity / unit / artifact / registry / index / spec）都必须继承本结构：顶层四键（metadata / validation_rules / conventions / external_refs）与 $defs 中的公共类型（urnRef / iso8601 / externalRef / sourceFileRef / version / definition / metadata / nameConstraint）。",
+  "version": "v1",
+
+  "$defs": {
+    "iso8601": {
+      "type": "string",
+      "format": "date-time",
+      "description": "统一时间格式，对应 commonTypes.xsd 的 dateTimeType。"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^v(0|[1-9]\\d*)(-[a-z][a-z0-9]*)?$",
+      "description": "版本号，如 v1、v1-draft。对应 commonTypes.xsd 的 cDate 之外新增的版本化设计。"
+    },
+    "urnRef": {
+      "type": "string",
+      "pattern": "^urn:[a-z][a-z0-9-]*:[a-zA-Z0-9_-]+:[v][0-9]+(-[a-z][a-z0-9]*)?$",
+      "description": "统一资源名 $id 格式：urn:{type}:{name}:{version}。对应 commonTypes.xsd 的 IDType，但从纯数字 ID 升级为语义化 URN。"
+    },
+    "definition": {
+      "type": "string",
+      "minLength": 1,
+      "description": "自然语言定义。对应 commonTypes.xsd 的 defType（definition 元素共用）。"
+    },
+    "nameConstraint": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\s]+$",
+      "description": "名称约束：不含空白。对应 commonTypes.xsd 的 frameNameType 的放宽版。"
+    },
+    "sourceFileRef": {
+      "type": "string",
+      "pattern": "^\\./",
+      "description": "源文件相对路径引用，如 ./R-ROLES-00.json。对应 commonTypes.xsd 中引用其他 schema 文件的 schemaLocation。"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "所有 schema 文档共享的元信息块。",
+      "required": ["name", "version", "description", "scope"],
+      "properties": {
+        "name": { "$ref": "#/$defs/nameConstraint" },
+        "version": { "$ref": "#/$defs/version" },
+        "description": { "type": "string" },
+        "scope": { "type": "string", "description": "本 schema 的适用范围声明。" }
+      },
+      "additionalProperties": false
+    },
+    "externalRef": {
+      "type": "object",
+      "description": "对外部 schema 文档的引用：声明来源文件、版本与用途。",
+      "required": ["target_schema_id", "source_file", "usage"],
+      "properties": {
+        "target_schema_id": { "$ref": "#/$defs/nameConstraint" },
+        "source_file": { "$ref": "#/$defs/sourceFileRef" },
+        "source_version": { "$ref": "#/$defs/version" },
+        "imported_at": { "$ref": "#/$defs/iso8601" },
+        "usage": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "validationRule": {
+      "type": "object",
+      "description": "一条校验规则。",
+      "required": ["rule", "expression"],
+      "properties": {
+        "rule": { "type": "string" },
+        "expression": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "convention": {
+      "type": "object",
+      "description": "一条命名/格式约定。",
+      "required": ["name", "value"],
+      "properties": {
+        "name": { "type": "string" },
+        "value": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "sharedSkeleton": {
+      "type": "object",
+      "description": "共享顶层骨架：所有 schema 文档必须含这四个顶层键。",
+      "required": ["metadata", "validation_rules", "conventions", "external_refs"],
+      "properties": {
+        "metadata": { "$ref": "#/$defs/metadata" },
+        "validation_rules": {
+          "type": "array",
+          "description": "一组校验规则，供 jsonschema 之外的人工/语义校验。",
+          "items": { "$ref": "#/$defs/validationRule" }
+        },
+        "conventions": {
+          "type": "array",
+          "description": "命名/格式约定清单，供作者对齐风格。",
+          "items": { "$ref": "#/$defs/convention" }
+        },
+        "external_refs": {
+          "type": "array",
+          "description": "本 schema 依赖的外部 schema 引用清单，缺失时为空数组而非省略。",
+          "items": { "$ref": "#/$defs/externalRef" },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+
+  "type": "object",
+  "description": "spec-types 文档自身：多个 $defs 供所有 schema 通过 $ref 引用，无顶层数据载荷。",
+  "required": ["$schema", "$id", "$defs"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "const": "https://json-schema.org/draft/2020-12/schema"
+    },
+    "$id": {
+      "type": "string",
+      "const": "urn:struct:spec-types:v1"
+    },
+    "title": { "type": "string" },
+    "description": { "type": "string" },
+    "version": { "$ref": "#/$defs/version" },
+    "$defs": {
+      "type": "object",
+      "description": "共享类型库。所有继承本基线的 schema 可直接 $ref 本文件的 $defs，或在自身复制后保持键名一致。"
+    }
+  },
+  "additionalProperties": true
+}
