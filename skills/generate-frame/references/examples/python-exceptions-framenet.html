@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Python异常体系 · FrameNet 语义框架标注文档（统一视图）</title>
+<style>
+:root{--ink:#1f2328;--sub:#57606a;--line:#d0d7de;--bg:#f6f8fa;--card:#fff;--acc:#0969da;--green:#1a7f37;--orange:#9a6700;--red:#cf222e}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Segoe UI",sans-serif;color:var(--ink);background:var(--bg);line-height:1.7}
+code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;background:#f0f3f6;border:1px solid #d8dee4;border-radius:4px;padding:0 5px;font-size:.9em}
+.wrap{max-width:1100px;margin:0 auto;padding:0 20px}
+header{background:linear-gradient(135deg,#0b2545,#15508f);color:#fff;padding:36px 0 30px}
+header h1{margin:0 0 6px;font-size:24px}
+header .sub{opacity:.85;font-size:13.5px}
+.badges{margin-top:14px}
+.badge{display:inline-block;padding:2px 11px;border-radius:20px;font-size:12px;margin:3px 6px 0 0;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.38)}
+nav{position:sticky;top:0;z-index:9;background:#fff;border-bottom:1px solid var(--line);box-shadow:0 1px 4px rgba(31,35,40,.06)}
+nav .wrap{display:flex;flex-wrap:wrap;gap:6px;padding:9px 20px}
+nav a{font-size:13px;color:var(--acc);text-decoration:none;padding:3px 11px;border-radius:14px;background:#e8f2fd}
+nav a:hover{background:#cbe4fb}
+section{background:var(--card);border:1px solid var(--line);border-radius:10px;margin:24px auto;max-width:1100px;padding:22px 26px}
+h2{font-size:19px;margin:0 0 4px;padding-left:11px;border-left:4px solid var(--acc)}
+.lead{color:var(--sub);font-size:13px;margin:2px 0 14px;padding-left:15px}
+ol{padding-left:24px;margin:8px 0}
+ol li{margin:5px 0;font-size:14px}
+ul.facts li,ul.gaps li,ul.mis li{list-style:none;padding:2px 0 2px 11px;margin:8px 0;font-size:14px}
+ul.facts li{border-left:3px solid var(--green)}
+ul.gaps li{border-left:3px solid var(--orange)}
+ul.mis li{border-left:3px solid var(--red)}
+.ref{color:var(--sub);font-size:12.5px}
+details{border:1px solid var(--line);border-radius:8px;margin:8px 0;background:#fbfcfd}
+summary{cursor:pointer;padding:8px 13px;font-weight:600;font-size:13.5px;color:var(--acc)}
+details p{margin:2px 15px 10px;font-size:14px}
+.trans{color:var(--sub)}
+.tblwrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:640px}
+th{background:#edf1f5;border:1px solid var(--line);padding:8px 10px;text-align:left;font-size:12.5px}
+td{border:1px solid var(--line);padding:8px 10px;vertical-align:top}
+tbody tr:nth-child(even){background:#fafbfc}
+tr.entry td{background:#eef6ff}
+tr.entry td:first-child{font-weight:700;border-left:4px solid var(--acc)}
+.fe{font-family:ui-monospace,Consolas,monospace;background:#eef2f6;border:1px solid #d8dee4;border-radius:4px;padding:0 5px;font-size:12px;white-space:nowrap}
+.rel{display:inline-block;padding:1px 9px;border-radius:12px;font-size:11.5px;font-weight:600;color:#fff;white-space:nowrap}
+.r-Inheritance{background:#8250df}.r-Perspective{background:#bf8700}.r-Using{background:#0969da}.r-Subframe{background:#1a7f37}.r-Precedes{background:#c18401}.r-Causative{background:#d1242f}.r-Inchoative{background:#bf3989}.r-Metaphor{background:#525252}.r-Seealso{background:#6e7781}
+.st{display:inline-block;padding:1px 9px;border-radius:12px;font-size:11.5px;font-weight:600;white-space:nowrap}
+.st-full{background:#dafbe1;color:#116329}.st-part{background:#fff8c5;color:#4d2d00}.st-none{background:#ffebe9;color:#82071e}
+.legend{margin:6px 0 4px}
+.legend .rel{margin:2px 4px 2px 0}
+.note{background:#fff8c5;border:1px solid #eac54f;border-radius:8px;padding:10px 14px;font-size:13px;margin-top:12px}
+.gtitle{font-size:15px;font-weight:700;margin:20px 0 8px;color:var(--ink)}
+footer{margin:30px 0 40px;text-align:center;color:var(--sub);font-size:12px}
+@media(max-width:720px){section{padding:14px}}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+<h1>Python异常体系 FrameNet 语义框架标注文档</h1>
+<div class="sub">generate-frame v4 · 统一视图：主文档 + 缺口扩展资料合并渲染 · 理论依据：FrameNet II: Extended Theory and Practice（Ruppenhofer et al., 2016）</div>
+<div class="badges"><span class="badge">文件族：python-exceptions-framenet.md + python-exceptions-gapfill.md + 本页</span><span class="badge">关系标签：FrameNet 标准 9 种</span><span class="badge">可选项①缺口补全：已启用</span><span class="badge">可选项②HTML统一视图：本页即产出</span></div>
+</div></header>
+<nav><div class="wrap">
+<a href="#intro">说明</a><a href="#corpus">原文和翻译</a><a href="#facts">事实</a><a href="#gaps">缺口</a><a href="#gapfill">缺口扩展资料</a><a href="#mis">误解</a><a href="#frames">异常框架</a><a href="#relations">框架间关系</a>
+</div></nav>
+
+<section id="intro">
+<h2>说明</h2>
+<ol>
+<li>本文件基于Python官方内置异常文档，采用<b>FrameNet框架语义学</b>进行建模。</li>
+<li>框架元素FE为抽象语义槽；<b>事实为槽填充客观内容；缺口是从原始语料推导出来的知识缺失点；误解是基于语料推导的学习者可能产生的错误理解</b>。</li>
+<li>原文与翻译一一对应，原文后紧跟中文翻译。</li>
+<li>框架关系使用FrameNet标准9种关系标签：<code>Inheritance</code>、<code>Perspective on</code>、<code>Using</code>、<code>Subframe</code>、<code>Precedes</code>、<code>Causative of</code>、<code>Inchoative of</code>、<code>Metaphor</code>、<code>See also</code>。</li>
+<li>原始语料定位记录原文出处、片段位置与参考链接。</li>
+<li>本次分析启用可选项：<b>①缺口补全</b>——独立文件 <code>python-exceptions-gapfill.md</code>（本页「缺口扩展资料」章节为其合并渲染）；<b>②HTML统一视图</b>——本页。</li>
+</ol>
+</section>
+
+<section id="corpus">
+<h2>原文和翻译</h2>
+<p class="lead">来源：Python 官方文档 Built‑in Exceptions &amp; Errors and Exceptions（片段编号为分析序号，点击标题可折叠）</p>
+<details open><summary>片段 1</summary><p>All exceptions must be instances of classes derived from <code>BaseException</code>.</p><p class="trans">所有异常必须是派生自 <code>BaseException</code> 的类的实例。</p></details>
+<details open><summary>片段 2</summary><p><code>Exception</code> is the base class for all built‑in non‑system‑exiting exceptions. All user‑defined exceptions should be derived from this class.</p><p class="trans"><code>Exception</code> 是所有内置非系统退出类异常的基类。所有用户自定义异常都应当派生自该类。</p></details>
+<details open><summary>片段 3</summary><p><code>KeyboardInterrupt</code>, <code>SystemExit</code> inherit directly from <code>BaseException</code>, not from <code>Exception</code>.</p><p class="trans"><code>KeyboardInterrupt</code>、<code>SystemExit</code> 直接继承自 <code>BaseException</code>，不继承 <code>Exception</code>。</p></details>
+<details open><summary>片段 4</summary><p>An except clause that names a class will catch that class and all its subclasses. It does not catch its superclasses.</p><p class="trans">命名某个类的except子句会捕获该类及其全部子类；<b>不会捕获它的父类</b>。</p></details>
+<details open><summary>片段 5</summary><p>When catching exceptions, more specific exception handlers should appear before more general ones.</p><p class="trans">捕获异常时，更具体的异常处理分支应当放在更通用的分支之前。</p></details>
+<details open><summary>片段 6</summary><p><code>TypeError</code> is raised when an operation or function is applied to an object of inappropriate type.</p><p class="trans">当操作或函数作用于类型不恰当的对象时，抛出 <code>TypeError</code>。</p></details>
+<details open><summary>片段 7</summary><p><code>ZeroDivisionError</code> is raised when the second argument of a division or modulo operation is zero.</p><p class="trans">除法或取模运算第二个参数为0时，抛出 <code>ZeroDivisionError</code>。</p></details>
+<details open><summary>片段 8</summary><p><code>ArithmeticError</code> is the base class for all arithmetic errors, including <code>ZeroDivisionError</code>, <code>OverflowError</code>, <code>FloatingPointError</code>.</p><p class="trans"><code>ArithmeticError</code> 是所有算术错误的基类，包含 <code>ZeroDivisionError</code>、<code>OverflowError</code>、<code>FloatingPointError</code>。</p></details>
+<details open><summary>片段 9</summary><p><code>LookupError</code> is the base class for <code>IndexError</code> and <code>KeyError</code>.</p><p class="trans"><code>LookupError</code> 是 <code>IndexError</code> 与 <code>KeyError</code> 的基类。</p></details>
+<details open><summary>片段 10</summary><p><code>OSError</code> is the base class for system‑related errors, including <code>FileNotFoundError</code>, <code>PermissionError</code>, <code>ConnectionError</code>.</p><p class="trans"><code>OSError</code> 是系统相关错误的基类，包含 <code>FileNotFoundError</code>、<code>PermissionError</code>、<code>ConnectionError</code>。</p></details>
+<details open><summary>片段 11</summary><p>Exception instances have attributes: <code>args</code>, <code>__traceback__</code>, <code>__notes__</code>. Methods: <code>with_traceback()</code>, <code>add_note()</code>.</p><p class="trans">异常实例拥有属性：<code>args</code>、<code>__traceback__</code>、<code>__notes__</code>；方法：<code>with_traceback()</code>、<code>add_note()</code>。</p></details>
+<details open><summary>片段 12</summary><p><code>BaseExceptionGroup</code> can wrap multiple <code>BaseException</code> instances to propagate multiple errors simultaneously.</p><p class="trans"><code>BaseExceptionGroup</code> 可以包装多个 <code>BaseException</code> 实例，实现多错误同时传播。</p></details>
+<details open><summary>片段 13</summary><p><code>ExceptionGroup</code> is a subclass of both <code>Exception</code> and <code>BaseExceptionGroup</code>, it can only wrap <code>Exception</code> instances.</p><p class="trans"><code>ExceptionGroup</code> 同时继承 <code>Exception</code> 和 <code>BaseExceptionGroup</code>，仅可包装 <code>Exception</code> 实例。</p></details>
+<details open><summary>片段 14</summary><p><code>Warning</code> is the base class for all warning types. Warnings do not terminate program execution, they are separate from exceptions.</p><p class="trans"><code>Warning</code> 是全部警告类型的基类。警告不会终止程序执行，与异常体系相互独立。</p></details>
+</section>
+
+<section id="facts">
+<h2>事实</h2>
+<p class="lead">全部从官方原文提取的客观事实，作为框架FE的填充值，属于分析中间产物</p>
+<ul class="facts">
+<li>异常根基类为 <code>BaseException</code>，所有异常实例必须继承它。<span class="ref">← 片段1</span></li>
+<li><code>Exception</code> 是普通内置异常、用户自定义异常的基类；系统退出异常不继承 <code>Exception</code>。<span class="ref">← 片段2</span></li>
+<li><code>KeyboardInterrupt</code>、<code>SystemExit</code>、<code>GeneratorExit</code> 直接继承 <code>BaseException</code>。<span class="ref">← 片段3</span></li>
+<li>except 捕获<b>子类异常</b>，不能捕获父类异常；捕获顺序必须子类在前，父类在后。<span class="ref">← 片段4‑5</span></li>
+<li><code>TypeError</code>：对象类型不匹配触发；<code>ZeroDivisionError</code>：除数为0触发。<span class="ref">← 片段6‑7</span></li>
+<li>异常层级：<code>ArithmeticError</code> → <code>ZeroDivisionError</code>；<code>LookupError</code> → <code>IndexError</code>/<code>KeyError</code>；<code>OSError</code> → <code>FileNotFoundError</code>；<code>ValueError</code> → <code>UnicodeError</code>。<span class="ref">← 片段8‑10</span></li>
+<li>异常对象内置属性：<code>args</code>、<code>__traceback__</code>、<code>__notes__</code>；内置方法：<code>with_traceback()</code>、<code>add_note()</code>。<span class="ref">← 片段11</span></li>
+<li><code>BaseExceptionGroup</code> 可以包装任意 <code>BaseException</code>；<code>ExceptionGroup</code> 只能包装 <code>Exception</code>。<span class="ref">← 片段12‑13</span></li>
+<li><code>Warning</code> 为警告体系顶层基类；警告是非致命提示，不中断程序，独立于异常体系。<span class="ref">← 片段14</span></li>
+</ul>
+</section>
+
+<section id="gaps">
+<h2>缺口</h2>
+<p class="lead">从原始语料分析得出的知识缺口：语料没有明确说明、缺少定义、边界模糊的点，属于分析中间产物</p>
+<ul class="gaps">
+<li>原文没有明确说明 <code>GeneratorExit</code> 的完整继承行为细节。<span class="ref">（相关片段3）</span></li>
+<li>原文没有给出 <code>NotImplementedError</code> 与 <code>TypeError</code> 的区分判定标准。<span class="ref">（相关片段6）</span></li>
+<li>原文没有说明异常组在try‑except中的捕获匹配规则。<span class="ref">（相关片段12‑13）</span></li>
+<li>原文没有说明 <code>__notes__</code> 属性的读写约束与版本兼容性。<span class="ref">（相关片段11）</span></li>
+<li>原文没有列举全部 <code>OSError</code> 的子类完整清单。<span class="ref">（相关片段10）</span></li>
+<li>原文没有说明用户自定义异常，除了继承 <code>Exception</code> 之外的最佳实践约束。<span class="ref">（相关片段2）</span></li>
+</ul>
+<div class="note">缺口扩展资料（可选项①）：内容同源 <code>python-exceptions-gapfill.md</code>，见下节合并渲染。</div>
+</section>
+
+<section id="gapfill">
+<h2>缺口扩展资料 <span class="st st-full">可选项①已启用</span></h2>
+<p class="lead">内容同源：python-exceptions-gapfill.md · 补全资料仅来自官方/权威源；独立呈现，不进入事实清单与框架表FE填充。本轮无与原文冲突条目。</p>
+<div class="tblwrap"><table>
+<thead><tr><th style="width:9%">缺口编号</th><th style="width:56%">补全资料</th><th style="width:26%">权威来源与定位</th><th style="width:9%">补全状态</th></tr></thead>
+<tbody>
+<tr><td>缺口1</td><td><code>GeneratorExit</code> 在生成器或协程被关闭时抛出（见 <code>generator.close()</code> / <code>coroutine.close()</code>）；直接继承 <code>BaseException</code> 而非 <code>Exception</code>，官方理由是"它在技术上不是错误"（not an error）</td><td>Python 官方文档 Built‑in Exceptions — GeneratorExit 条目</td><td><span class="st st-full">✅已补全</span></td></tr>
+<tr><td>缺口2</td><td><code>NotImplementedError</code> 派生自 <code>RuntimeError</code>，用于用户自定义基类中"要求子类必须覆写的抽象方法"。判定标准：类型不匹配→<code>TypeError</code>；设计上未实现、待子类覆写→<code>NotImplementedError</code></td><td>Python 官方文档 Built‑in Exceptions — NotImplementedError 条目</td><td><span class="st st-full">✅已补全</span></td></tr>
+<tr><td>缺口3</td><td>Python 3.11 新增 <code>except*</code> 子句：按叶子异常类型对异常组<b>拆分匹配</b>，同一次引发的异常组可被多个 <code>except*</code> 子句分别处理；每个叶子异常至多匹配一个子句；未匹配部分重组为新异常组继续传播；普通 <code>except</code> 对异常组按整体类型匹配、无法拆分子组；<code>except</code> 与 <code>except*</code> 不可在同一 try 语句混用</td><td>PEP 654 — Exception Groups and except*；Python Tutorial — Exception Groups；What's New in Python 3.11</td><td><span class="st st-full">✅已补全</span></td></tr>
+<tr><td>缺口4</td><td><code>add_note(note)</code> 为 Python 3.11 新增：<code>note</code> 必须为 <code>str</code>，追加到 <code>__notes__</code>（字符串列表，首次调用时创建）；异常回溯打印时自动展示；3.11 之前版本无此机制</td><td>PEP 678 — Enriching Exceptions with Notes；Built‑in Exceptions — BaseException.add_note</td><td><span class="st st-full">✅已补全</span></td></tr>
+<tr><td>缺口5</td><td><code>OSError</code> 子类全集：<code>BlockingIOError</code>、<code>ChildProcessError</code>、<code>ConnectionError</code>（含 <code>BrokenPipeError</code>、<code>ConnectionAbortedError</code>、<code>ConnectionRefusedError</code>、<code>ConnectionResetError</code>）、<code>FileExistsError</code>、<code>FileNotFoundError</code>、<code>InterruptedError</code>、<code>IsADirectoryError</code>、<code>NotADirectoryError</code>、<code>PermissionError</code>、<code>ProcessLookupError</code>、<code>TimeoutError</code>；<code>OSError</code> 以两个以上参数构造时携带 <code>errno</code>/<code>strerror</code>，具体子类由 <code>errno</code> 值决定</td><td>Python 官方文档 Built‑in Exceptions — OSError 及其子类条目</td><td><span class="st st-full">✅已补全</span></td></tr>
+<tr><td>缺口6</td><td>①自定义异常类通常应派生自 <code>Exception</code>（官方教程明确）；②异常命名以 "Error" 结尾（教程与 PEP 8 命名约定一致）；③必要时可从多个异常基类组合派生</td><td>Python Tutorial — User‑defined Exceptions；PEP 8 — Exception Names</td><td><span class="st st-full">✅已补全</span></td></tr>
+</tbody>
+</table></div>
+</section>
+
+<section id="mis">
+<h2>误解</h2>
+<p class="lead">从原始语料推导的学习者潜在错误理解，属于分析中间产物</p>
+<ul class="mis">
+<li>误以为用户自定义异常可以直接继承 <code>BaseException</code>。<span class="ref">←片段2"应当派生自Exception"反向诱导</span></li>
+<li>认为 <code>KeyboardInterrupt</code>、<code>SystemExit</code> 继承自 <code>Exception</code>。<span class="ref">←片段3例外陈述易被跳读</span></li>
+<li>认为except捕获父类就可以捕获子类；写except时父类分支在前，子类分支永远不会执行。<span class="ref">←片段4仅正面陈述未先给反例</span></li>
+<li>将参数取值错误归为 <code>TypeError</code>，将类型错误归为 <code>ValueError</code>。<span class="ref">←片段6仅定义TypeError未对照</span></li>
+<li>认为所有异常类互相平级，不存在公共父类。<span class="ref">←片段1全称规定未画层级全图</span></li>
+<li>不知道异常实例自带 <code>args</code>、<code>__traceback__</code>、<code>add_note()</code> 等属性方法。<span class="ref">←片段11平铺罗列易被忽略</span></li>
+<li>混淆 <code>ExceptionGroup</code> 和 <code>BaseExceptionGroup</code> 的包装对象范围。<span class="ref">←片段12‑13两者并列出现</span></li>
+<li>将Warning警告当成Exception异常，认为警告会终止程序运行。<span class="ref">←片段14"独立于异常体系"易被漏读</span></li>
+</ul>
+</section>
+
+<section id="frames">
+<h2>异常框架</h2>
+<p class="lead">第一行（高亮）为主题入口框架；框架元素FE为抽象语义槽，事实为槽填充内容，全部FE带核心度标注</p>
+<div class="tblwrap"><table>
+<thead><tr><th style="width:12%">框架名称</th><th style="width:16%">刻画描述</th><th style="width:24%">框架元素（FE）及填充</th><th style="width:32%">原始事实语料</th><th style="width:16%">原始语料定位</th></tr></thead>
+<tbody>
+<tr class="entry"><td>异常体系入口框架</td><td>主题级根锚点：聚合Python错误表示、传播、捕获与处置场景的构成维度，导航至各子框架</td><td><span class="fe">主题对象</span>（核心）: Python异常体系（以BaseException为根的实例世界）<br><span class="fe">继承结构维度</span>（核心）: 基类分工与派生规则——异常继承框架<br><span class="fe">捕获规则维度</span>（核心）: except匹配与排序——异常捕获逻辑框架<br><span class="fe">触发条件维度</span>（核心）: 各异常发生场景——异常触发场景框架<br><span class="fe">层级清单维度</span>（核心）: 具体父子层级——异常层级关系框架<br><span class="fe">对象操作维度</span>（核心）: 实例属性与方法——异常属性与方法框架<br><span class="fe">复合机制维度</span>（核心）: 多异常打包传播——异常组使用框架<br><span class="fe">相邻体系维度</span>（外围）: 独立于异常的警告机制——警告体系框架</td><td>1. 全部异常为BaseException派生实例；Exception管用户异常，系统异常直达根基类（事实1‑3）。<br>2. except按子类捕获且顺序敏感（事实4）。<br>3. 各异常有触发条件与父子层级（事实5‑6）。<br>4. 异常实例自带属性与方法（事实7）。<br>5. 异常组可打包多异常（事实8）。<br>6. 警告独立于异常体系（事实9）。</td><td>原文片段1‑14（主题全文）；参考链接：Python Built‑in Exceptions</td></tr>
+<tr><td>异常继承框架</td><td>刻画异常间的继承关系及基类规则</td><td><span class="fe">根基类</span>（核心）: BaseException<br><span class="fe">用户异常基类</span>（核心）: Exception<br><span class="fe">系统异常基类</span>（核心）: KeyboardInterrupt/SystemExit/GeneratorExit<br><span class="fe">异常组基类</span>（外围）: ExceptionGroup/BaseExceptionGroup</td><td>1. Python所有异常都必须是BaseException子类的实例。<br>2. Exception是所有非系统退出内置异常的父类；用户自定义异常应当继承Exception。<br>3. KeyboardInterrupt、SystemExit、GeneratorExit直接继承BaseException，不继承Exception。<br>4. ExceptionGroup继承Exception与BaseExceptionGroup；BaseExceptionGroup可以封装任意BaseException实例。</td><td>原文片段1‑3、12‑13；参考链接：Python Built‑in Exceptions</td></tr>
+<tr><td>异常捕获逻辑框架</td><td>描述except子句对异常的捕获规则</td><td><span class="fe">捕获对象</span>（核心）: 派生类异常<br><span class="fe">捕获顺序</span>（核心）: 子类在前、父类在后</td><td>1. except子句匹配异常类时，可以捕获该类及其所有子类异常。<br>2. except不能捕获父类异常；编码时子类异常捕获分支必须写在父类捕获分支之前。</td><td>原文片段4‑5；参考链接：Python Errors and Exceptions</td></tr>
+<tr><td>异常触发场景框架</td><td>刻画不同异常的具体触发条件</td><td><span class="fe">触发条件</span>（核心）: 类型不匹配、除数为0、索引越界、键不存在等<br><span class="fe">对应异常</span>（核心）: TypeError、ZeroDivisionError、IndexError、KeyError等</td><td>1. TypeError：操作/函数作用于类型不匹配对象时抛出。<br>2. ZeroDivisionError：算术运算除数为0抛出。<br>3. IndexError：序列索引无效；KeyError：字典键不存在。<br>4. 参数类型错误属于TypeError；参数取值错误属于ValueError。</td><td>原文片段6‑7；参考链接：Python Built‑in Exceptions</td></tr>
+<tr><td>异常层级关系框架</td><td>描述具体异常间的父子层级结构</td><td><span class="fe">父类异常</span>（核心）: ArithmeticError、LookupError、OSError、ValueError等<br><span class="fe">子类异常</span>（核心）: ZeroDivisionError、IndexError、FileNotFoundError、UnicodeDecodeError等</td><td>1. ArithmeticError是ZeroDivisionError、OverflowError、FloatingPointError的父类。<br>2. LookupError是IndexError、KeyError的父类。<br>3. OSError包含FileNotFoundError、PermissionError、ConnectionError等子类。<br>4. UnicodeError是ValueError的子类。</td><td>原文片段8‑10；参考链接：Python Built‑in Exceptions</td></tr>
+<tr><td>异常属性与方法框架</td><td>刻画异常对象的核心属性和操作方法</td><td><span class="fe">核心属性</span>（核心）: args、__traceback__、__notes__<br><span class="fe">操作方法</span>（核心）: with_traceback(tb)、add_note(note)</td><td>1. args：异常构造函数接收的参数元组。<br>2. __traceback__：存储异常回溯信息的可写字段。<br>3. with_traceback(tb)：为异常对象绑定回溯，返回当前异常实例。<br>4. add_note(note)：为异常追加注释文本，在异常回溯打印时展示。</td><td>原文片段11；参考链接：Python Built‑in Exceptions</td></tr>
+<tr><td>异常组使用框架</td><td>描述用于同时传播多个异常的特殊机制</td><td><span class="fe">异常组类型</span>（核心）: ExceptionGroup、BaseExceptionGroup<br><span class="fe">包装对象</span>（核心）: 多个异常实例</td><td>1. BaseExceptionGroup用于打包、同时抛出多个BaseException类型异常。<br>2. ExceptionGroup继承BaseExceptionGroup与Exception，仅能封装Exception类型异常实例。</td><td>原文片段12‑13；参考链接：Python Exception Groups</td></tr>
+<tr><td>警告体系框架</td><td>刻画独立于异常的非致命问题提示体系</td><td><span class="fe">警告基类</span>（核心）: Warning<br><span class="fe">具体警告类型</span>（外围）: DeprecationWarning、BytesWarning、ResourceWarning等</td><td>1. Warning是所有警告类型的顶层基类。<br>2. 警告不会终止程序执行，属于非致命提示，语义上独立于异常体系。</td><td>原文片段14；参考链接：Python warnings</td></tr>
+</tbody>
+</table></div>
+</section>
+
+<section id="relations">
+<h2>异常框架间关系</h2>
+<p class="lead">FrameNet 标准 9 种关系标签全集；本主题实际使用 3 种（Using×11、Inheritance×1、See also×1），两组呈现</p>
+<div class="legend">
+<span class="rel r-Inheritance">Inheritance 继承</span><span class="rel r-Perspective">Perspective on 视角化</span><span class="rel r-Using">Using 使用</span><span class="rel r-Subframe">Subframe 子框架</span><span class="rel r-Precedes">Precedes 先行</span><span class="rel r-Causative">Causative of 致使</span><span class="rel r-Inchoative">Inchoative of 起始</span><span class="rel r-Metaphor">Metaphor 隐喻</span><span class="rel r-Seealso">See also 参见</span>
+</div>
+<div class="gtitle">第一组：子框架 → 入口框架</div>
+<div class="tblwrap"><table>
+<thead><tr><th style="width:17%">源框架</th><th style="width:12%">FrameNet关系</th><th style="width:17%">目标框架</th><th>关系释义</th></tr></thead>
+<tbody>
+<tr><td>异常继承框架</td><td><span class="rel r-Using">Using</span></td><td>异常体系入口框架</td><td>填充<span class="fe">继承结构维度</span>槽；继承规则的刻画以入口框架聚合的异常场景为背景前提</td></tr>
+<tr><td>异常捕获逻辑框架</td><td><span class="rel r-Using">Using</span></td><td>异常体系入口框架</td><td>填充<span class="fe">捕获规则维度</span>槽；捕获语义预设"异常可被表示与传播"（事实1、8）这一背景</td></tr>
+<tr><td>异常触发场景框架</td><td><span class="rel r-Using">Using</span></td><td>异常体系入口框架</td><td>填充<span class="fe">触发条件维度</span>槽；触发场景以异常场景整体为背景</td></tr>
+<tr><td>异常层级关系框架</td><td><span class="rel r-Using">Using</span></td><td>异常体系入口框架</td><td>填充<span class="fe">层级清单维度</span>槽；层级列举预设异常体系的存在</td></tr>
+<tr><td>异常属性与方法框架</td><td><span class="rel r-Using">Using</span></td><td>异常体系入口框架</td><td>填充<span class="fe">对象操作维度</span>槽；属性方法刻画的对象范围由异常场景界定</td></tr>
+<tr><td>异常组使用框架</td><td><span class="rel r-Using">Using</span></td><td>异常体系入口框架</td><td>填充<span class="fe">复合机制维度</span>槽；多异常打包预设单异常体系为背景</td></tr>
+<tr><td>警告体系框架</td><td><span class="rel r-Using">Using</span></td><td>异常体系入口框架</td><td>填充外围槽<span class="fe">相邻体系维度</span>；本语料对警告的界定方式（"独立于异常体系"，片段14）以异常场景为对比前提</td></tr>
+</tbody>
+</table></div>
+<div class="gtitle">第二组：子框架之间</div>
+<div class="tblwrap"><table>
+<thead><tr><th style="width:17%">源框架</th><th style="width:12%">FrameNet关系</th><th style="width:17%">目标框架</th><th>关系释义</th></tr></thead>
+<tbody>
+<tr><td>异常层级关系框架</td><td><span class="rel r-Using">Using</span></td><td>异常继承框架</td><td>具体层级（ArithmeticError→ZeroDivisionError等）的刻画以抽象继承规则为前提；父框架4个FE无法映射到层级框架2个FE，不满足Inheritance的FE对应判定，取Using</td></tr>
+<tr><td>异常捕获逻辑框架</td><td><span class="rel r-Using">Using</span></td><td>异常继承框架</td><td>"except捕获该类及其全部子类"的语义必须以继承框架的IS‑A语义为前提；捕获框架不是继承体系的子类型</td></tr>
+<tr><td>异常触发场景框架</td><td><span class="rel r-Using">Using</span></td><td>异常层级关系框架</td><td>触发场景附着于层级框架划定的具体异常实体之上，以层级结构为语义前提</td></tr>
+<tr><td>异常属性与方法框架</td><td><span class="rel r-Using">Using</span></td><td>异常继承框架</td><td>属性与方法描述的对象集合，使用继承框架划定的BaseException实例范围</td></tr>
+<tr><td>异常组使用框架</td><td><span class="rel r-Inheritance">Inheritance</span></td><td>异常继承框架</td><td>异常组机制是继承体系的子类型并新增多异常打包扩展语义；FE对应：<span class="fe">异常组类型</span>↔<span class="fe">异常组基类</span>，其余父FE经继承链隐式对应（ExceptionGroup同时继承Exception与BaseExceptionGroup）</td></tr>
+<tr><td>警告体系框架</td><td><span class="rel r-Seealso">See also</span></td><td>异常继承框架</td><td>警告与异常为领域相邻的独立姊妹体系：无依赖、无继承，仅值得对照查阅</td></tr>
+</tbody>
+</table></div>
+<div class="note"><b>未使用关系说明</b>（质量红线：宁缺毋滥）：<code>Perspective on</code>、<code>Subframe</code>、<code>Precedes</code>、<code>Causative of</code>、<code>Inchoative of</code>、<code>Metaphor</code> 在本主题无合格框架对——异常语料为静态分类与规则刻画，不存在复杂事件阶段序列、状态‑变化对、未视角化母框架或跨域映射，不硬凑。</div>
+</section>
+
+<footer>generate-frame v4 全套产物 · 文件族：python-exceptions-framenet.md / python-exceptions-gapfill.md / 本页 · 中间产物全留存：事实9 · 缺口6 · 补全6 · 误解8 · 框架8（含入口框架）· 框架关系13（第一组7 + 第二组6）</footer>
+</body>
+</html>
