@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>lexUnit 剩下的四个栏目：lexeme / semType / valences / subCorpus</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root{
+    --ink:#1a2332; --sub:#5b6b82; --line:#dbe3ee;
+    --bg:#f5f7fb; --card:#ffffff;
+    --blue:#1E90FF; --red:#e0442c; --green:#2e9e5b; --purple:#7b4fd8; --gold:#ffb020;
+  }
+  body{ font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif; background:var(--bg); color:var(--ink); line-height:1.65; }
+  .wrap{ max-width:1080px; margin:0 auto; padding:32px 20px 90px; }
+
+  .hero{ text-align:center; padding:44px 20px 36px; border-radius:22px; background:linear-gradient(135deg,#3b1530 0%,#5b2148 55%,#8a3a63 100%); color:#fff; margin-bottom:34px; }
+  .hero h1{ font-size:34px; font-weight:800; }
+  .hero p{ color:#f0d6e2; margin-top:12px; font-size:16px; }
+  .hero .badge{ display:inline-block; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.28); padding:4px 14px; border-radius:999px; font-size:13px; margin-top:16px; }
+
+  .kicker{ color:#8a3a63; font-weight:700; font-size:14px; letter-spacing:2px; }
+  section{ margin-top:50px; }
+  .secTitle{ font-size:27px; font-weight:800; margin:6px 0 8px; }
+  .secSub{ color:var(--sub); font-size:15px; margin-bottom:20px; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .grid3{ display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+  @media(max-width:860px){ .grid2,.grid3{ grid-template-columns:1fr; } .hero h1{ font-size:26px; } }
+  .card{ background:var(--card); border:1px solid var(--line); border-radius:18px; padding:22px; box-shadow:0 4px 18px rgba(20,35,70,.05); }
+  .card h3{ font-size:18px; margin-bottom:10px; }
+  .pill{ font-size:12px; padding:2px 10px; border-radius:999px; color:#fff; font-weight:700; }
+
+  .tree{ border:1px solid var(--line); border-radius:16px; padding:20px; background:#fff; font-family:"Cascadia Code","Consolas",monospace; font-size:13px; overflow-x:auto; }
+  .t-tag{ color:#9a4b1f; font-weight:700; }
+  .t-attr{ color:var(--blue); }
+  .t-note{ color:#b48b00; font-style:italic; }
+  .hlred{ background:#fff0ec; border:1px solid #f5c6b8; border-radius:8px; padding:2px 8px; display:inline-block; }
+
+  .codeL{ font-family:"Cascadia Code",Consolas,monospace; background:#eef3fa; border-radius:6px; padding:2px 8px; font-size:12.5px; color:#8b3a8b; }
+  .codeR{ font-family:"Cascadia Code",Consolas,monospace; background:#eaf7ef; border-radius:6px; padding:2px 8px; font-size:12.5px; color:#1f6e43; }
+
+  .map{ width:100%; border-collapse:separate; border-spacing:0; background:#fff; border-radius:16px; overflow:hidden; border:1px solid var(--line); font-size:14px; }
+  .map th{ background:#4a1c3c; color:#fff; padding:12px; text-align:left; font-weight:600; }
+  .map td{ padding:11px 14px; border-top:1px solid var(--line); vertical-align:top; }
+  .map tr th:first-child{ width:42%; }
+  .hlrow{ background:#fdf2f8; }
+
+  .flow{ display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap; margin:18px 0; }
+  .fNode{ background:#fff; border:1.5px solid var(--line); border-radius:14px; padding:14px 18px; text-align:center; box-shadow:0 3px 12px rgba(20,35,70,.06); }
+  .fNode b{ font-size:15px; display:block; }
+  .fNode small{ color:var(--sub); }
+  .fArr{ font-size:24px; color:#8a3a63; font-weight:800; }
+
+  .feBox{ font-family:"Cascadia Code",Consolas,monospace; font-size:12.5px; border-radius:10px; padding:8px 10px; color:#fff; }
+  .demo{ background:#0f172a; color:#fff; border-radius:16px; padding:24px; font-size:17px; font-family:Georgia,serif; line-height:2.1; }
+  .tgc{ color:#ffd76a; font-weight:700; }
+  .cau{ border-bottom:3px solid #0000FF; background:rgba(0,0,255,.15); border-radius:4px; padding:0 4px; }
+  .eff{ border-bottom:3px solid #FF0000; background:rgba(255,0,0,.15); border-radius:4px; padding:0 4px; }
+  .tgt{ border-bottom:3px solid #ffd76a; background:rgba(255,215,106,.15); border-radius:4px; padding:0 4px; }
+  .qBox{ background:linear-gradient(135deg,#fff8ec,#fffdf7); border:2px solid var(--gold); border-radius:18px; padding:24px; margin-top:20px; }
+  .value{ background:#fff; border:1px solid var(--line); border-radius:16px; padding:20px; }
+  .value .ic{ font-size:30px; }
+  .value h4{ margin:8px 0 6px; font-size:16px; }
+  .value p{ color:var(--sub); font-size:13.5px; }
+  .footer{ text-align:center; color:var(--sub); font-size:13px; margin-top:54px; }
+  .tag { background:#f1f4fa; border-radius:6px; padding:1px 7px; font-family:"Cascadia Code",Consolas,monospace; font-size:12.5px; color:#5a3d74; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HERO -->
+  <div class="hero">
+    <h1>词条档案剩下的四个栏目</h1>
+    <p>lexeme · semType · valences · subCorpus —— 在一个"词条文件"里各管什么</p>
+    <div><span class="badge">规则：schema/lexUnit.xsd · 实例：lu/lu2.xml 等</span></div>
+  </div>
+
+  <!-- ===== 01 总览 ===== -->
+  <section>
+    <div class="kicker">01 · 先看全景</div>
+    <h2 class="secTitle">一个词条文件 = 一张「词条档案表」</h2>
+    <p class="secSub">以 <span class="tag">&lt;lexUnit&gt;</span> 为根的 XML，像一张按栏目填好的档案表，六个栏目按固定顺序出现：</p>
+    <div class="tree">
+      <div><span class="t-tag">&lt;lexUnit</span> <span class="t-attr">name="cause.v"</span> <span class="t-note">← 封面：词条名 + 词性 + 属于哪个 frame</span></div>
+      <div>&nbsp;&nbsp;├─ <span class="hlred">◆ header</span>　<span class="t-note">（上一集讲过了：出处 + 颜色图例）</span></div>
+      <div>&nbsp;&nbsp;├─ <span class="t-tag">&lt;definition&gt;</span> "be the cause of..."　<span class="t-note">词典释义</span></div>
+      <div>&nbsp;&nbsp;├─ <span class="hlred">◆ &lt;lexeme /&gt;</span>　<span class="t-note">← 名词条本身长什么样</span></div>
+      <div>&nbsp;&nbsp;├─ <span class="hlred">◆ &lt;semType /&gt;</span>　<span class="t-note">← 这个词条被打的"语义类别标签"（可选）</span></div>
+      <div>&nbsp;&nbsp;├─ <span class="hlred">◆ &lt;valences&gt;</span>　<span class="t-note">← 这个词在句子里的"搭配模式公式"</span></div>
+      <div>&nbsp;&nbsp;└─ <span class="hlred">◆ &lt;subCorpus&gt;</span>　<span class="t-note">← 真实例句 + 每种词的人工标注</span></div>
+    </div>
+    <div class="flow" style="margin-top:20px;">
+      <div class="fNode" style="background:#f2e6f6;">lexeme<b>是"哪个词"</b><small>身份信息</small></div>
+      <div class="fArr">→</div>
+      <div class="fNode" style="background:#fff3e0;">semType<b>词条分类</b><small>语义标签</small></div>
+      <div class="fArr">→</div>
+      <div class="fNode" style="background:#e8f6ee;">valences<b>搭配公式</b><small>规律总结</small></div>
+      <div class="fArr">→</div>
+      <div class="fNode" style="background:#e9f0ff;">subCorpus<b>例句仓库</b><small>证据 + 标注</small></div>
+    </div>
+  </section>
+
+  <!-- ===== 02 lexeme ===== -->
+  <section>
+    <div class="kicker">02 · lexeme</div>
+    <h2 class="secTitle">lexeme = 这个"词条"的登记名字</h2>
+    <p class="secSub">最朴素的栏目：说清楚"这里研究的是哪个词"。规则来自 <span class="tag">commonTypes.xsd</span> 的 lexemeType。</p>
+    <table class="map">
+      <tr><th>规则（xsd）</th><th>实例（lu2.xml 第 57 行）</th></tr>
+      <tr>
+        <td><span class="codeL">&lt;xsd:element name="lexeme" type="fn:lexemeType" minOccurs="1" maxOccurs="unbounded"/&gt;</span><br>
+            至少 1 个，可多个（词组有多词时不止一个）；每个必须有 <b>name（词）</b> 和 <b>POS（词性）</b>。</td>
+        <td><span class="codeR">&lt;lexeme POS="V" name="cause"/&gt;</span><br>含义：词条是动词 <b>cause</b>。选择受限：POS 只能从 A/ADV/V/N… 等固定枚举里选。</td>
+      </tr>
+    </table>
+    <div class="grid3" style="margin-top:18px;">
+      <div class="card"><h3>🔤 有什么用 1</h3><p style="color:var(--sub);font-size:14px;">文件"自我介绍"：给机器定位是哪个词、什么词性，其它栏目（valences/subCorpus）都默认是围绕它讲的。</p></div>
+      <div class="card"><h3>🎯 有什么用 2</h3><p style="color:var(--sub);font-size:14px;">一个词条可以是"多词表达式"，比如 <b>all right</b>：那时会写多个 lexeme，每个带顺序。</p></div>
+      <div class="card"><h3>🗂️ 有什么用 3</h3><p style="color:var(--sub);font-size:14px;">文件名 lu2.xml 只是编号，真正可读的名字在 lexeme 里——方便人眼检索与索引。</p></div>
+    </div>
+  </section>
+
+  <!-- ===== 03 semType ===== -->
+  <section>
+    <div class="kicker">03 · semType</div>
+    <h2 class="secTitle">semType = 打在整个词条上的「类别标签」</h2>
+    <p class="secSub">不是每个词条都有（可选栏目）。有的话，就是一两个"这个词的语义归类"，像图书馆贴的分类贴纸。</p>
+    <div class="grid2">
+      <div class="card">
+        <h3>📖 规则（commonTypes.xsd）</h3>
+        <div class="tree">
+          <div><span class="t-tag">&lt;xsd:complexType name="semTypeRefType"&gt;</span></div>
+          <div>&nbsp;&nbsp;├─ &lt;attribute <span class="t-attr">ID</span> (整数) /&gt;</div>
+          <div>&nbsp;&nbsp;└─ &lt;attribute <span class="t-attr">name</span> (名字) /&gt;</div>
+          <div><span class="t-note">只允许"ID + 名字"两个信息，不能乱加。</span></div>
+        </div>
+        <p style="margin-top:10px;font-size:13.5px;color:var(--sub);">格式跟 header 里的 corpus 一样，属于"引用型"栏目——只写一个 ID 去关联系统的语义类型表。</p>
+      </div>
+      <div class="card">
+        <h3>💡 实例</h3>
+        <div class="feBox" style="background:#2e9e5b;">lu10294.xml（different.a）第 35 行：<br>&lt;semType name="<b>Negative</b>" ID="99"/&gt;</div>
+        <div class="feBox" style="background:#7b4fd8;margin-top:10px;">lu10123.xml：Extragalactic<br>&lt;semType name="<b>Sensory_modality</b>" ID="92"/&gt;</div>
+        <p style="margin-top:12px;font-size:13.5px;color:var(--sub);">含义："different 这个词条的词义，属于"负面(Negative)"这一类语义。"<br>而 <b>cause.v（lu2.xml）没有 semType</b>，因为它是可选的。</p>
+      </div>
+    </div>
+    <p style="margin-top:16px;font-size:14.5px;">⭐ 有什么用：批量做语义研究的"筛子"——例如"把所有 Negative 语义的词一块儿取出来"对比观察，不用一个个读文件。</p>
+  </section>
+
+  <!-- ===== 04 valences ===== -->
+  <section>
+    <div class="kicker">04 · valences（这集的重头戏）</div>
+    <h2 class="secTitle">valences = 这个词的真实「搭配模式」总结</h2>
+    <p class="secSub">上面是"身份与标签"，这里是真正的"语法知识"：大量例句统计后，这个动词的每个语义角色(FE)在句子里<b>通常出现在什么语法位置 GF、用什么短语形式 PT</b>。</p>
+
+    <div class="tree">
+      <div><span class="t-tag">&lt;valences&gt;</span>　<span class="t-note">内部只有三种"零件"</span></div>
+      <div>&nbsp;&nbsp;├─ &lt;governor /&gt;　<span class="t-note">支配词（本文件未使用，规则预留）</span></div>
+      <div>&nbsp;&nbsp;├─ <b style="color:#1f6e43;">&lt;FERealization&gt;</b> ×N　<span class="t-note">：单个语义角色每次是怎么被"说出来的"</span></div>
+      <div>&nbsp;&nbsp;│　&nbsp;├─ &lt;FE name="Actor"/&gt;　<span class="t-note">哪个角色</span></div>
+      <div>&nbsp;&nbsp;│　&nbsp;└─ &lt;pattern total="24"&gt;　<span class="t-note">一种句式，出现24次</span></div>
+      <div>&nbsp;&nbsp;│　&nbsp;&nbsp;&nbsp;&nbsp;├─ &lt;valenceUnit GF="Ext" PT="NP" FE="Actor"/&gt;　<span class="t-note">主语·名词短语</span></div>
+      <div>&nbsp;&nbsp;│　&nbsp;&nbsp;&nbsp;&nbsp;└─ &lt;annoSet ID="784448"/&gt; ×24　<span class="t-note">指向例句仓库的具体标注</span></div>
+      <div>&nbsp;&nbsp;└─ <b style="color:#5a3d74;">&lt;FEGroupRealization&gt;</b> ×N　<span class="t-note">：多个角色"一起组合出现"的模式</span></div>
+    </div>
+
+    <h3 style="margin:26px 0 14px;font-size:18px;">从 lu2.xml 里"解码"出来的一句话总结</h3>
+    <div class="grid2">
+      <div class="card" style="background:#eefbf4;border-color:#bfe8cf;">
+        <h3 style="color:#1f6e43;">Actor 最常见的两种样子</h3>
+        <div class="feBox" style="background:#1E90FF;">&lt;FE name="Actor"/&gt; ×26<br>&lt;pattern total="24"&gt; GF=Ext PT=NP → "actor 当主语，名词短语"<br>&lt;pattern total="2"&gt; GF=Dep PT=PP[by] → "by XXX 介词短语当 actor"</div>
+      </div>
+      <div class="card" style="background:#8a3a63;border-color:#a15b82;">角色组合例子（FEGroupRealization）</div>
+      <div class="card" style="background:#fdf6ec;border-color:#ecd0a8;">
+        <h3 style="color:#7a5c00;">Effect 最常见的两种样子</h3>
+        <div class="feBox" style="background:#e0442c;">&lt;FE name="Effect"/&gt; ×115<br>&lt;pattern total="89"&gt; GF=Obj PT=NP → "effect 当宾语"，如 caused <b>the loss</b></div>
+      </div>
+      <div class="card" style="background:#eef3fd;border-color:#c3d6f5;">
+        <h3 style="color:#2456b3;">三兄弟一起出场 top1</h3>
+        <div class="feBox" style="background:#7b4fd8;">Cause + Effect 组合 ×66 → str#1（44次）：Cause当主语(Ext,Np) + Effect当宾语(Obj,Np)，即 "X caused Y"</div>
+      </div>
+    </div>
+    <p style="margin-top:14px;font-size:14.5px;">⭐ 有什么用：把标注语料的规律<b>自动算成语法公式</b>。NLP 里这就是"配价词典"——生成语法、语义角色标注、词典学、教学都能直接查。</p>
+  </section>
+
+  <!-- ===== 05 subCorpus ===== -->
+  <section>
+    <div class="kicker">05 · subCorpus</div>
+    <h2 class="secTitle">subCorpus = 例句仓库 + 人工标注</h2>
+    <p class="secSub">上面的 valences 是"总结"，这里是"原始证据"：一仓库真实英文句子，每条句子都被人工标注了每个词属于哪个语义角色、什么语法位置、什么短语类型。</p>
+    <div class="tree">
+      <div><span class="t-tag">&lt;subCorpus name="V-429-s20-rcoll-change"&gt;</span></div>
+      <div>&nbsp;&nbsp;└─ <span class="t-tag">&lt;sentence</span> <span class="t-attr">ID="651962"</span><span class="t-tag">&gt;</span>　<span class="t-note">一条真实例句</span></div>
+      <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├─ <span class="t-tag">&lt;text&gt;</span> "What caused you to change your mind ?" <span class="t-note">原句</span></div>
+      <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└─ <span class="t-tag">&lt;annotationSet</span> <span class="t-attr">ID="784392"</span> <span class="t-attr">status="MANUAL"</span><span class="t-tag">&gt;</span> <span class="t-note">人工标注集</span></div>
+      <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└─ <span class="t-tag">&lt;layer name="FE"&gt;</span>　<span class="t-note">语义角色层</span></div>
+      <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├─ &lt;label <span class="t-attr">name="Cause"</span> <span class="t-attr">start="0"</span> <span class="t-attr">end="3"</span>/&gt;</div>
+      <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└─ &lt;label <span class="t-attr">name="Effect"</span> <span class="t-attr">start="12"</span> <span class="t-attr">end="14"</span>/&gt; ...</div>
+      <div style="margin-top:8px;">&nbsp;&nbsp;还有 <span class="t-attr">layer</span>：<span class="t-tag">GF</span>(语法位置) / <span class="t-tag">PT</span>(短语类型) / <span class="t-tag">Target</span>(目标词) / <span class="t-tag">BNC</span>(词性) …</div>
+    </div>
+
+    <div class="demo" style="margin-top:18px;">
+      <span class="cau">What</span>
+      <span class="tgt">caused</span>
+      <span class="eff">you</span>
+      <span class="eff">to change your mind</span> ?
+      <div class="legendLine" style="display:flex;gap:20px;flex-wrap:wrap;font-size:13px;margin-top:10px;font-family:'Microsoft YaHei'">
+        <span><span style="display:inline-block;width:14px;height:14px;border-radius:4px;background:#0000FF;vertical-align:-2px"></span> Cause 起因</span>
+        <span><span style="color:#ffd76a;font-family:Georgia,serif">caused</span> = Token=Tasg=目标词</span>
+        <span><span style="display:inline-block;width:14px;height:14px;border-radius:4px;background:#FF0000;vertical-align:-2px"></span> Effect 结果</span>
+      </div>
+    </div>
+    <p style="margin-top:14px;font-size:14.5px;">⭐ 有什么用：这就是 FrameNet 的核心资产——<b>金标(manually-annotated)训练数据</b>。机器学习/语义解析用它当标准答案；其中 valences 的 annoSet ID 就是从这些句子堆里统计来的。</p>
+  </section>
+
+  <!-- ===== 06 连起来看 ===== -->
+  <section>
+    <div class="kicker">06 · 把四处连成一张网</div>
+    <h2 class="secTitle">它们四个不是独立栏目，而是环环相扣</h2>
+    <p class="secSub">以 annoSet 编号为"接头暗号"，四个栏目在文件内部互相咬合：</p>
+    <div class="flow">
+      <div class="fNode" style="background:#eaf6ff;max-width:210px;"><b>header 颜色图例</b><small>FE 的缩写与底色</small></div>
+      <div class="fArr">→</div>
+      <div class="fNode" style="background:#e8f6ee;max-width:210px;"><b>valences 公式</b><small>pattern 后面挂着 annoSet ID</small></div>
+      <div class="fArr">→</div>
+      <div class="fNode" style="background:#e9f0ff;max-width:210px;"><b>subCorpus 例句</b><small>annotationSet 有相同 ID，status=MANUAL</small></div>
+    </div>
+    <div class="card" style="background:#fff9f2;border:1.5px solid #f0c8a0;">
+      <h3>🔬 实锤例子：annoSet ID = 784392（lu2.xml）</h3>
+      <table class="map" style="margin-top:10px;">
+        <tr><th>栏目</th><th>内容</th></tr>
+        <tr><td><b>valences → Cause</b></td><td><span class="codeR">&lt;annoSet ID="784392"/&gt;</span> 挂在 pattern: GF=Ext · PT=NP · FE=Cause</td></tr>
+        <tr><td><b>valences → Effect</b></td><td><span class="codeR">&lt;annoSet ID="784392"/&gt;</span> 挂在 pattern: GF=Obj · PT=NP · FE=Effect</td></tr>
+        <tr class="hlrow"><td><b>subCorpus → sentence 651962</b></td><td><span class="codeR">&lt;annotationSet ID="784392" status="MANUAL"&gt;</span> label: Cause(0-3) 当主语，Effect(12-14 &amp; 16-34) 当宾语</td></tr>
+      </table>
+      <p style="margin-top:12px;font-size:14px;">同一个 ID 把"公式"和"例句证据"钉在一起：<b>valences 说 Actor 常作主语，subCorpus 里就能翻到"What caused you…"那条真句验证</b>。整个文件因此可交叉核对、可自动校验，也永远自圆其说。</p>
+    </div>
+  </section>
+
+  <!-- ===== 07 总结 ===== -->
+  <section>
+    <div class="qBox">
+      <div class="kicker">07 · 回到你的问题</div>
+      <h2 class="secTitle">一句话总结四个栏目</h2>
+      <div class="grid2" style="margin-top:14px;">
+        <div class="value"><div class="ic">🔤</div><h4>lexeme</h4><p>登记"这是哪个词、什么词性"——身份栏。</p></div>
+        <div class="value"><div class="ic">🏷️</div><h4>semType</h4><p>给整个词条贴"语义类别"标签，便于归类检索——分类栏（可选）。</p></div>
+        <div class="value"><div class="ic">📐</div><h4>valences</h4><p>把大量例句统计成"这个语义角色常在句中哪个位置、长成什么短语"的配价公式——规律栏。</p></div>
+        <div class="value"><div class="ic">📚</div><h4>subCorpus</h4><p>真实例句 + 逐词人工标注，是公式的证据来源，也是 NLP 训练金标数据——证据栏。</p></div>
+      </div>
+    </div>
+    <div style="max-width:860px;margin:24px auto 0;background:linear-gradient(135deg,#4a1c3c,#8a3a63);border-radius:20px;padding:30px;text-align:center;color:#fff;">
+      <p style="font-size:19px;font-weight:700;line-height:1.7;">
+        lexeme 说是谁 → semType 说是哪类 → valences 说怎么造句 → subCorpus 拿出真句子当证据。<br>
+        <span style="color:#ffd76a;">前三个是"结论"，最后一个是"依据"；依靠 annoSet 编号，整份文件环环可查。</span>
+      </p>
+    </div>
+  </section>
+
+  <div class="footer">参考文件：schema/lexUnit.xsd · schema/commonTypes.xsd · schema/sentence.xsd · lu/lu2.xml · lu/lu10294.xml</div>
+</div>
+</body>
+</html>
