@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:struct:full-text:v1",
+  "title": "full-text (v1) 全文标注文档结构",
+  "description": "全文标注文档（fullTextAnnotation）的纯结构设计，对齐 FrameNet fullText.xsd：根 fullTextAnnotation 含必需的 header，后跟 0 或多个 sentence（结构同 lexicographic 标注，即 sentenceType）。header 携带 corpus/document/frame-FE 图例，sentence 结构引用 sentence.json。顶层引用 spec-types.json 的共享类型。",
+  "version": "v1",
+
+  "$defs": {
+    "version": {
+      "type": "string",
+      "pattern": "^v(0|[1-9]\\d*)(-[a-z][a-z0-9]*)?$"
+    },
+    "idRef": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "非负整数 ID，对应 commonTypes.xsd 的 IDType。"
+    },
+    "coreTypeEnum": {
+      "type": "string",
+      "enum": ["Core", "Peripheral", "Extra-Thematic", "Core-Unexpressed"],
+      "description": "FE 核性类型，对应 commonTypes.xsd 的 coreType 枚举。"
+    },
+    "corpusSchema": {
+      "type": "object",
+      "description": "语料，对应 header.xsd 的 corpDocType：document* + ID/name/description。",
+      "required": ["id", "name", "description"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idRef" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "documents": {
+          "type": "array",
+          "description": "文档清单（0 个或多个），对应 document 元素（ID/name/description）。",
+          "items": {
+            "type": "object",
+            "required": ["id", "name", "description"],
+            "properties": {
+              "id": { "$ref": "#/$defs/idRef" },
+              "name": { "type": "string" },
+              "description": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "frameLegend": {
+      "type": "object",
+      "description": "框架 FE 图例，对应 header.xsd 的 header/frame 元素：FE 序列（name/abbrev/type/bgColor/fgColor）。",
+      "properties": {
+        "frame_schema_id": { "$ref": "#/$defs/idRef" },
+        "frame_schema_name": { "type": "string" },
+        "fes": {
+          "type": "array",
+          "description": "FE 图例清单（1 个或多个），对应 header/frame/FE 元素。",
+          "items": {
+            "type": "object",
+            "required": ["name", "type"],
+            "properties": {
+              "name": { "type": "string" },
+              "abbrev": { "type": "string" },
+              "type": { "$ref": "#/$defs/coreTypeEnum" }
+            },
+            "additionalProperties": false
+          },
+          "minItems": 1
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "headerSchema": {
+      "type": "object",
+      "description": "文档头，对应 fullText.xsd 引入的 headerType：corpus* + 可选 frame 图例。",
+      "properties": {
+        "corpora": {
+          "type": "array",
+          "description": "语料清单（0 个或多个）。",
+          "items": { "$ref": "#/$defs/corpusSchema" }
+        },
+        "frame": { "$ref": "#/$defs/frameLegend" }
+      },
+      "additionalProperties": false
+    },
+
+    "metadata": {
+      "type": "object",
+      "description": "全文文档元信息（对齐 headerType，并扩展系统元信息字段）。",
+      "required": ["name", "version", "description", "scope"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "$ref": "#/$defs/version" },
+        "description": { "type": "string" },
+        "scope": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  },
+
+  "type": "object",
+  "description": "full-text 文档顶层结构：header + 全文句子序列。",
+  "required": ["$schema", "$id", "metadata", "header", "sentences"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "const": "https://json-schema.org/draft/2020-12/schema"
+    },
+    "$id": {
+      "type": "string",
+      "pattern": "^urn:full-text:[a-z0-9-]+:v[0-9]+(-[a-z][a-z0-9]*)?$"
+    },
+    "metadata": { "$ref": "#/$defs/metadata" },
+    "header": { "$ref": "#/$defs/headerSchema" },
+    "sentences": {
+      "type": "array",
+      "description": "全文句子序列（0 个或多个），对应 sentence 元素，结构引用 sentence.json。",
+      "items": { "$ref": "./sentence.json#/$defs/sentenceSchema" }
+    },
+    "validation_rules": {
+      "type": "array",
+      "description": "文档级校验规则：sentence.doc_id/corp_id 须能在 header 中解析；header 的 FE 图例贯穿全部 annotation_set。",
+      "items": {
+        "type": "object",
+        "required": ["rule", "expression"],
+        "properties": {
+          "rule": { "type": "string" },
+          "expression": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
