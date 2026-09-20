@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>你从哪里进，能从哪里出——FrameNet 词条文件的"交通网"</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root{
+    --ink:#1a2332; --sub:#5b6b82; --line:#dbe3ee; --bg:#f5f7fb; --card:#fff;
+    --blue:#1E90FF; --green:#2e9e5b; --red:#e0442c; --purple:#7b4fd8; --gold:#ffb020;
+    --entry:#1f8f4d; --exit:#d6453d;
+  }
+  body{ font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif; background:var(--bg); color:var(--ink); line-height:1.65; }
+  .wrap{ max-width:1120px; margin:0 auto; padding:32px 20px 90px; }
+
+  .hero{ text-align:center; padding:44px 20px 36px; border-radius:22px; background:linear-gradient(135deg,#14241a 0%,#1d3b28 55%,#2a5c3a 100%); color:#fff; margin-bottom:34px; }
+  .hero h1{ font-size:33px; font-weight:800; }
+  .hero p{ color:#cfe8d8; margin-top:12px; font-size:16px; }
+  .gate{ display:inline-flex; gap:10px; margin-top:16px; flex-wrap:wrap; justify-content:center; }
+  .gate span{ padding:4px 14px; border-radius:999px; font-size:13px; font-weight:700; border:1px solid rgba(255,255,255,.3); }
+  .g-in{ background:rgba(46,158,91,.35); }
+  .g-out{ background:rgba(224,68,44,.35); }
+
+  .kicker{ color:#1f8f4d; font-weight:700; font-size:14px; letter-spacing:2px; }
+  section{ margin-top:50px; }
+  .secTitle{ font-size:27px; font-weight:800; margin:6px 0 8px; }
+  .secSub{ color:var(--sub); font-size:15px; margin-bottom:20px; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  @media(max-width:880px){ .grid2{ grid-template-columns:1fr; } .hero h1{ font-size:27px; } }
+  .card{ background:var(--card); border:1px solid var(--line); border-radius:18px; padding:22px; box-shadow:0 4px 18px rgba(20,35,70,.05); }
+  .card h3{ font-size:18px; margin-bottom:10px; }
+
+  .tag{ background:#eef1f8; border-radius:6px; padding:1px 7px; font-family:"Cascadia Code",Consolas,monospace; font-size:12.5px; color:#5a3d74; }
+  .codeL{ font-family:"Cascadia Code",Consolas,monospace; background:#eef3fa; border-radius:6px; padding:2px 8px; font-size:12.5px; color:#8b3a8b; }
+  .codeR{ font-family:"Cascadia Code",Consolas,monospace; background:#eaf7ef; border-radius:6px; padding:2px 8px; font-size:12.5px; color:#1f6e43; }
+  .hlrow{ background:#f4fdf6; }
+
+  .tree{ border:1px solid var(--line); border-radius:16px; padding:20px; background:#fff; font-family:"Cascadia Code",Consolas,monospace; font-size:13px; overflow-x:auto; }
+  .t-tag{ color:#9a4b1f; font-weight:700; }
+  .t-attr{ color:var(--blue); }
+  .t-note{ color:#b48b00; font-style:italic; }
+
+  /* entry / exit labels */
+  .inlab,.outlab{ font-weight:800; font-size:12px; letter-spacing:1px; padding:2px 12px; border-radius:999px; color:#fff; display:inline-block; }
+  .inlab{ background:var(--entry); }
+  .outlab{ background:var(--exit); }
+  .edge{ stroke:#8a9bb3; stroke-width:2.5; fill:none; }
+  .edge.in{ stroke:var(--entry); }
+  .edge.out{ stroke:var(--exit); }
+
+  /* module node */
+  .mod{ border-radius:16px; padding:16px 18px; color:#fff; text-align:left; }
+  .mod h4{ font-size:17px; margin-bottom:6px; }
+  .mod small{ opacity:.9; font-size:12.5px; display:block; line-height:1.55; }
+  .mod .key{ font-family:"Cascadia Code",Consolas,monospace; font-size:12px; margin-top:8px; display:inline-block; background:rgba(255,255,255,.18); border-radius:6px; padding:2px 8px; }
+
+  /* the ID bus */
+  .bus{
+    background:#0f172a; color:#fff; border-radius:18px; padding:22px;
+    display:grid; grid-template-columns:repeat(3,1fr); gap:16px;
+  }
+  @media(max-width:880px){ .bus{ grid-template-columns:1fr; } }
+  .bus .slot{ background:rgba(255,255,255,.07); border:1px dashed rgba(255,255,255,.35); border-radius:14px; padding:14px; }
+  .bus .slot b{ display:block; font-family:"Cascadia Code",Consolas,monospace; font-size:15px; }
+  .bus .slot small{ color:#a9c0e8; font-size:12.5px; line-height:1.6; display:block; margin-top:4px; }
+
+  .tr{ background:#fff; border:1px solid var(--line); border-radius:18px; padding:6px 22px 18px; margin-bottom:20px; box-shadow:0 4px 18px rgba(20,35,70,.05); }
+  .trHead{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; border-bottom:1px solid #eef1f6; padding:14px 0; margin-bottom:14px; }
+  .trHead b{ font-size:16px; }
+  .steps{ display:flex; align-items:stretch; gap:8px; flex-wrap:wrap; }
+  .st{ background:#fff; border:1.5px solid var(--line); border-radius:12px; padding:10px 14px; font-size:12.8px; flex:1; min-width:130px; line-height:1.5; }
+  .st b{ font-size:13.5px; display:block; margin-bottom:3px; }
+  .st.mid{ text-align:center; }
+  .wait{ display:flex; align-items:center; color:#8a9bb3; font-weight:800; font-size:18px; }
+  .res{ background:#0f172a; border-radius:12px; color:#ffd76a; padding:12px 16px; font-size:13px; font-family:"Cascadia Code",Consolas,monospace; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .res b{ color:#9be8b8; }
+
+  .flow{ display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap; margin:18px 0; }
+  .fNode{ background:#fff; border:1.5px solid var(--line); border-radius:14px; padding:13px 16px; text-align:center; box-shadow:0 3px 12px rgba(20,35,70,.06); }
+  .fNode b{ font-size:14.5px; display:block; }
+  .fNode small{ color:var(--sub); }
+  .fArr{ font-size:22px; color:#1f8f4d; font-weight:800; }
+
+  .oGrid{ display:grid; grid-template-columns:repeat(5,1fr); gap:12px; }
+  @media(max-width:920px){ .oGrid{ grid-template-columns:repeat(2,1fr); } }
+  .out{ border-radius:14px; padding:14px; color:#fff; }
+  .out h5{ font-size:14px; margin-bottom:6px; }
+  .out p{ font-size:12.5px; opacity:.95; line-height:1.5; }
+  .out .n{ font-size:22px; font-weight:800; opacity:.4; float:right; }
+
+  .qBox{ background:linear-gradient(135deg,#fff8ec,#fffdf7); border:2px solid var(--gold); border-radius:18px; padding:26px; margin-top:20px; }
+  .footer{ text-align:center; color:var(--sub); font-size:13px; margin-top:54px; }
+  .mk{ font-weight:800; }
+  .g-in2{ color:var(--entry); } .g-out2{ color:var(--exit); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HERO -->
+  <div class="hero">
+    <h1>你从哪里进，能从哪里出</h1>
+    <p>一个 FrameNet 词条文件（lu2.xml）的内部交通网：入口、接头暗号、出口一次讲清</p>
+    <div class="gate">
+      <span class="g-in">🟢 入口（进去用哪个钥匙）</span>
+      <span class="g-out">🔴 出口（拿得走什么成果）</span>
+    </div>
+  </div>
+
+  <!-- ===== 01 一张总地图 ===== -->
+  <section>
+    <div class="kicker">01 · 先给一张总地图</div>
+    <h2 class="secTitle">六个栏目不是平铺，而是"手拉手"围着一个 ID 总线</h2>
+    <p class="secSub">每两个栏目之间靠"接头暗号"相连。暗号就是三类键：<span class="tag">annoSet ID</span>、<span class="tag">FE name</span>、<span class="tag">corpID+docID</span>。谁拿着键，谁就能从一段数据走到另一段。</p>
+
+    <!-- 中间总线 -->
+    <div class="bus">
+      <div class="slot"><b>🔗 annoSet ID</b><small>valences 的 pattern ↔ subCorpus 的 annotationSet。<br>例：784392</small></div>
+      <div class="slot"><b>🔗 FE name</b><small>header 图例 ↔ valences 单元 ↔ 句子里 label 的名字。<br>例：Cause / Effect</small></div>
+      <div class="slot"><b>🔗 corpID + docID</b><small>句子的出处 ↔ header 里的 corpus/document。<br>例：135 · 23511</small></div>
+    </div>
+
+    <!-- 四周栏目 -->
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-top:18px;">
+      <div class="mod" style="background:linear-gradient(135deg,#356859,#2b7a4b);">
+        <h4>① lexeme</h4><small>词条身份：cause.v</small><span class="key">钥匙：词形/词性</span>
+      </div>
+      <div class="mod" style="background:linear-gradient(135deg,#6a5acd,#7b4fd8);">
+        <h4>② semType</h4><small>语义类别标签</small><span class="key">钥匙：类型名</span>
+      </div>
+      <div class="mod" style="background:linear-gradient(135deg,#1f7bb0,#1E90FF);">
+        <h4>③ header</h4><small>出处清单 + FE 图例</small><span class="key">钥匙：corpID/docID · FE name</span>
+      </div>
+      <div class="mod" style="background:linear-gradient(135deg,#d08a1e,#e6a32e);">
+        <h4>④ valences</h4><small>搭配公式（GF·PT）</small><span class="key">钥匙：annoSet ID · FE name</span>
+      </div>
+      <div class="mod" style="background:linear-gradient(135deg,#c0392b,#e0442c);">
+        <h4>⑤ subCorpus</h4><small>例句 + 逐词标注</small><span class="key">钥匙：annoSet ID · FE name</span>
+      </div>
+    </div>
+    <p class="secSub" style="margin-top:16px;">💡 另有一个<b>对外接头暗号</b>：句子里 label 的 <span class="tag">feID</span>（如 feID=20 表示 Effect）——它指向 FrameNet 数据库全局的 FE 表，把例句和"全库统一编号"接上。</p>
+  </section>
+
+  <!-- ===== 02 三套接头暗号 ===== -->
+  <section>
+    <div class="kicker">02 · 三套接头暗号是怎么咬合的</div>
+    <h2 class="secTitle">用 lu2.xml 的"实拍 ID"演示每一套</h2>
+
+    <div class="tr">
+      <div class="trHead"><b>暗号 ①：annoSet ID —— 公式 ↔ 实证</b>
+        <span class="tag" style="font-size:13px;">两处都写 784392</span></div>
+      <div class="tree">
+        <div><b style="color:#1f6e43;">valences</b>（第 174 行）　→　<span class="codeR">&lt;pattern total="20"&gt; valenceUnit GF=Ext PT=NP FE=Cause ＋ &lt;annoSet ID="<span style="color:#e0442c;font-weight:700;">784392</span>"/&gt;</span></div>
+        <div style="color:#8a9bb3;margin:6px 0;">▲ 同一把钥匙 ▼</div>
+        <div><b style="color:#8b3a8b;">subCorpus</b>（第 838 行）　→　<span class="codeL">&lt;annotationSet ID="<span style="color:#e0442c;font-weight:700;">784392</span>" status="MANUAL"&gt;</span> 在句子 651962 里</div>
+      </div>
+      <p style="margin-top:10px;font-size:13.5px;color:var(--sub);">同一串数字把"Cause 常作主语"这句公式，和 "What <b>caused</b> you…" 这条真实句子钉成一个整体。valences 上挂的所有 annoSet，都能在 subCorpus 里翻到原句标注。</p>
+    </div>
+
+    <div class="tr">
+      <div class="trHead"><b>暗号 ②：FE name —— 句子 ↔ 图例</b>
+        <span class="tag" style="font-size:13px;">三处都写 Effect</span></div>
+      <div class="tree">
+        <div><b style="color:#8b3a8b;">sentences 的 label</b>（第 841 行）　→　<span class="codeL">&lt;label name="<span style="color:#e0442c;font-weight:700;">Effect</span>" feID="20" start="12" end="14"/&gt;</span></div>
+        <div style="color:#8a9bb3;margin:6px 0;">▲ ▼</div>
+        <div><b style="color:#1f6e43;">valences 的 valenceUnit</b>　→　<span class="codeL">&lt;valenceUnit GF="Obj" PT="NP" FE="<span style="color:#e0442c;font-weight:700;">Effect</span>"/&gt;</span></div>
+        <div style="color:#8a9bb3;margin:6px 0;">▲ ▼</div>
+        <div><b style="color:#1f7bb0;">header 的图例</b>（第 47 行）　→　<span class="codeL">&lt;FE name="<span style="color:#e0442c;font-weight:700;">Effect</span>" bgColor="FF0000" abbrev="Effect" type="Core-Unexpressed"/&gt;</span></div>
+      </div>
+      <p style="margin-top:10px;font-size:13.5px;color:var(--sub);">名字相同 = 说的是同一个语义角色。这一步让工具的"上色"成为可能：看到 label 的 name 是 Effect，就去 header 查 FE 的 bgColor=FF0000，于是红色就画上了。</p>
+    </div>
+
+    <div class="tr">
+      <div class="trHead"><b>暗号 ③：corpID + docID —— 例句 ↔ 出处</b>
+        <span class="tag" style="font-size:13px;">两处都写 135 · 23511</span></div>
+      <div class="tree">
+        <div><b style="color:#8b3a8b;">subCorpus 的 sentence</b>（第 5267 行）　→　<span class="codeL">&lt;sentence <span style="color:#e0442c;font-weight:700;">corpID="135" docID="23511"</span> ID="4096661"&gt;</span></div>
+        <div style="color:#8a9bb3;margin:6px 0;">▲ ▼</div>
+        <div><b style="color:#1f7bb0;">header 的 corpus/document</b>（第 8-9 行）　→　<span class="codeL">&lt;corpus <span style="color:#e0442c;font-weight:700;">ID="135"</span> name="NTI"&gt; &lt;document <span style="color:#e0442c;font-weight:700;">ID="23511"</span> name="Iran_Nuclear"/&gt;</span></div>
+      </div>
+      <p style="margin-top:10px;font-size:13.5px;color:var(--sub);">每条句子都自带"护照号"，反查出它来自哪本书（NTI）的哪一章（Iran_Nuclear），跟 header 顶部的出处清单对得上。</p>
+    </div>
+  </section>
+
+  <!-- ===== 03 四条旅行路线 ===== -->
+  <section>
+    <div class="kicker">03 · 四条标准线路</div>
+    <h2 class="secTitle">每条线都标好"入口"和"出口"</h2>
+
+    <!-- 线路 1 -->
+    <div class="tr">
+      <div class="trHead">
+        <b>🟢→🔴 线路 一：从「公式」查到「原句证据」</b>
+        <div><span class="inlab">入口：valences 的一个 pattern</span></div>
+      </div>
+      <div class="steps">
+        <div class="st"><b class="g-in2">进·钥匙</b>拿到 pattern↔annoSet ID<br><span class="tag">784392</span></div>
+        <div class="wait">→</div>
+        <div class="st mid"><b>凭 ID 跳转</b>去 subCorpus 找同 ID 的 annotationSet<br><span class="tag">第 838 行</span></div>
+        <div class="wait">→</div>
+        <div class="st"><b class="g-out2">出·成品</b>原句 <span class="tag">"What caused you to change your mind?"</span> + 标注位置</div>
+      </div>
+    </div>
+
+    <!-- 线路 2 -->
+    <div class="tr">
+      <div class="trHead">
+        <b>🟢→🔴 线路 二：从「句子标注」上色/翻译成可读结果</b>
+        <div><span class="inlab">入口：subCorpus 里一个 label</span></div>
+      </div>
+      <div class="steps">
+        <div class="st"><b class="g-in2">进·钥匙</b>label 的 name=<span class="tag">Effect</span>、start/end 位置</div>
+        <div class="wait">→</div>
+        <div class="st mid"><b>按 name 去 header</b>查 FE 的颜色/缩写<br><span class="tag">bgColor=FF0000</span></div>
+        <div class="wait">→</div>
+        <div class="st"><b class="g-out2">出·成品</b>用颜色画出的句子、图例对照表（人一眼看懂）</div>
+      </div>
+    </div>
+
+    <!-- 线路 3 -->
+    <div class="tr">
+      <div class="trHead">
+        <b>🟢→🔴 线路 三：从「例句」追溯「出处」</b>
+        <div><span class="inlab">入口：任何一条 sentence</span></div>
+      </div>
+      <div class="steps">
+        <div class="st"><b class="g-in2">进·钥匙</b>sentence 的 corpID/docID<br><span class="tag">135 · 23511</span></div>
+        <div class="wait">→</div>
+        <div class="st mid"><b>按 ID 去 header</b>定位 corpus/document 描述<br><span class="tag">NTI · Iran_Nuclear</span></div>
+        <div class="wait">→</div>
+        <div class="st"><b class="g-out2">出·成品</b>可复现的文献出处、版权归属信息</div>
+      </div>
+    </div>
+
+    <!-- 线路 4 -->
+    <div class="tr">
+      <div class="trHead">
+        <b>🟢→🔴 线路 四：从「词条封面」进入整包知识</b>
+        <div><span class="inlab">入口：lexeme / semType / lexUnit 根</span></div>
+      </div>
+      <div class="steps">
+        <div class="st"><b class="g-in2">进·钥匙</b>词形+词性+frame<br><span class="tag">cause · V · Causation</span></div>
+        <div class="wait">→</div>
+        <div class="st mid"><b>根节点展开</b>三个"大毛坯"自动绑好：header↔valences↔subCorpus</div>
+        <div class="wait">→</div>
+        <div class="st"><b class="g-out2">出·成品</b>完整的词条档案：图例+公式+例句+类别标签全数导出</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 04 出口汇总 ===== -->
+  <section>
+    <div class="kicker">04 · 出口汇总（你能拿走的五样东西）</div>
+    <h2 class="secTitle">所有"出口"都是从这五扇门出去</h2>
+    <div class="oGrid">
+      <div class="out" style="background:linear-gradient(135deg,#1f8f4d,#2fb05f);"><span class="n">1</span><h5>可复现数据</h5><p>每条例句可回到出处文档（corpID/docID），研究、引用、复现都说得清。</p></div>
+      <div class="out" style="background:linear-gradient(135deg,#1f7bb0,#2f9fd6);"><span class="n">2</span><h5>金色训练数据</h5><p>subCorpus 里 MANUAL 标注的句子 = NLP 模型标准答案（句子切分到 FE/GF/PT）。</p></div>
+      <div class="out" style="background:linear-gradient(135deg,#d08a1e,#e8ab40);"><span class="n">3</span><h5>配价语法公式</h5><p>valences 直接产出"X caused Y"这类可查的搭配规则，构成配价词典。</p></div>
+      <div class="out" style="background:linear-gradient(135deg,#7b4fd8,#9b76e8);"><span class="n">4</span><h5>可视化渲染</h5><p>FE name → header 颜色，把任意例句画成带色标注图（正是标注工具的工作）。</p></div>
+      <div class="out" style="background:linear-gradient(135deg,#c0392b,#e2634b);"><span class="n">5</span><h5>一致性校验</h5><p>顺着三套暗号反查：ID 对不上、颜色不是 6 位、label 出界，机器当场报错。</p></div>
+    </div>
+  </section>
+
+  <!-- ===== 05 总结 ===== -->
+  <section>
+    <div class="qBox">
+      <div class="kicker">05 · 一句话总结</div>
+      <h2 class="secTitle">入口是"钥匙"，出口是"成果"，中间是"三套暗号"</h2>
+      <div class="flow" style="margin-top:14px;">
+        <div class="fNode" style="background:#e6f7ec;border-color:#a8d8b8;"><span class="inlab" style="font-size:11px;">入口</span><b>任何栏目 / 任何 ID</b><small>lexeme 词、annoSet ID、FE name、corpID…</small></div>
+        <div class="fArr">— 拿钥匙 →</div>
+        <div class="fNode" style="background:#f2eefd;border-color:#cfc2ef;"><b>ID 总线 + 三套暗号</b><small>annoSet ID · FE name · corpID/docID</small></div>
+        <div class="fArr">→ 搭桥 →</div>
+        <div class="fNode" style="background:#fdeeea;border-color:#f2b7ad;"><span class="outlab" style="font-size:11px;">出口</span><b>五扇门之一</b><small>证据/数据/公式/渲染/校验</small></div>
+      </div>
+      <div style="max-width:880px;margin:22px auto 0;background:linear-gradient(135deg,#14241a,#2a5c3a);border-radius:18px;padding:26px;color:#fff;text-align:center;">
+        <p style="font-size:18px;font-weight:700;line-height:1.7;">
+          <span style="color:#9be8b8;">入口是任意一段数据，出口是你要的成果；</span><br>
+          不管从哪边进，只要沿三套暗号走，就一定能到达另一边。<span style="color:#ffd76a;">文件自始至终是一个闭环——这就是它"环环相扣"的含义。</span>
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <div class="footer">参考：schema/lexUnit.xsd · sentence.xsd · commonTypes.xsd · header.xsd ｜ 实例：lu/lu2.xml ｜ 页码：lu2.xml 实际行号</div>
+</div>
+</body>
+</html>
