@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:struct:lu-index:v1",
+  "title": "lu-index (v1) 词元索引结构",
+  "description": "词元索引文档（luIndex）的纯结构设计，对齐 FrameNet luIndex.xsd：根 luIndex 含 legend（status 图例）与 lu 条目列表。每个 lu 条目是纯属性结构，对应 XSD 属性：ID/name/status/frameName/frameID/hasAnnotation/numAnnotInstances。顶层引用 spec-types.json 的共享类型。",
+  "version": "v1",
+
+  "$defs": {
+    "version": {
+      "type": "string",
+      "pattern": "^v(0|[1-9]\\d*)(-[a-z][a-z0-9]*)?$"
+    },
+    "luEntry": {
+      "type": "object",
+      "description": "词元索引条目，对应 luIndex.xsd 的 lu 元素（纯属性）。",
+      "required": ["id", "name", "status", "frame_name", "frame_id", "has_annotation"],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "词元 ID，对应 lu@ID（xsd:int）。"
+        },
+        "name": {
+          "type": "string",
+          "pattern": "^.+\\..+$",
+          "description": "词元名（如 glint.v），对应 lu@name。"
+        },
+        "status": { "type": "string", "description": "词元状态，对应 lu@status。" },
+        "frame_name": {
+          "type": "string",
+          "pattern": "^[A-Z].*$",
+          "description": "所属框架名，对应 lu@frameName。"
+        },
+        "frame_id": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "所属框架 ID，对应 lu@frameID（xsd:int）。"
+        },
+        "has_annotation": {
+          "type": "boolean",
+          "description": "是否有标注，对应 lu@hasAnnotation（xsd:boolean）。"
+        },
+        "num_annot_instances": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "标注实例数，对应 lu@numAnnotInstances（可选）。"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "metadata": {
+      "type": "object",
+      "description": "索引文档元信息。",
+      "required": ["name", "version", "description", "scope"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "$ref": "#/$defs/version" },
+        "description": { "type": "string" },
+        "scope": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  },
+
+  "type": "object",
+  "description": "lu-index 文档顶层结构：legend 图例 + 词元索引条目列表。",
+  "required": ["$schema", "$id", "metadata", "lus"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "const": "https://json-schema.org/draft/2020-12/schema"
+    },
+    "$id": {
+      "type": "string",
+      "pattern": "^urn:lu-index:[a-z0-9-]+:v[0-9]+(-[a-z][a-z0-9]*)?$"
+    },
+    "metadata": { "$ref": "#/$defs/metadata" },
+    "legend": {
+      "type": "object",
+      "description": "状态图例，对应 luIndex.xsd 的 legend 元素。",
+      "properties": {
+        "status_types": {
+          "type": "array",
+          "description": "状态类型清单（0 个或多个），对应 statusType 元素。",
+          "items": {
+            "type": "object",
+            "required": ["name", "description"],
+            "properties": {
+              "name": { "type": "string" },
+              "description": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "lus": {
+      "type": "array",
+      "description": "词元索引条目列表（1 个或多个），对应 lu 元素。",
+      "items": { "$ref": "#/$defs/luEntry" },
+      "uniqueItems": true
+    },
+    "validation_rules": {
+      "type": "array",
+      "description": "文档级校验规则：lu 条目 id 全局唯一；frame_id/frame_name 须可在 frame-name-index 中解析；legend 中 status 与 lu.status 保持一致。",
+      "items": {
+        "type": "object",
+        "required": ["rule", "expression"],
+        "properties": {
+          "rule": { "type": "string" },
+          "expression": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
