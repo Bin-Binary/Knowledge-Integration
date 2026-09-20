@@ -1,0 +1,265 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:struct:lex-unit:v1",
+  "title": "lex-unit (v1) 词元文档结构",
+  "description": "单一词元文档（lexUnit）的纯结构设计，对齐 FrameNet lexUnit.xsd：根 lexUnit 含 header（corpus/frame 的 FE 图例）、definition、lexeme（词素列表）、semType（语义类型引用）、valences（价模式：governor / FERealization / FEGroupRealization）与 subCorpus（标注例句集，内嵌 sentence 结构）。顶层引用 spec-types.json 的共享类型，句子级结构引用 sentence.json。",
+  "version": "v1",
+
+  "$defs": {
+    "version": {
+      "type": "string",
+      "pattern": "^v(0|[1-9]\\d*)(-[a-z][a-z0-9]*)?$"
+    },
+    "idRef": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "非负整数 ID，对应 commonTypes.xsd 的 IDType（minInclusive=0）。"
+    },
+    "count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "统计数，对应 commonTypes.xsd 的 countType。"
+    },
+
+    "metadata": {
+      "type": "object",
+      "description": "词元文档元信息：对齐 lexUnit.xsd 的 basicLUAttributes + frameReference 属性组。",
+      "required": ["name", "version", "description", "scope", "lu_id", "pos", "status", "frame_schema_id", "frame_schema_name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^.+\\..+$",
+          "description": "词元名（如 glint.v），对应 LUNameType 的 '.+\\..+' 模式。"
+        },
+        "lu_id": { "$ref": "#/$defs/idRef" },
+        "pos": {
+          "type": "string",
+          "enum": ["A", "ADV", "ART", "AVP", "C", "CCON", "IDIO", "INTJ", "N", "NUM", "PREP", "PRON", "SCON", "V"],
+          "description": "词性，对应 POSType 枚举。"
+        },
+        "incorporated_fe": {
+          "type": "string",
+          "description": "内含 FE，对应 basicLUAttributes 的 incorporatedFE。"
+        },
+        "status": { "type": "string" },
+        "frame_schema_id": { "$ref": "#/$defs/idRef" },
+        "frame_schema_name": {
+          "type": "string",
+          "pattern": "^[A-Z].*$",
+          "description": "所属框架名，对应 frameNameType。"
+        },
+        "total_annotated": { "$ref": "#/$defs/count" },
+        "definition": { "type": "string", "minLength": 1, "description": "词元定义，对应 defType。" },
+        "version": { "$ref": "#/$defs/version" },
+        "description": { "type": "string" },
+        "scope": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+
+    "lexeme": {
+      "type": "object",
+      "description": "词素：对应 commonTypes.xsd 的 lexemeType（name/POS/breakBefore/headword/order）。",
+      "required": ["name", "pos"],
+      "properties": {
+        "name": { "type": "string" },
+        "pos": {
+          "type": "string",
+          "enum": ["A", "ADV", "ART", "AVP", "C", "CCON", "IDIO", "INTJ", "N", "NUM", "PREP", "PRON", "SCON", "V"]
+        },
+        "break_before": { "type": "boolean", "description": "对应 lexemeType 的 breakBefore。" },
+        "headword": { "type": "boolean" },
+        "order": { "type": "integer", "minimum": 0, "description": "对应 orderType。" }
+      },
+      "additionalProperties": false
+    },
+
+    "semTypeRef": {
+      "type": "object",
+      "description": "词元关联的语义类型引用，对应 commonTypes.xsd 的 semTypeRefType（ID/name）。",
+      "required": ["id", "name"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idRef" },
+        "name": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+
+    "annoSetRef": {
+      "type": "object",
+      "description": "标注集引用，对应 lexUnit.xsd 的 annoSetType（仅 ID 属性）。",
+      "required": ["anno_set_id"],
+      "properties": {
+        "anno_set_id": { "$ref": "#/$defs/idRef" }
+      },
+      "additionalProperties": false
+    },
+
+    "valenceUnit": {
+      "type": "object",
+      "description": "价单元，对应 lexUnit.xsd 的 valenceUnitType（FE/PT/GF 三个属性）。",
+      "required": ["fe_name", "pt", "gf"],
+      "properties": {
+        "fe_name": { "type": "string", "description": "对应 valenceUnit 的 FE 属性。" },
+        "pt": { "type": "string", "description": "短语类型（Phrase Type）。" },
+        "gf": { "type": "string", "description": "语法功能（Grammatical Function）。" }
+      },
+      "additionalProperties": false
+    },
+
+    "valences": {
+      "type": "object",
+      "description": "价模式集合，对应 lexUnit.xsd 的 valencesType。",
+      "properties": {
+        "governors": {
+          "type": "array",
+          "description": "支配词（0 或多个），对应 governor 元素。",
+          "items": {
+            "type": "object",
+            "required": ["lemma", "type", "anno_sets"],
+            "properties": {
+              "lemma": { "type": "string" },
+              "type": { "type": "string" },
+              "anno_sets": {
+                "type": "array",
+                "items": { "$ref": "#/$defs/annoSetRef" }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "fe_realizations": {
+          "type": "array",
+          "description": "单 FE 实现（0 或多个），对应 FERealization 元素：一个 FE + 多个 pattern。",
+          "items": {
+            "type": "object",
+            "required": ["fe_name", "total", "patterns"],
+            "properties": {
+              "fe_name": { "type": "string", "description": "对应 FERealization/FE@name。" },
+              "total": { "$ref": "#/$defs/count" },
+              "patterns": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["total", "valence_units", "anno_sets"],
+                  "properties": {
+                    "total": { "$ref": "#/$defs/count" },
+                    "valence_units": {
+                      "type": "array",
+                      "items": { "$ref": "#/$defs/valenceUnit" }
+                    },
+                    "anno_sets": {
+                      "type": "array",
+                      "items": { "$ref": "#/$defs/annoSetRef" }
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "fe_group_realizations": {
+          "type": "array",
+          "description": "FE 组实现（0 或多个），对应 FEGroupRealization 元素：多个 FE + 多个 pattern。",
+          "items": {
+            "type": "object",
+            "required": ["fe_names", "total", "patterns"],
+            "properties": {
+              "fe_names": {
+                "type": "array",
+                "description": "对应 FEGroupRealization/FE@name 序列。",
+                "items": { "type": "string" }
+              },
+              "total": { "$ref": "#/$defs/count" },
+              "patterns": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["total", "valence_units", "anno_sets"],
+                  "properties": {
+                    "total": { "$ref": "#/$defs/count" },
+                    "valence_units": {
+                      "type": "array",
+                      "items": { "$ref": "#/$defs/valenceUnit" }
+                    },
+                    "anno_sets": {
+                      "type": "array",
+                      "items": { "$ref": "#/$defs/annoSetRef" }
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "subCorpus": {
+      "type": "object",
+      "description": "子语料（标注例句集），对应 lexUnit.xsd 的 subCorpusType（name + sentence*）。",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "sentences": {
+          "type": "array",
+          "description": "句子结构引用 sentence.json 的 sentenceSchema（sentenceType）。",
+          "items": { "$ref": "./sentence.json#/$defs/sentenceSchema" }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+
+  "type": "object",
+  "description": "lex-unit 文档顶层结构：词元元信息、词素、语义类型引用、价模式与子语料。",
+  "required": ["$schema", "$id", "metadata", "lexemes"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "const": "https://json-schema.org/draft/2020-12/schema"
+    },
+    "$id": {
+      "type": "string",
+      "pattern": "^urn:lex-unit:[a-zA-Z0-9_.-]+:v[0-9]+(-[a-z][a-z0-9]*)?$"
+    },
+    "metadata": { "$ref": "#/$defs/metadata" },
+    "lexemes": {
+      "type": "array",
+      "description": "词素清单（1 个或多个），对应 lexeme 元素。",
+      "items": { "$ref": "#/$defs/lexeme" },
+      "minItems": 1
+    },
+    "sem_types": {
+      "type": "array",
+      "description": "语义类型引用清单（0 个或多个），对应 semType 元素。",
+      "items": { "$ref": "#/$defs/semTypeRef" },
+      "uniqueItems": true
+    },
+    "valences": { "$ref": "#/$defs/valences" },
+    "sub_corpora": {
+      "type": "array",
+      "description": "子语料清单（0 个或多个），对应 subCorpus 元素。",
+      "items": { "$ref": "#/$defs/subCorpus" }
+    },
+    "validation_rules": {
+      "type": "array",
+      "description": "文档级校验规则：lexeme 至少 1 个；sem_types 引用须可解析；valences 中每类 realization 的 FE 名须存在。",
+      "items": {
+        "type": "object",
+        "required": ["rule", "expression"],
+        "properties": {
+          "rule": { "type": "string" },
+          "expression": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
