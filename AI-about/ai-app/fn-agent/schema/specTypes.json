@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:struct:spec-types:v1",
-  "title": "spec-types (v1) 共享顶层结构基线",
+  "$id": "urn:struct:specTypes:v1",
+  "title": "specTypes (v1) 共享顶层结构基线",
   "description": "对齐 FrameNet commonTypes.xsd 的职责：把所有 schema 文档共享的顶层结构、公共根元素、共享简单类型抽提为基线。后续新增的任一 schema（frame / frame-relations / sem-types / entity / unit / artifact / registry / index / spec）都必须继承本结构：顶层四键（metadata / validation_rules / conventions / external_refs）与 $defs 中的公共类型（urnRef / iso8601 / externalRef / sourceFileRef / version / definition / metadata / nameConstraint）。",
   "version": "v1",
 
@@ -30,13 +30,67 @@
       "type": "string",
       "minLength": 1,
       "pattern": "^[^\\s]+$",
-      "description": "名称约束：不含空白。对应 commonTypes.xsd 的 frameNameType 的放宽版。"
+      "description": "名称约束：不含空白"
+    },
+    "frameNameType": {
+      "type": "string",
+      "pattern": "^[A-Z][a-zA-Z0-9_]+$",
+      "description": "Frame/FE 名称，大写开头。对应 commonTypes.xsd。"
     },
     "sourceFileRef": {
       "type": "string",
       "pattern": "^\\./",
       "description": "源文件相对路径引用，如 ./R-ROLES-00.json。对应 commonTypes.xsd 中引用其他 schema 文件的 schemaLocation。"
     },
+    "orderType": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "顺序编号, lexeme 的 order、段落号等。对应 commonTypes.xsd 的 orderType。"
+    },
+    "countType": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "计数值, 句数、标注数等。对应 commonTypes.xsd 的 countType。"
+    },
+    "POSType": {
+      "type": "string",
+      "description": "14种词性枚举，对应 commonTypes.xsd 的 POSType。",
+      "enum": ["V", "N", "A", "ADV", "AVP", "PREP", "C", "SCON", "CCON", "PRON", "ART", "NUM", "INTJ", "IDIO"]
+    },
+    "coreType": {
+      "type": "string",
+      "description": "FE 核心类型 4 选 1，对应 commonTypes.xsd 的 coreType。",
+      "enum": ["Core", "Peripheral", "Extra-Thematic", "Core-Unexpressed"]
+    },
+    "LUNameType": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_.]+$",
+      "description": "LU 名称格式,词.词性,如 avenge.v，对应 commonTypes.xsd 的 LUNameType。"
+    },
+    "lexemeType": {
+      "type": "object",
+      "description": "lexeme 类型，词素：name + POS(必填) breakBefore / headword / order(可选)用于 lexUnit 下的 lexeme 元素。对应 commonTypes.xsd 的 lexemeType。",
+      "required": ["name", "POS"],
+      "additionalProperties": false
+    },
+    "semTypeRefType": {
+      "type": "object",
+      "description": "语义类型引用：ID + name。被 FE、lexUnit、semTypes使用，是引用，完整定义在 semTypes.json。对应 commonTypes.xsd 的 semTypeRefType。",
+      "required": ["name", "POS"],
+      "additionalProperties": false
+    }, 
+    "frameReference": {
+      "type": "object",
+      "description": "在 lexUnit、annotationSet 中引用 Frame。对应 commonTypes.xsd 的 frameReference。",
+      "required": ["frameID", "frameName"],
+      "additionalProperties": false
+    },
+    "basicLUAttributes": {
+      "type": "object",
+      "description": "lexUnit 的基础属性复用组。对应 commonTypes.xsd 的 basicLUAttributes。",
+      "required": ["ID", "name", "POS", "incorporatedFE"],
+      "additionalProperties": false
+    },       
     "metadata": {
       "type": "object",
       "description": "所有 schema 文档共享的元信息块。",
@@ -110,7 +164,7 @@
   },
 
   "type": "object",
-  "description": "spec-types 文档自身：多个 $defs 供所有 schema 通过 $ref 引用，无顶层数据载荷。",
+  "description": "specTypes 文档自身：多个 $defs 供所有 schema 通过 $ref 引用，无顶层数据载荷。",
   "required": ["$schema", "$id", "$defs"],
   "properties": {
     "$schema": {
@@ -119,7 +173,7 @@
     },
     "$id": {
       "type": "string",
-      "const": "urn:struct:spec-types:v1"
+      "const": "urn:struct:specTypes:v1"
     },
     "title": { "type": "string" },
     "description": { "type": "string" },

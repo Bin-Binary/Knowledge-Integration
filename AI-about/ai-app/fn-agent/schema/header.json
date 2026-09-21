@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:struct:header:v1",
+  "title": "header (v1) 标注数据可以追溯结构",
+  "description": "每个 lexUnit XML 和 fullText XML 开头都有一个 <header>，它记录这段标注来自哪个语料库、哪篇文档、属于哪个 Frame 的哪些 FE——是上下文说明，让后面的标注数据可追溯。被 lexUnit + fullText 两个 schema引用。对齐 header.xsd。",
+  "version": "v1",
+
+  "$defs": {
+    "document ": {
+      "type": "object",
+      "description": "文档信息",
+      "required": ["ID", "name"],
+      "properties": {
+        "ID": { "type": "string", "description": "文档 ID" },
+        "name": { "type": "string", "description": "文档名称" },
+        "description": { "type": "string", "description": "文档描述" }
+      },
+      "additionalProperties": false
+    },
+    "fe ": {
+      "type": "object",
+      "description": "FE信息",
+      "required": ["name", "type"],
+      "properties": {
+        "name": { "type": "string", "description": "FE名称" },
+        "abbrev": { "type": "string", "description": "FE简称（可选）" },
+        "type": { "type": "string", "description": "FE类别" }
+      },
+      "additionalProperties": false
+    }
+  },
+
+  "type": "object",
+  "description": "header 文档顶层结构：单句的文本与全部标注信息，同时作为内部类型被 full-text / lex-unit 引用。",
+  "required": ["$schema", "$id", "metadata", "header"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "const": "https://json-schema.org/draft/2020-12/schema"
+    },
+    "$id": {
+      "type": "string",
+      "pattern": "^urn:header:[a-z0-9-]+:v[0-9]+(-[a-z][a-z0-9]*)?$"
+    },
+    "metadata": { "$ref": "#/$defs/metadata" },
+    "header": { "$ref": "#/$defs/headerSchema" },
+    "validation_rules": {
+      "type": "array",
+      "description": "文档级校验规则：label 的 start/end 不越界；annotation_set.frame_name 与 frame_id 须一致且可解析；c_date 采用 %c 时间格式。",
+      "items": {
+        "type": "object",
+        "required": ["rule", "expression"],
+        "properties": {
+          "rule": { "type": "string" },
+          "expression": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
