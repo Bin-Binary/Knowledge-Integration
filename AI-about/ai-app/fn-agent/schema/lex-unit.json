@@ -21,6 +21,74 @@
       "description": "统计数，对应 commonTypes.xsd 的 countType。"
     },
 
+    "coreTypeEnum": {
+      "type": "string",
+      "enum": ["Core", "Peripheral", "Extra-Thematic", "Core-Unexpressed"],
+      "description": "FE 核性类型，对应 commonTypes.xsd 的 coreType 枚举。"
+    },
+    "corpusSchema": {
+      "type": "object",
+      "description": "语料，对应 header.xsd 的 corpDocType：document* + ID/name/description。",
+      "required": ["id", "name", "description"],
+      "properties": {
+        "id": { "$ref": "#/$defs/idRef" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "documents": {
+          "type": "array",
+          "description": "文档清单（0 个或多个），对应 document 元素（ID/name/description）。",
+          "items": {
+            "type": "object",
+            "required": ["id", "name", "description"],
+            "properties": {
+              "id": { "$ref": "#/$defs/idRef" },
+              "name": { "type": "string" },
+              "description": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "frameLegend": {
+      "type": "object",
+      "description": "框架 FE 图例，对应 header.xsd 的 header/frame 元素：FE 序列（name/abbrev/type/bgColor/fgColor）。",
+      "properties": {
+        "frame_schema_id": { "$ref": "#/$defs/idRef" },
+        "frame_schema_name": { "type": "string" },
+        "fes": {
+          "type": "array",
+          "description": "FE 图例清单（1 个或多个），对应 header/frame/FE 元素。",
+          "items": {
+            "type": "object",
+            "required": ["name", "type"],
+            "properties": {
+              "name": { "type": "string" },
+              "abbrev": { "type": "string" },
+              "type": { "$ref": "#/$defs/coreTypeEnum" }
+            },
+            "additionalProperties": false
+          },
+          "minItems": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "headerSchema": {
+      "type": "object",
+      "description": "文档头，对应 lexUnit.xsd 的 headerType：corpus* + 可选 frame 图例。",
+      "properties": {
+        "corpora": {
+          "type": "array",
+          "description": "语料清单（0 个或多个）。",
+          "items": { "$ref": "#/$defs/corpusSchema" }
+        },
+        "frame": { "$ref": "#/$defs/frameLegend" }
+      },
+      "additionalProperties": false
+    },
+
     "metadata": {
       "type": "object",
       "description": "词元文档元信息：对齐 lexUnit.xsd 的 basicLUAttributes + frameReference 属性组。",
@@ -242,10 +310,31 @@
       "uniqueItems": true
     },
     "valences": { "$ref": "#/$defs/valences" },
+    "header": {
+      "$ref": "#/$defs/headerSchema",
+      "description": "文档头：语料清单（corpus 附 document 列表）与框架 FE 图例，对应 lexUnit.xsd 的 header 元素。"
+    },
     "sub_corpora": {
       "type": "array",
       "description": "子语料清单（0 个或多个），对应 subCorpus 元素。",
       "items": { "$ref": "#/$defs/subCorpus" }
+    },
+    "summary": {
+      "type": "object",
+      "description": "人类可读的顶层摘要：词元信息、框架、FE 图例、语料、价模式一览与例句标注易读块。仅用于可读性，不参与机器校验；原始标注仍以 sub_corpora 结构为准（标记为 raw）。",
+      "properties": {
+        "fu": { "type": "string" },
+        "frame": { "type": "string" },
+        "pos": { "type": "string" },
+        "status": { "type": "string" },
+        "total_annotated": { "type": "integer", "minimum": 0 },
+        "definition": { "type": "string" },
+        "fe_legend": { "type": "array", "items": { "type": "array" } },
+        "corpora": { "type": "array", "items": { "type": "object" } },
+        "valence_patterns": { "type": "array", "items": { "type": "string" } },
+        "sub_corpus": { "type": "object" }
+      },
+      "additionalProperties": true
     },
     "validation_rules": {
       "type": "array",
