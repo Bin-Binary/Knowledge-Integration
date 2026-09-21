@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>FrameNet Schema 全图解</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI','Microsoft YaHei',sans-serif;background:#0f172a;color:#e2e8f0}
+.page{max-width:1140px;margin:0 auto;padding:32px 20px}
+
+.hero{text-align:center;padding:50px 0 30px}
+.hero h1{font-size:2.8em;background:linear-gradient(135deg,#38bdf8,#a78bfa,#34d399);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero p{font-size:1.15em;color:#94a3b8;margin-top:10px}
+
+.nav{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:20px 0 40px}
+.nav a{padding:6px 16px;border-radius:20px;background:#1e293b;border:1px solid #334155;color:#94a3b8;text-decoration:none;font-size:.88em;transition:.2s}
+.nav a:hover{border-color:#38bdf8;color:#38bdf8}
+
+h2.sec{font-size:2em;text-align:center;margin:60px 0 24px;padding-bottom:12px;border-bottom:3px solid}
+h2.sec.t-common{color:#f472b6;border-color:#f472b6}
+h2.sec.t-header{color:#fb923c;border-color:#fb923c}
+h2.sec.t-sentence{color:#38bdf8;border-color:#38bdf8}
+h2.sec.t-lu{color:#34d399;border-color:#34d399}
+h2.sec.t-ft{color:#c084fc;border-color:#c084fc}
+h2.sec.t-semt{color:#fbbf24;border-color:#fbbf24}
+h2.sec.t-fr{color:#ef4444;border-color:#ef4444}
+h2.sec.t-fri{color:#60a5fa;border-color:#60a5fa}
+h2.sec.t-lui{color:#a3e635;border-color:#a3e635}
+h2.sec.t-fti{color:#22d3ee;border-color:#22d3ee}
+h2.sec.t-overview{color:#e2e8f0;border-image:linear-gradient(90deg,#38bdf8,#a78bfa,#34d399) 1}
+
+.card{border-radius:16px;padding:28px;margin:20px 0;position:relative}
+.card h3{font-size:1.4em;margin-bottom:8px}
+.card p{color:#cbd5e1;line-height:1.7;font-size:.95em}
+
+.card.c-common{background:linear-gradient(135deg,#3d1a2e,#0f172a);border:1px solid #f472b6}
+.card.c-common h3{color:#f472b6}
+.card.c-header{background:linear-gradient(135deg,#3d2b1a,#0f172a);border:1px solid #fb923c}
+.card.c-header h3{color:#fb923c}
+.card.c-sentence{background:linear-gradient(135deg,#1e3a5f,#0f172a);border:1px solid #38bdf8}
+.card.c-sentence h3{color:#38bdf8}
+.card.c-lu{background:linear-gradient(135deg,#1a3d2e,#0f172a);border:1px solid #34d399}
+.card.c-lu h3{color:#34d399}
+.card.c-ft{background:linear-gradient(135deg,#2b1a3d,#0f172a);border:1px solid #c084fc}
+.card.c-ft h3{color:#c084fc}
+.card.c-semt{background:linear-gradient(135deg,#3d3b1a,#0f172a);border:1px solid #fbbf24}
+.card.c-semt h3{color:#fbbf24}
+.card.c-fr{background:linear-gradient(135deg,#3d1a1a,#0f172a);border:1px solid #ef4444}
+.card.c-fr h3{color:#ef4444}
+.card.c-fri{background:linear-gradient(135deg,#1a2a3d,#0f172a);border:1px solid #60a5fa}
+.card.c-fri h3{color:#60a5fa}
+.card.c-lui{background:linear-gradient(135deg,#2a3d1a,#0f172a);border:1px solid #a3e635}
+.card.c-lui h3{color:#a3e635}
+.card.c-fti{background:linear-gradient(135deg,#1a3d3d,#0f172a);border:1px solid #22d3ee}
+.card.c-fti h3{color:#22d3ee}
+
+.tag{display:inline-block;padding:2px 10px;border-radius:14px;font-size:.78em;font-weight:700;margin:2px}
+.tag.pink{background:#f472b633;color:#f9a8d4}
+.tag.orange{background:#fb923c33;color:#fdba74}
+.tag.blue{background:#38bdf833;color:#7dd3fc}
+.tag.green{background:#34d39933;color:#6ee7b7}
+.tag.purple{background:#c084fc33;color:#d8b4fe}
+.tag.yellow{background:#fbbf2433;color:#fde68a}
+.tag.red{background:#ef444433;color:#fca5a5}
+.tag.sky{background:#60a5fa33;color:#93c5fd}
+.tag.lime{background:#a3e63533;color:#bef264}
+.tag.cyan{background:#22d3ee33;color:#67e8f9}
+
+.tree{display:flex;flex-direction:column;align-items:center;gap:0;margin:24px 0}
+.tree-node{border-radius:12px;padding:14px 24px;text-align:center;min-width:200px}
+.tree-node.root{font-size:1.3em;font-weight:800;padding:16px 32px}
+.tree-node.child{background:#1e293b;font-weight:700;font-size:1em}
+.tree-node.leaf{background:#1e293b;border:1px dashed #475569;color:#94a3b8;font-size:.88em;padding:8px 14px;min-width:140px}
+.vline{width:3px;height:22px;background:#475569;border-radius:2px}
+.children-row{display:flex;gap:16px;justify-content:center;flex-wrap:wrap}
+.attr-list{margin-top:6px;font-size:.75em;color:#64748b;line-height:1.5}
+.attr-list span{display:inline-block;background:#334155;padding:1px 7px;border-radius:4px;margin:1px}
+
+.type-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin:16px 0}
+.type-card{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:14px}
+.type-card h4{font-size:1em;margin-bottom:4px}
+.type-card p{font-size:.82em;color:#94a3b8;line-height:1.5}
+.type-card code{background:#0f172a;padding:1px 6px;border-radius:3px;font-size:.82em;color:#7dd3fc}
+
+.demo-xml{background:#0f172a;border:1px solid #334155;border-radius:10px;padding:14px;margin:10px 0;font-family:'Cascadia Code','Consolas',monospace;font-size:.82em;line-height:1.6;overflow-x:auto;white-space:pre;color:#94a3b8}
+.demo-xml .t{color:#38bdf8}.demo-xml .a{color:#a78bfa}.demo-xml .v{color:#34d399}.demo-xml .c{color:#64748b}
+
+.flow-step{display:flex;gap:16px;align-items:flex-start;margin-bottom:20px}
+.flow-num{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.2em;flex-shrink:0}
+.flow-content h4{font-size:1.05em;margin-bottom:4px}
+.flow-content p{color:#cbd5e1;font-size:.92em;line-height:1.6}
+
+.overview-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin:30px 0}
+.ov-card{border-radius:12px;padding:16px;text-align:center;border:2px solid}
+.ov-card h4{font-size:1.05em;margin-bottom:6px}
+.ov-card p{font-size:.8em;color:#94a3b8;line-height:1.4}
+.ov-card.ov-common{border-color:#f472b6;background:#f472b610}
+.ov-card.ov-common h4{color:#f472b6}
+.ov-card.ov-header{border-color:#fb923c;background:#fb923c10}
+.ov-card.ov-header h4{color:#fb923c}
+.ov-card.ov-sentence{border-color:#38bdf8;background:#38bdf810}
+.ov-card.ov-sentence h4{color:#38bdf8}
+.ov-card.ov-lu{border-color:#34d399;background:#34d39910}
+.ov-card.ov-lu h4{color:#34d399}
+.ov-card.ov-ft{border-color:#c084fc;background:#c084fc10}
+.ov-card.ov-ft h4{color:#c084fc}
+.ov-card.ov-semt{border-color:#fbbf24;background:#fbbf2410}
+.ov-card.ov-semt h4{color:#fbbf24}
+.ov-card.ov-fr{border-color:#ef4444;background:#ef444410}
+.ov-card.ov-fr h4{color:#ef4444}
+.ov-card.ov-fri{border-color:#60a5fa;background:#60a5fa10}
+.ov-card.ov-fri h4{color:#60a5fa}
+.ov-card.ov-lui{border-color:#a3e635;background:#a3e63510}
+.ov-card.ov-lui h4{color:#a3e635}
+.ov-card.ov-fti{border-color:#22d3ee;background:#22d3ee10}
+.ov-card.ov-fti h4{color:#22d3ee}
+.ov-card.ov-frame{border-color:#7dd3fc;background:#7dd3fc10}
+.ov-card.ov-frame h4{color:#7dd3fc}
+
+.relation-diagram{margin:30px 0;text-align:center}
+.rel-arrow{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;margin:4px;font-size:.88em}
+.rel-arrow.from{background:#1e293b;border:1px solid #60a5fa;color:#93c5fd}
+.rel-arrow.to{background:#1e293b;border:1px solid #a78bfa;color:#c4b5fd}
+.rel-arrow .arrow{font-size:1.2em;color:#fbbf24}
+
+.full-flow{margin:40px 0;padding:30px;background:linear-gradient(135deg,#1e3a5f,#1a3d2e,#2b1a3d);border-radius:20px;border:2px solid #334155}
+.full-flow h3{text-align:center;font-size:1.6em;margin-bottom:24px;background:linear-gradient(135deg,#38bdf8,#34d399,#c084fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+
+.timeline{display:flex;flex-direction:column;gap:0;position:relative;padding-left:50px}
+.timeline::before{content:'';position:absolute;left:24px;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#f472b6,#fb923c,#38bdf8,#34d399,#c084fc,#fbbf24)}
+.tl-item{position:relative;padding:16px 20px;margin-bottom:16px;background:#1e293b;border-radius:12px;border-left:4px solid}
+.tl-item::before{content:'';position:absolute;left:-34px;top:20px;width:16px;height:16px;border-radius:50%;border:3px solid}
+.tl-item h4{font-size:1.05em;margin-bottom:4px}
+.tl-item p{color:#94a3b8;font-size:.88em;line-height:1.5}
+.tl-item .data{margin-top:8px;background:#0f172a;border-radius:8px;padding:10px;font-family:monospace;font-size:.8em;overflow-x:auto;white-space:pre;color:#94a3b8}
+
+.tl-item.tl-common{border-left-color:#f472b6}.tl-item.tl-common::before{border-color:#f472b6;background:#f472b630}.tl-item.tl-common h4{color:#f472b6}
+.tl-item.tl-header{border-left-color:#fb923c}.tl-item.tl-header::before{border-color:#fb923c;background:#fb923c30}.tl-item.tl-header h4{color:#fb923c}
+.tl-item.tl-semt{border-left-color:#fbbf24}.tl-item.tl-semt::before{border-color:#fbbf24;background:#fbbf2430}.tl-item.tl-semt h4{color:#fbbf24}
+.tl-item.tl-frame{border-left-color:#7dd3fc}.tl-item.tl-frame::before{border-color:#7dd3fc;background:#7dd3fc30}.tl-item.tl-frame h4{color:#7dd3fc}
+.tl-item.tl-lu{border-left-color:#34d399}.tl-item.tl-lu::before{border-color:#34d399;background:#34d39930}.tl-item.tl-lu h4{color:#34d399}
+.tl-item.tl-sentence{border-left-color:#38bdf8}.tl-item.tl-sentence::before{border-color:#38bdf8;background:#38bdf830}.tl-item.tl-sentence h4{color:#38bdf8}
+.tl-item.tl-fr{border-left-color:#ef4444}.tl-item.tl-fr::before{border-color:#ef4444;background:#ef444430}.tl-item.tl-fr h4{color:#ef4444}
+.tl-item.tl-ft{border-left-color:#c084fc}.tl-item.tl-ft::before{border-color:#c084fc;background:#c084fc30}.tl-item.tl-ft h4{color:#c084fc}
+
+.pill{display:inline-block;padding:3px 12px;border-radius:20px;font-size:.82em;font-weight:700;margin:2px}
+.pill.core{background:#ef4444;color:#fff}
+.pill.periph{background:#3b82f6;color:#fff}
+.pill.extra{background:#a855f7;color:#fff}
+
+@media(max-width:768px){
+  .overview-grid{grid-template-columns:repeat(3,1fr)}
+  .type-grid{grid-template-columns:1fr}
+  .hero h1{font-size:2em}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="hero">
+  <h1>FrameNet Schema 全图解</h1>
+  <p>11 个 XSD 的设计，一次看清</p>
+</div>
+
+<div class="nav">
+  <a href="#sec-common">commonTypes</a>
+  <a href="#sec-header">header</a>
+  <a href="#sec-sentence">sentence</a>
+  <a href="#sec-lu">lexUnit</a>
+  <a href="#sec-ft">fullText</a>
+  <a href="#sec-semt">semTypes</a>
+  <a href="#sec-fr">frameRelations</a>
+  <a href="#sec-frame">frame (已有)</a>
+  <a href="#sec-fri">frameIndex</a>
+  <a href="#sec-lui">luIndex</a>
+  <a href="#sec-fti">fulltextIndex</a>
+  <a href="#sec-overview">=== 总览 ===</a>
+</div>
+
+<!-- ============================================================ -->
+<!-- 1. commonTypes.xsd -->
+<!-- ============================================================ -->
+<h2 class="sec t-common" id="sec-common">commonTypes.xsd — 公共类型库</h2>
+
+<div class="card c-common">
+  <h3>一句话理解</h3>
+  <p>所有其他 XSD 都 include 这个文件，它定义了<strong>到处复用的基础数据类型</strong>——就像一栋大楼的砖块和螺丝钉。</p>
+  <span class="tag pink">所有XSD的依赖</span>
+  <span class="tag pink">7个简单类型 + 2个复杂类型 + 2个属性组</span>
+</div>
+
+<h3 style="color:#f472b6;margin:20px 0 12px;text-align:center;font-size:1.3em">7 个简单类型 (SimpleType)</h3>
+<div class="type-grid">
+  <div class="type-card"><h4 style="color:#f9a8d4">dateTimeType</h4><p>日期时间格式<br><code>MM/DD/YYYY HH:MM:SS TZ Day</code><br>如 <code>06/10/2002 03:08:32 PDT Mon</code></p></div>
+  <div class="type-card"><h4 style="color:#f9a8d4">defType</h4><p>定义文本类型<br><code>xsd:string</code> 的限制<br>用于 FE/LU 的 definition</p></div>
+  <div class="type-card"><h4 style="color:#f9a8d4">IDType</h4><p>通用 ID<br><code>xsd:int ≥ 0</code><br>Frame/FE/LU/... 全用这个</p></div>
+  <div class="type-card"><h4 style="color:#f9a8d4">labelSpanType</h4><p>标注起止位置<br><code>xsd:int ≥ 0</code><br>Label 的 start/end 属性</p></div>
+  <div class="type-card"><h4 style="color:#f9a8d4">orderType</h4><p>顺序编号<br><code>xsd:int ≥ 0</code><br>lexeme 的 order、段落号等</p></div>
+  <div class="type-card"><h4 style="color:#f9a8d4">countType</h4><p>计数值<br><code>xsd:int ≥ 0</code><br>句数、标注数等</p></div>
+  <div class="type-card"><h4 style="color:#f9a8d4">RGBColorType</h4><p>颜色值<br><code>[0-9A-Fa-f]{6}</code><br>FE 的前景/背景色</p></div>
+  <div class="type-card"><h4 style="color:#f9a8d4">POSType</h4><p>14种词性枚举<br><code>V N A ADV AVP PREP C SCON CCON PRON ART NUM INTJ IDIO</code></p></div>
+  <div class="type-card"><h4 style="color:#f9a8d4">coreType</h4><p>FE 核心类型 4 选 1<br><code>Core | Peripheral | Extra-Thematic | Core-Unexpressed</code></p></div>
+  <div class="type-card"><h4 style="color:#f9a8d4">LUNameType</h4><p>LU 名称格式<br><code>.+\..+</code> 即"词.词性"<br>如 <code>avenge.v</code></p></div>
+  <div class="type-card"><h4 style="color:#f9a8d4">frameNameType</h4><p>Frame/FE 名称<br><code>[A-Z].*</code> 大写开头<br>如 <code>Revenge</code></p></div>
+</div>
+
+<h3 style="color:#f472b6;margin:20px 0 12px;text-align:center;font-size:1.3em">2 个复杂类型 (纯属性)</h3>
+<div class="type-grid" style="grid-template-columns:1fr 1fr">
+  <div class="type-card"><h4 style="color:#f9a8d4">lexemeType</h4><p>词素：name + POS(必填)<br>breakBefore / headword / order(可选)<br>用于 lexUnit 下的 lexeme 元素</p></div>
+  <div class="type-card"><h4 style="color:#f9a8d4">semTypeRefType</h4><p>语义类型引用：ID + name<br>被 FE、lexUnit、semTypes 使用<br>是"引用"，完整定义在 semTypes.xsd</p></div>
+</div>
+
+<h3 style="color:#f472b6;margin:20px 0 12px;text-align:center;font-size:1.3em">2 个属性组 (AttributeGroup)</h3>
+<div class="type-grid" style="grid-template-columns:1fr 1fr">
+  <div class="type-card"><h4 style="color:#f9a8d4">frameReference</h4><p>frameID + frame<br>在 lexUnit、annotationSet 中引用 Frame</p></div>
+  <div class="type-card"><h4 style="color:#f9a8d4">basicLUAttributes</h4><p>ID + name + POS + incorporatedFE + status<br>lexUnit 的基础属性复用组</p></div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 2. header.xsd -->
+<!-- ============================================================ -->
+<h2 class="sec t-header" id="sec-header">header.xsd — 文档头信息</h2>
+
+<div class="card c-header">
+  <h3>一句话理解</h3>
+  <p>每个 lexUnit XML 和 fullText XML 开头都有一个 <strong>&lt;header&gt;</strong>，它记录"这段标注来自哪个语料库、哪篇文档、属于哪个 Frame 的哪些 FE"——是上下文说明，让后面的标注数据可追溯。</p>
+  <span class="tag orange">被 lexUnit + fullText 两个 XSD include</span>
+</div>
+
+<div class="tree">
+  <div class="tree-node root" style="background:#fb923c;color:#0f172a;border:3px solid #fdba74">headerType
+  </div>
+  <div class="vline"></div>
+  <div class="children-row">
+    <div class="tree-node child" style="border-color:#fb923c;color:#fdba74">corpus (0+)
+      <div class="attr-list"><span>ID</span><span>name</span><span>description</span></div>
+    </div>
+    <div class="tree-node child" style="border-color:#fb923c;color:#fdba74">frame (0..1)
+      <div class="attr-list">仅包含 FE 子元素</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:30px;margin-top:16px;flex-wrap:wrap;justify-content:center">
+    <div style="text-align:center">
+      <div style="color:#fdba74;font-weight:700;margin-bottom:6px">corpus 下</div>
+      <div class="tree-node leaf">document (0+)<br><small style="color:#64748b">ID / name / description</small></div>
+    </div>
+    <div style="text-align:center">
+      <div style="color:#fdba74;font-weight:700;margin-bottom:6px">frame 下</div>
+      <div class="tree-node leaf">FE (0+)<br><small style="color:#64748b">name / abbrev / type / bgColor / fgColor</small></div>
+    </div>
+  </div>
+</div>
+
+<div style="text-align:center;color:#94a3b8;margin:16px 0;font-size:.92em">
+  实例：avenge.v 的 header 里列出 Revenge 框架全部 13 个 FE 的名称和配色，方便标注时使用
+</div>
+<div class="demo-xml"><span class="t">&lt;header&gt;</span>
+  <span class="t">&lt;corpus</span> <span class="a">ID=</span><span class="v">"195"</span> <span class="a">name=</span><span class="v">"ANC"</span> <span class="a">description=</span><span class="v">"American National Corpus"</span><span class="t">&gt;</span>
+    <span class="t">&lt;document</span> <span class="a">ID=</span><span class="v">"25397"</span> <span class="a">name=</span><span class="v">"chapter8_911report"</span><span class="t">/&gt;</span>
+  <span class="t">&lt;/corpus&gt;</span>
+  <span class="t">&lt;frame&gt;</span>
+    <span class="t">&lt;FE</span> <span class="a">name=</span><span class="v">"Avenger"</span> <span class="a">type=</span><span class="v">"Core"</span> <span class="a">bgColor=</span><span class="v">"FF0000"</span> <span class="a">fgColor=</span><span class="v">"FFFFFF"</span><span class="t">/&gt;</span>
+    <span class="t">&lt;FE</span> <span class="a">name=</span><span class="v">"Offender"</span> <span class="a">type=</span><span class="v">"Core"</span> <span class="a">bgColor=</span><span class="v">"9F79EE"</span> <span class="a">fgColor=</span><span class="v">"FFFFFF"</span><span class="t">/&gt;</span>
+    ...
+  <span class="t">&lt;/frame&gt;</span>
+<span class="t">&lt;/header&gt;</span></div>
+
+<!-- ============================================================ -->
+<!-- 3. sentence.xsd -->
+<!-- ============================================================ -->
+<h2 class="sec t-sentence" id="sec-sentence">sentence.xsd — 句子标注结构</h2>
+
+<div class="card c-sentence">
+  <h3>一句话理解</h3>
+  <p>这是 FrameNet 最核心的<strong>标注数据结构</strong>。一句真实文本(如 "They took revenge")，被拆成多层 label —— Target层标触发词、FE层标框架元素、GF层标语法功能、PT层标短语类型……每一层都是一套 span 标注。</p>
+  <span class="tag blue">被 lexUnit + fullText 两个 XSD include</span>
+  <span class="tag blue">4 层嵌套：sentence → annotationSet → layer → label</span>
+</div>
+
+<div class="tree">
+  <div class="tree-node root" style="background:#38bdf8;color:#0f172a;border:3px solid #7dd3fc">sentence
+    <div class="attr-list"><span>ID</span><span>aPos</span><span>paragNo</span><span>sentNo</span><span>docID</span><span>corpID</span></div>
+  </div>
+  <div class="vline"></div>
+  <div class="children-row">
+    <div class="tree-node leaf" style="min-width:180px">text (1)<br><small style="color:#64748b">句子原文纯文本</small></div>
+    <div class="tree-node child" style="border-color:#38bdf8;color:#7dd3fc">annotationSet (0+)
+      <div class="attr-list"><span>ID</span><span>status</span><span>frameName</span><span>frameID</span><span>luName</span><span>luID</span><span>cxnName</span><span>cxnID</span></div>
+    </div>
+  </div>
+  <div class="vline"></div>
+  <div class="tree-node child" style="border-color:#38bdf8;color:#7dd3fc;margin:0 auto">layer (1+)
+    <div class="attr-list"><span>name</span><span>rank</span></div>
+  </div>
+  <div class="vline"></div>
+  <div class="tree-node child" style="border-color:#38bdf8;color:#7dd3fc;margin:0 auto">label (0+)
+    <div class="attr-list"><span>name</span><span>start</span><span>end</span><span>bgColor</span><span>fgColor</span><span>itype</span><span>feID</span><span>cBy</span></div>
+  </div>
+</div>
+
+<h3 style="color:#38bdf8;margin:28px 0 12px;text-align:center;font-size:1.2em">layer.name 的含义 (常见层)</h3>
+<div class="type-grid">
+  <div class="type-card"><h4 style="color:#7dd3fc">Target</h4><p>标出触发 Frame 的<strong>目标词</strong> (如 "revenge")</p></div>
+  <div class="type-card"><h4 style="color:#7dd3fc">FE</h4><p>标出各<strong>框架元素</strong>的 span 和名称/feID</p></div>
+  <div class="type-card"><h4 style="color:#7dd3fc">GF</h4><p><strong>语法功能</strong>：Ext(外部) / Obj(宾语) / Dep(依附)</p></div>
+  <div class="type-card"><h4 style="color:#7dd3fc">PT</h4><p><strong>短语类型</strong>：NP / PP[for] / VPto / CNI / DNI / INI</p></div>
+  <div class="type-card"><h4 style="color:#7dd3fc">PENN</h4><p>宾州树库<strong>词性标注</strong></p></div>
+  <div class="type-card"><h4 style="color:#7dd3fc">NER</h4><p><strong>命名实体识别</strong> (人名/地名等)</p></div>
+  <div class="type-card"><h4 style="color:#7dd3fc">Other / Sent / Verb / Noun</h4><p>其他辅助标注层</p></div>
+</div>
+
+<h3 style="color:#38bdf8;margin:20px 0 12px;text-align:center;font-size:1.2em">label 的 itype — 缺省标注方式</h3>
+<div class="type-grid" style="grid-template-columns:repeat(5,1fr)">
+  <div class="type-card"><h4 style="color:#7dd3fc">CNI</h4><p>构造性空缺<br>语法结构要求省略</p></div>
+  <div class="type-card"><h4 style="color:#7dd3fc">INI</h4><p>固有空缺<br>语义上就无需显式</p></div>
+  <div class="type-card"><h4 style="color:#7dd3fc">DNI</h4><p>语篇空缺<br>上下文可推断</p></div>
+  <div class="type-card"><h4 style="color:#7dd3fc">INC</h4><p>融入<br>FE 被合并到目标词</p></div>
+  <div class="type-card"><h4 style="color:#7dd3fc">APos</h4><p>句首副词位置</p></div>
+</div>
+
+<div style="text-align:center;color:#94a3b8;margin:16px 0;font-size:.92em">
+  实例："Forest fires continue to rage in Spain"
+</div>
+<div class="demo-xml"><span class="t">&lt;sentence</span> <span class="a">ID=</span><span class="v">"4164976"</span> <span class="a">corpID=</span><span class="v">"246"</span> <span class="a">docID=</span><span class="v">"25616"</span><span class="t">&gt;</span>
+  <span class="t">&lt;text&gt;</span>Forest fires continue to rage in Spain<span class="t">&lt;/text&gt;</span>
+  <span class="c">&lt;!-- 以 rage.v 为目标的标注集 --&gt;</span>
+  <span class="t">&lt;annotationSet</span> <span class="a">luName=</span><span class="v">"rage.v"</span> <span class="a">frameName=</span><span class="v">"Fire_burning"</span> <span class="a">status=</span><span class="v">"MANUAL"</span><span class="t">&gt;</span>
+    <span class="t">&lt;layer</span> <span class="a">name=</span><span class="v">"Target"</span><span class="t">&gt;</span>
+      <span class="t">&lt;label</span> <span class="a">start=</span><span class="v">"25"</span> <span class="a">end=</span><span class="v">"28"</span> <span class="a">name=</span><span class="v">"Target"</span><span class="t">/&gt;</span>
+    <span class="t">&lt;/layer&gt;</span>
+    <span class="t">&lt;layer</span> <span class="a">name=</span><span class="v">"FE"</span><span class="t">&gt;</span>
+      <span class="t">&lt;label</span> <span class="a">start=</span><span class="v">"0"</span>  <span class="a">end=</span><span class="v">"11"</span> <span class="a">name=</span><span class="v">"Fire"</span>  <span class="a">bgColor=</span><span class="v">"0000FF"</span><span class="t">/&gt;</span>
+      <span class="t">&lt;label</span> <span class="a">start=</span><span class="v">"30"</span> <span class="a">end=</span><span class="v">"37"</span> <span class="a">name=</span><span class="v">"Place"</span> <span class="a">bgColor=</span><span class="v">"008000"</span><span class="t">/&gt;</span>
+    <span class="t">&lt;/layer&gt;</span>
+    <span class="t">&lt;layer</span> <span class="a">name=</span><span class="v">"GF"</span><span class="t">&gt;</span>
+      <span class="t">&lt;label</span> <span class="a">start=</span><span class="v">"0"</span>  <span class="a">end=</span><span class="v">"11"</span> <span class="a">name=</span><span class="v">"Ext"</span><span class="t">/&gt;</span>
+      <span class="t">&lt;label</span> <span class="a">start=</span><span class="v">"30"</span> <span class="a">end=</span><span class="v">"37"</span> <span class="a">name=</span><span class="v">"Dep"</span><span class="t">/&gt;</span>
+    <span class="t">&lt;/layer&gt;</span>
+    <span class="t">&lt;layer</span> <span class="a">name=</span><span class="v">"PT"</span><span class="t">&gt;</span>
+      <span class="t">&lt;label</span> <span class="a">start=</span><span class="v">"0"</span>  <span class="a">end=</span><span class="v">"11"</span> <span class="a">name=</span><span class="v">"NP"</span><span class="t">/&gt;</span>
+      <span class="t">&lt;label</span> <span class="a">start=</span><span class="v">"30"</span> <span class="a">end=</span><span class="v">"37"</span> <span class="a">name=</span><span class="v">"PP"</span><span class="t">/&gt;</span>
+    <span class="t">&lt;/layer&gt;</span>
+  <span class="t">&lt;/annotationSet&gt;</span>
+<span class="t">&lt;/sentence&gt;</span></div>
+
+<!-- ============================================================ -->
+<!-- 4. lexUnit.xsd -->
+<!-- ============================================================ -->
+<h2 class="sec t-lu" id="sec-lu">lexUnit.xsd — 词汇单元详情</h2>
+
+<div class="card c-lu">
+  <h3>一句话理解</h3>
+  <p>每个 lexUnit 是一个独立 XML 文件(如 <code>lu6056.xml</code> = avenge.v)，它包含<strong>四大部分</strong>：header(上下文) + definition(释义) + valences(配价模式统计) + subCorpus(标注语料句子)。是 FrameNet 里信息密度最高的文件。</p>
+  <span class="tag green">include: commonTypes + header + sentence</span>
+  <span class="tag green">核心新增：valences(配价) + subCorpus(语料)</span>
+</div>
+
+<div class="tree">
+  <div class="tree-node root" style="background:#34d399;color:#0f172a;border:3px solid #6ee7b7">lexUnit
+    <div class="attr-list"><span>ID</span><span>name</span><span>POS</span><span>status</span><span>frameID</span><span>frame</span><span>totalAnnotated</span></div>
+  </div>
+  <div class="vline"></div>
+  <div class="children-row">
+    <div class="tree-node child" style="border-color:#34d399;color:#6ee7b7">header (1)<br><small>headerType</small></div>
+    <div class="tree-node child" style="border-color:#34d399;color:#6ee7b7">definition (1)<br><small>defType</small></div>
+    <div class="tree-node child" style="border-color:#34d399;color:#6ee7b7">lexeme (1+)<br><small>lexemeType</small></div>
+    <div class="tree-node child" style="border-color:#34d399;color:#6ee7b7">semType (0+)<br><small>引用</small></div>
+    <div class="tree-node child" style="border-color:#34d399;color:#6ee7b7">valences (0..1)<br><small>配价统计</small></div>
+    <div class="tree-node child" style="border-color:#34d399;color:#6ee7b7">subCorpus (0+)<br><small>标注句子</small></div>
+  </div>
+</div>
+
+<h3 style="color:#34d399;margin:28px 0 12px;text-align:center;font-size:1.3em">valences — 配价模式 (语言学的"句式表")</h3>
+<div class="tree">
+  <div class="tree-node root" style="background:#34d399;color:#0f172a;font-size:1.1em;border:2px solid #6ee7b7">valences</div>
+  <div class="vline"></div>
+  <div class="children-row">
+    <div class="tree-node child" style="border-color:#34d399;color:#6ee7b7">governor (0+)<br><small>支配词 lemma + type</small></div>
+    <div class="tree-node child" style="border-color:#34d399;color:#6ee7b7">FERealization (0+)<br><small>单 FE 实现模式</small></div>
+    <div class="tree-node child" style="border-color:#34d399;color:#6ee7b7">FEGroupRealization (0+)<br><small>多 FE 组合模式</small></div>
+  </div>
+</div>
+
+<div style="text-align:center;color:#94a3b8;margin:14px 0;font-size:.92em;max-width:700px;margin-left:auto;margin-right:auto">
+  <strong>valenceUnit</strong> 是最小配价单元，三个属性：<code>FE="Avenger"</code> + <code>PT="NP"</code> + <code>GF="Ext"</code><br>
+  含义："Avenger 这个 FE 以名词短语(NP) 的形式出现在外部语法位置(Ext)"
+</div>
+
+<div class="type-grid" style="grid-template-columns:1fr 1fr 1fr">
+  <div class="type-card">
+    <h4 style="color:#6ee7b7">FERealization</h4>
+    <p>每个 FE 在语料中<strong>各有多少种表达方式</strong>。<br>如 Avenger: NP.Ext(25句) / CNI(7句) / Poss(1句)</p>
+  </div>
+  <div class="type-card">
+    <h4 style="color:#6ee7b7">FEGroupRealization</h4>
+    <p>多个 FE <strong>组合</strong>出现的模式。<br>如 Avenger+Injury 同时以什么 PT/GF 表达。</p>
+  </div>
+  <div class="type-card">
+    <h4 style="color:#6ee7b7">governor</h4>
+    <p>支配词：配价模式中的<strong>上层控制词</strong>。<br>含 lemma + type + annoSet 列表。</p>
+  </div>
+</div>
+
+<div class="demo-xml"><span class="c">&lt;!-- avenge.v 的 Avenger FE 实现模式 --&gt;</span>
+<span class="t">&lt;FERealization</span> <span class="a">total=</span><span class="v">"33"</span><span class="t">&gt;</span>
+  <span class="t">&lt;FE</span> <span class="a">name=</span><span class="v">"Avenger"</span><span class="t">/&gt;</span>
+  <span class="t">&lt;pattern</span> <span class="a">total=</span><span class="v">"7"</span><span class="t">&gt;</span>
+    <span class="t">&lt;valenceUnit</span> <span class="a">FE=</span><span class="v">"Avenger"</span> <span class="a">PT=</span><span class="v">"CNI"</span> <span class="a">GF=</span><span class="v">""</span><span class="t">/&gt;</span>   <span class="c">&lt;!-- 构造性空缺 --&gt;</span>
+    <span class="t">&lt;annoSet</span> <span class="a">ID=</span><span class="v">"1313398"</span><span class="t">/&gt;</span> ...
+  <span class="t">&lt;/pattern&gt;</span>
+  <span class="t">&lt;pattern</span> <span class="a">total=</span><span class="v">"25"</span><span class="t">&gt;</span>
+    <span class="t">&lt;valenceUnit</span> <span class="a">FE=</span><span class="v">"Avenger"</span> <span class="a">PT=</span><span class="v">"NP"</span> <span class="a">GF=</span><span class="v">"Ext"</span><span class="t">/&gt;</span> <span class="c">&lt;!-- 名词短语外部 --&gt;</span>
+    <span class="t">&lt;annoSet</span> <span class="a">ID=</span><span class="v">"1313328"</span><span class="t">/&gt;</span> ...
+  <span class="t">&lt;/pattern&gt;</span>
+<span class="t">&lt;/FERealization&gt;</span></div>
+
+<!-- ============================================================ -->
+<!-- 5. fullText.xsd -->
+<!-- ============================================================ -->
+<h2 class="sec t-ft" id="sec-ft">fullText.xsd — 全文标注</h2>
+
+<div class="card c-ft">
+  <h3>一句话理解</h3>
+  <p>和 lexUnit 不同，fullText 的标注对象不是"某个词的用法"，而是<strong>一整篇真实文档</strong>——比如一篇新闻的每个句子都被标注，每个句子里可能有多个词触发不同 Frame。它是"文档级"视角，lexUnit 是"词汇级"视角。</p>
+  <span class="tag purple">include: header + sentence</span>
+  <span class="tag purple">结构极简：header + sentence*</span>
+</div>
+
+<div class="tree">
+  <div class="tree-node root" style="background:#c084fc;color:#0f172a;border:3px solid #d8b4fe">fullTextAnnotation</div>
+  <div class="vline"></div>
+  <div class="children-row">
+    <div class="tree-node child" style="border-color:#c084fc;color:#d8b4fe">header (1)<br><small>headerType</small></div>
+    <div class="tree-node child" style="border-color:#c084fc;color:#d8b4fe">sentence (0+)<br><small>sentenceType</small></div>
+  </div>
+</div>
+
+<div style="text-align:center;color:#94a3b8;margin:16px 0;font-size:.95em;max-width:700px;margin-left:auto;margin-right:auto">
+  同一句话可触发<em>多个</em> Frame！如下面这句，<strong>fire.n</strong> 触发 Fire_burning 框架，<strong>rage.v</strong> 也触发 Fire_burning，<strong>continue.v</strong> 触发 Process_continue 框架——每个触发对应一个独立的 annotationSet。
+</div>
+
+<div class="demo-xml"><span class="t">&lt;fullTextAnnotation&gt;</span>
+  <span class="t">&lt;header&gt;</span> ... <span class="t">&lt;/header&gt;</span>
+  <span class="t">&lt;sentence</span> <span class="a">ID=</span><span class="v">"4164976"</span><span class="t">&gt;</span>
+    <span class="t">&lt;text&gt;</span>Forest fires continue to rage in Spain<span class="t">&lt;/text&gt;</span>
+    <span class="c">&lt;!-- 第1个标注：fire.n → Fire_burning --&gt;</span>
+    <span class="t">&lt;annotationSet</span> <span class="a">luName=</span><span class="v">"fire.n"</span> <span class="a">frameName=</span><span class="v">"Fire_burning"</span><span class="t">&gt;</span>
+      <span class="t">&lt;layer</span> <span class="a">name=</span><span class="v">"Target"</span><span class="t">&gt;</span><span class="t">&lt;label</span> <span class="a">start=</span><span class="v">"7"</span> <span class="a">end=</span><span class="v">"11"</span> <span class="a">name=</span><span class="v">"Target"</span><span class="t">/&gt;</span><span class="t">&lt;/layer&gt;</span>
+      <span class="t">&lt;layer</span> <span class="a">name=</span><span class="v">"FE"</span><span class="t">&gt;</span>
+        <span class="t">&lt;label</span> <span class="a">start=</span><span class="v">"0"</span> <span class="a">end=</span><span class="v">"5"</span>  <span class="a">name=</span><span class="v">"Fuel"</span> <span class="a">bgColor=</span><span class="v">"800080"</span><span class="t">/&gt;</span>
+        <span class="t">&lt;label</span> <span class="a">start=</span><span class="v">"7"</span> <span class="a">end=</span><span class="v">"11"</span> <span class="a">name=</span><span class="v">"Fire"</span> <span class="a">bgColor=</span><span class="v">"0000FF"</span><span class="t">/&gt;</span>
+      <span class="t">&lt;/layer&gt;</span>
+    <span class="t">&lt;/annotationSet&gt;</span>
+    <span class="c">&lt;!-- 第2个标注：rage.v → Fire_burning --&gt;</span>
+    <span class="t">&lt;annotationSet</span> <span class="a">luName=</span><span class="v">"rage.v"</span> <span class="a">frameName=</span><span class="v">"Fire_burning"</span><span class="t">&gt;</span> ... <span class="t">&lt;/annotationSet&gt;</span>
+    <span class="c">&lt;!-- 第3个标注：continue.v → Process_continue --&gt;</span>
+    <span class="t">&lt;annotationSet</span> <span class="a">luName=</span><span class="v">"continue.v"</span> <span class="a">frameName=</span><span class="v">"Process_continue"</span><span class="t">&gt;</span> ... <span class="t">&lt;/annotationSet&gt;</span>
+  <span class="t">&lt;/sentence&gt;</span>
+<span class="t">&lt;/fullTextAnnotation&gt;</span></div>
+
+<!-- ============================================================ -->
+<!-- 6. semTypes.xsd -->
+<!-- ============================================================ -->
+<h2 class="sec t-semt" id="sec-semt">semTypes.xsd — 语义类型体系</h2>
+
+<div class="card c-semt">
+  <h3>一句话理解</h3>
+  <p>语义类型是一棵<strong>类型继承树</strong>，给 FE 和 lexUnit 贴标签分类。比如 FE 被标注为"Sentient"(有知觉者)、LU 被标注为"Positive_judgment"(褒义)。一棵树从根类型向下继承，被全库所有 semTypeRef 引用。</p>
+  <span class="tag yellow">ID + name + abbrev + definition + superType(s)</span>
+  <span class="tag yellow">树形层次结构</span>
+</div>
+
+<div class="tree">
+  <div class="tree-node root" style="background:#fbbf24;color:#0f172a;border:3px solid #fde68a">semTypes
+    <div class="attr-list"><span>XMLCreated</span></div>
+  </div>
+  <div class="vline"></div>
+  <div class="tree-node child" style="border-color:#fbbf24;color:#fde68a">semType (0+)
+    <div class="attr-list"><span>ID</span><span>name</span><span>abbrev</span></div>
+  </div>
+  <div class="vline"></div>
+  <div class="children-row">
+    <div class="tree-node leaf">definition (1)<br><small>文字说明</small></div>
+    <div class="tree-node leaf">superType (0+)<br><small>supID + superTypeName</small></div>
+  </div>
+</div>
+
+<div style="text-align:center;color:#94a3b8;margin:16px 0;font-size:.95em">
+  语义类型继承树片段示例（从物理对象向下分支）：
+</div>
+
+<div style="text-align:center;margin:20px 0;font-size:.95em">
+  <div style="display:inline-flex;flex-direction:column;gap:4px;text-align:left">
+    <div style="padding:6px 14px;background:#fbbf2433;border:1px solid #fbbf24;border-radius:8px;color:#fde68a;font-weight:700">Physical_object (ID:68)</div>
+    <div style="margin-left:30px;display:flex;gap:8px;flex-wrap:wrap">
+      <div style="padding:4px 12px;background:#1e293b;border:1px solid #64748b;border-radius:6px;color:#94a3b8;font-size:.88em">Body_part (10)<br><small style="color:#64748b">→ 动物身体部位</small></div>
+      <div style="padding:4px 12px;background:#1e293b;border:1px solid #64748b;border-radius:6px;color:#94a3b8;font-size:.88em">Container (15)<br><small style="color:#64748b">→ 容器类 FE</small></div>
+      <div style="padding:4px 12px;background:#1e293b;border:1px solid #64748b;border-radius:6px;color:#94a3b8;font-size:.88em">Location (54)<br><small style="color:#64748b">→ 位置</small></div>
+      <div style="padding:4px 12px;background:#1e293b;border:1px solid #64748b;border-radius:6px;color:#94a3b8;font-size:.88em">Region (17)<br><small style="color:#64748b">→ 地区</small></div>
+    </div>
+    <div style="margin-left:60px;display:flex;gap:8px;flex-wrap:wrap">
+      <div style="padding:4px 12px;background:#1e293b;border:1px solid #475569;border-radius:6px;color:#64748b;font-size:.82em">Body_of_water (2)</div>
+      <div style="padding:4px 12px;background:#1e293b;border:1px solid #475569;border-radius:6px;color:#64748b;font-size:.82em">Landform (7)</div>
+    </div>
+    <div style="margin-left:90px">
+      <div style="padding:4px 12px;background:#1e293b;border:1px solid #334155;border-radius:6px;color:#475569;font-size:.78em">Running-water (3)</div>
+    </div>
+  </div>
+</div>
+
+<div class="demo-xml"><span class="t">&lt;semType</span> <span class="a">ID=</span><span class="v">"5"</span> <span class="a">name=</span><span class="v">"Sentient"</span> <span class="a">abbrev=</span><span class="v">"Sentient"</span><span class="t">&gt;</span>
+  <span class="t">&lt;definition&gt;</span>Marks FEs whose fillers are sentient beings...<span class="t">&lt;/definition&gt;</span>
+  <span class="t">&lt;superType</span> <span class="a">supID=</span><span class="v">"65"</span> <span class="a">superTypeName=</span><span class="v">"Animate_being"</span><span class="t">/&gt;</span>
+<span class="t">&lt;/semType&gt;</span></div>
+
+<!-- ============================================================ -->
+<!-- 7. frameRelations.xsd -->
+<!-- ============================================================ -->
+<h2 class="sec t-fr" id="sec-fr">frameRelations.xsd — 框架间关系（全局版）</h2>
+
+<div class="card c-fr">
+  <h3>一句话理解</h3>
+  <p>frame.xsd 里的 frameRelation 只记录单个 Frame 的关系。而 <strong>frameRelations.xsd</strong> 是一个<strong>全局汇总文件</strong>(frRelation.xml)，把所有 Frame 间关系集中存储，还多了关键的一层——<strong>FERelation</strong>（FE 之间的映射），记录"上层 FE 如何对应到下层 FE"。</p>
+  <span class="tag red">3 层嵌套：frameRelationType → frameRelation → FERelation</span>
+</div>
+
+<div class="tree">
+  <div class="tree-node root" style="background:#ef4444;color:#fff;border:3px solid #fca5a5">frameRelations
+    <div class="attr-list"><span>XMLCreated</span></div>
+  </div>
+  <div class="vline"></div>
+  <div class="tree-node child" style="border-color:#ef4444;color:#fca5a5">frameRelationType (0+)
+    <div class="attr-list"><span>ID</span><span>name</span><span>superFrameName</span><span>subFrameName</span></div>
+  </div>
+  <div class="vline"></div>
+  <div class="tree-node child" style="border-color:#ef4444;color:#fca5a5">frameRelation (0+)
+    <div class="attr-list"><span>ID</span><span>superFrameName</span><span>subFrameName</span><span>supID</span><span>subID</span></div>
+  </div>
+  <div class="vline"></div>
+  <div class="tree-node child" style="border-color:#ef4444;color:#fca5a5">FERelation (0+)
+    <div class="attr-list"><span>ID</span><span>superFEName</span><span>subFEName</span><span>supID</span><span>subID</span></div>
+  </div>
+</div>
+
+<div style="text-align:center;color:#94a3b8;margin:16px 0;font-size:.95em;max-width:650px;margin-left:auto;margin-right:auto">
+  <strong>frameRelationType.name</strong> = 关系类型名，如 "Inherits from", "Causative_of"<br>
+  <strong>superFrameName / subFrameName</strong> 两层都有，区分类型级和实例级
+</div>
+
+<div class="demo-xml"><span class="c">&lt;!-- Causative_of 关系：Cause_to_move_in_place 是 Moving_in_place 的使役形式 --&gt;</span>
+<span class="t">&lt;frameRelationType</span> <span class="a">name=</span><span class="v">"Causative_of"</span> <span class="a">superFrameName=</span><span class="v">"Causative"</span> <span class="a">subFrameName=</span><span class="v">"Inchoative/state"</span><span class="t">&gt;</span>
+  <span class="t">&lt;frameRelation</span> <span class="a">superFrameName=</span><span class="v">"Cause_to_move_in_place"</span> <span class="a">subFrameName=</span><span class="v">"Moving_in_place"</span> <span class="a">supID=</span><span class="v">"276"</span> <span class="a">subID=</span><span class="v">"670"</span><span class="t">&gt;</span>
+    <span class="t">&lt;FERelation</span> <span class="a">superFEName=</span><span class="v">"Theme"</span> <span class="a">subFEName=</span><span class="v">"Theme"</span> <span class="a">supID=</span><span class="v">"2388"</span> <span class="a">subID=</span><span class="v">"4486"</span><span class="t">/&gt;</span>
+    <span class="t">&lt;FERelation</span> <span class="a">superFEName=</span><span class="v">"Place"</span> <span class="a">subFEName=</span><span class="v">"Place"</span> <span class="a">supID=</span><span class="v">"2389"</span> <span class="a">subID=</span><span class="v">"4491"</span><span class="t">/&gt;</span>
+    ...
+  <span class="t">&lt;/frameRelation&gt;</span>
+<span class="t">&lt;/frameRelationType&gt;</span></div>
+
+<div style="text-align:center;color:#94a3b8;margin:12px 0;font-size:.88em">
+  FERelation 告诉我们：上层 Frame 的 Theme FE → 对应下层 Frame 的 Theme FE<br>
+  有时命名不同(如 sup<small>Item</small>→sub<small>Entity</small>)，这就是 FE 映射的核心价值
+</div>
+
+<!-- ============================================================ -->
+<!-- 8. frameIndex.xsd -->
+<!-- ============================================================ -->
+<h2 class="sec t-fri" id="sec-fri">frameIndex.xsd — 框架索引</h2>
+
+<div class="card c-fri">
+  <h3>一句话理解</h3>
+  <p>全部 Frame 的<strong>轻量级目录</strong>——只有 ID、name、修改日期(mDate)。不包含 FE/LU 详情，用于快速浏览有哪些框架。</p>
+  <span class="tag sky">极简：name + ID + mDate</span>
+</div>
+
+<div class="tree">
+  <div class="tree-node root" style="background:#60a5fa;color:#0f172a;border:3px solid #93c5fd">frameIndex</div>
+  <div class="vline"></div>
+  <div class="tree-node child" style="border-color:#60a5fa;color:#93c5fd">frame (1+)
+    <div class="attr-list"><span>name</span><span>ID</span><span>mDate</span></div>
+  </div>
+</div>
+
+<div class="demo-xml"><span class="t">&lt;frameIndex&gt;</span>
+  <span class="t">&lt;frame</span> <span class="a">ID=</span><span class="v">"2031"</span> <span class="a">name=</span><span class="v">"Abandonment"</span> <span class="a">mDate=</span><span class="v">"09/11/2013 02:13:50 PDT Wed"</span><span class="t">/&gt;</span>
+  <span class="t">&lt;frame</span> <span class="a">ID=</span><span class="v">"262"</span>  <span class="a">name=</span><span class="v">"Abounding_with"</span>  <span class="a">mDate=</span><span class="v">"08/05/2005 ..."</span><span class="t">/&gt;</span>
+  ...<span class="c">&lt;!-- 共 ~1221 个 Frame --&gt;</span>
+<span class="t">&lt;/frameIndex&gt;</span></div>
+
+<!-- ============================================================ -->
+<!-- 9. luIndex.xsd -->
+<!-- ============================================================ -->
+<h2 class="sec t-lui" id="sec-lui">luIndex.xsd — 词汇单元索引</h2>
+
+<div class="card c-lui">
+  <h3>一句话理解</h3>
+  <p>全部 lexUnit 的<strong>目录 + 状态图例</strong>。每个条目有 ID/name/status/frameName/hasAnnotation，还内嵌一个 legend 解释各种 status 含义(从 Created 到 Finished_Checked 等 17 种状态)。</p>
+  <span class="tag lime">legend(状态说明) + lu(条目列表)</span>
+</div>
+
+<div class="tree">
+  <div class="tree-node root" style="background:#a3e635;color:#0f172a;border:3px solid #bef264">luIndex</div>
+  <div class="vline"></div>
+  <div class="children-row">
+    <div class="tree-node child" style="border-color:#a3e635;color:#bef264">legend (1)
+      <div class="attr-list">含 statusType (0+)</div>
+    </div>
+    <div class="tree-node child" style="border-color:#a3e635;color:#bef264">lu (1+)
+      <div class="attr-list"><span>ID</span><span>name</span><span>status</span><span>frameName</span><span>frameID</span><span>hasAnnotation</span><span>numAnnotInstances</span></div>
+    </div>
+  </div>
+</div>
+
+<h3 style="color:#a3e635;margin:20px 0 12px;text-align:center;font-size:1.1em">LU 标注生命周期 (17 种 status)</h3>
+<div style="text-align:center;margin:12px 0;font-size:.88em">
+  <div style="display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap;justify-content:center">
+    <span style="padding:4px 10px;background:#334155;border-radius:6px;color:#94a3b8">Created</span>
+    <span style="color:#64748b">→</span>
+    <span style="padding:4px 10px;background:#475569;border-radius:6px;color:#94a3b8">New</span>
+    <span style="color:#64748b">→</span>
+    <span style="padding:4px 10px;background:#64748b;border-radius:6px;color:#cbd5e1">SC_Defined</span>
+    <span style="color:#64748b">→</span>
+    <span style="padding:4px 10px;background:#0f766e;border-radius:6px;color:#5eead4">In_Use</span>
+    <span style="color:#64748b">→</span>
+    <span style="padding:4px 10px;background:#166534;border-radius:6px;color:#86efac">Finished_Initial</span>
+    <span style="color:#64748b">→</span>
+    <span style="padding:4px 10px;background:#14532d;border-radius:6px;color:#bbf7d0">Finished_Checked</span>
+  </div>
+  <div style="margin-top:8px;color:#64748b">
+    其他: FN1_Sent / FN1_NoSent / Insufficient_Attestations / Problem / BTDT / Pre-Marked / Rules_Defined / Needs_SCs / Add_Annotation / Test / Finished_X-Gov / Unknown
+  </div>
+</div>
+
+<div class="demo-xml"><span class="t">&lt;luIndex&gt;</span>
+  <span class="t">&lt;legend&gt;</span>
+    <span class="t">&lt;statusType</span> <span class="a">name=</span><span class="v">"New"</span> <span class="a">description=</span><span class="v">"LU defined and sentences ready for annotation"</span><span class="t">/&gt;</span>
+    <span class="t">&lt;statusType</span> <span class="a">name=</span><span class="v">"Finished_Initial"</span> <span class="a">description=</span><span class="v">"Regular annotation completed during FrameNet II"</span><span class="t">/&gt;</span>
+    ...
+  <span class="t">&lt;/legend&gt;</span>
+  <span class="t">&lt;lu</span> <span class="a">ID=</span><span class="v">"16601"</span> <span class="a">name=</span><span class="v">"(can't) help.v"</span> <span class="a">frameName=</span><span class="v">"Self_control"</span> <span class="a">hasAnnotation=</span><span class="v">"true"</span><span class="t">/&gt;</span>
+  ...
+<span class="t">&lt;/luIndex&gt;</span></div>
+
+<!-- ============================================================ -->
+<!-- 10. fulltextIndex.xsd -->
+<!-- ============================================================ -->
+<h2 class="sec t-fti" id="sec-fti">fulltextIndex.xsd — 全文语料索引</h2>
+
+<div class="card c-fti">
+  <h3>一句话理解</h3>
+  <p>列出 FrameNet 收录的所有<strong>语料库和文档</strong>——哪个 corpus 下有哪些 document。结构直接复用 header.xsd 里的 corpDocType。</p>
+  <span class="tag cyan">复用 header 的 corpDocType</span>
+</div>
+
+<div class="tree">
+  <div class="tree-node root" style="background:#22d3ee;color:#0f172a;border:3px solid #67e8f9">fulltextIndex</div>
+  <div class="vline"></div>
+  <div class="tree-node child" style="border-color:#22d3ee;color:#67e8f9">corpus (0+)
+    <div class="attr-list"><span>ID</span><span>name</span><span>description</span></div>
+  </div>
+  <div class="vline"></div>
+  <div class="tree-node leaf">document (0+)<br><small>ID / name / description</small></div>
+</div>
+
+<div class="demo-xml"><span class="t">&lt;fulltextIndex&gt;</span>
+  <span class="t">&lt;corpus</span> <span class="a">ID=</span><span class="v">"195"</span> <span class="a">name=</span><span class="v">"ANC"</span> <span class="a">description=</span><span class="v">"American National Corpus Texts"</span><span class="t">&gt;</span>
+    <span class="t">&lt;document</span> <span class="a">ID=</span><span class="v">"25397"</span> <span class="a">name=</span><span class="v">"chapter8_911report"</span><span class="t">/&gt;</span>
+    <span class="t">&lt;document</span> <span class="a">ID=</span><span class="v">"23647"</span> <span class="a">name=</span><span class="v">"HistoryOfJerusalem"</span><span class="t">/&gt;</span>
+  <span class="t">&lt;/corpus&gt;</span>
+  <span class="t">&lt;corpus</span> <span class="a">ID=</span><span class="v">"246"</span> <span class="a">name=</span><span class="v">"WikiTexts"</span> <span class="a">description=</span><span class="v">"Texts from WikiMedia"</span><span class="t">&gt;</span>
+    ...
+  <span class="t">&lt;/corpus&gt;</span>
+<span class="t">&lt;/fulltextIndex&gt;</span></div>
+
+<!-- ============================================================ -->
+<!-- ================   总  览   ================ -->
+<!-- ============================================================ -->
+<h2 class="sec t-overview" id="sec-overview" style="font-size:2.4em;margin-top:80px">FrameNet Schema 总览</h2>
+
+<h3 style="text-align:center;color:#94a3b8;font-size:1.1em;margin-bottom:30px">11 个 XSD 的角色、关系、数据流向</h3>
+
+<!-- Card Grid -->
+<div class="overview-grid">
+  <div class="ov-card ov-common"><h4>commonTypes</h4><p>基础砖块<br>7简单类型 + 2复杂类型 + 2属性组<br><em style="color:#f472b6">被所有XSD依赖</em></p></div>
+  <div class="ov-card ov-header"><h4>header</h4><p>文档头<br>corpus → document<br>frame → FE 列表<br><em style="color:#fb923c">供 lu/ft 引用</em></p></div>
+  <div class="ov-card ov-sentence"><h4>sentence</h4><p>标注结构<br>sentence → annotationSet → layer → label<br><em style="color:#38bdf8">供 lu/ft 复用</em></p></div>
+  <div class="ov-card ov-frame"><h4>frame</h4><p>框架定义<br>FE + FEcoreSet + frameRelation + lexUnit<br><em style="color:#7dd3fc">核心定义文件</em></p></div>
+  <div class="ov-card ov-lu"><h4>lexUnit</h4><p>词汇详情<br>header + valences + subCorpus<br><em style="color:#34d399">每个词一个XML</em></p></div>
+  <div class="ov-card ov-ft"><h4>fullText</h4><p>全文标注<br>header + sentence*<br><em style="color:#c084fc">每篇文档一个XML</em></p></div>
+  <div class="ov-card ov-semt"><h4>semTypes</h4><p>语义类型树<br>semType → superType<br><em style="color:#fbbf24">被 FE/LU 引用</em></p></div>
+  <div class="ov-card ov-fr"><h4>frameRelations</h4><p>框架关系(全局)<br>frameRelationType → frameRelation → FERelation<br><em style="color:#ef4444">FE级映射</em></p></div>
+  <div class="ov-card ov-fri"><h4>frameIndex</h4><p>框架目录<br>name + ID + mDate<br><em style="color:#60a5fa">~1221条</em></p></div>
+  <div class="ov-card ov-lui"><h4>luIndex</h4><p>LU目录<br>legend + lu 列表<br><em style="color:#a3e635">~13K条</em></p></div>
+  <div class="ov-card ov-fti"><h4>fulltextIndex</h4><p>语料目录<br>corpus → document<br><em style="color:#22d3ee">复用header类型</em></p></div>
+</div>
+
+<!-- Include / Dependency Diagram -->
+<h3 style="text-align:center;color:#e2e8f0;font-size:1.5em;margin:40px 0 20px">XSD Include 关系图</h3>
+<div style="text-align:center;margin:20px 0;font-size:.92em;line-height:2">
+  <div style="display:inline-flex;flex-direction:column;gap:6px;text-align:left;padding:20px;background:#1e293b;border-radius:16px;border:1px solid #334155">
+    <div><span style="color:#f472b6;font-weight:700">commonTypes.xsd</span> <span style="color:#64748b">← 被以下 include ─</span></div>
+    <div style="margin-left:20px;display:flex;flex-direction:column;gap:3px">
+      <div><span style="color:#7dd3fc">frame.xsd</span></div>
+      <div><span style="color:#fbbf24">semTypes.xsd</span></div>
+      <div><span style="color:#ef4444">frameRelations.xsd</span></div>
+      <div><span style="color:#60a5fa">frameIndex.xsd</span></div>
+      <div><span style="color:#fb923c">header.xsd</span> <span style="color:#64748b">← 又被 ↓ include</span></div>
+      <div style="margin-left:20px">
+        <div><span style="color:#34d399">lexUnit.xsd</span></div>
+        <div><span style="color:#c084fc">fullText.xsd</span></div>
+        <div><span style="color:#22d3ee">fulltextIndex.xsd</span></div>
+      </div>
+    </div>
+    <div style="margin-left:20px">
+      <div><span style="color:#38bdf8">sentence.xsd</span> <span style="color:#64748b">← 又被 ↓ include</span></div>
+      <div style="margin-left:20px">
+        <div><span style="color:#34d399">lexUnit.xsd</span></div>
+        <div><span style="color:#c084fc">fullText.xsd</span></div>
+      </div>
+    </div>
+    <div><span style="color:#a3e635">luIndex.xsd</span> <span style="color:#64748b">(独立，无 include)</span></div>
+  </div>
+</div>
+
+<!-- Data Relationship -->
+<h3 style="text-align:center;color:#e2e8f0;font-size:1.5em;margin:40px 0 20px">数据实体关系图</h3>
+
+<div class="relation-diagram" style="padding:24px;background:#1e293b;border-radius:16px;margin:16px 0;font-size:.92em">
+  <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:10px;line-height:2.2">
+    <span class="rel-arrow from"><strong>semType</strong> <span class="arrow">→</span> 被 FE 引用</span>
+    <span class="rel-arrow from"><strong>semType</strong> <span class="arrow">→</span> 被 lexUnit 引用</span>
+    <span class="rel-arrow from"><strong>Frame</strong> <span class="arrow">→</span> 包含 FE(1+)</span>
+    <span class="rel-arrow from"><strong>Frame</strong> <span class="arrow">→</span> 包含 lexUnit(0+)</span>
+    <span class="rel-arrow from"><strong>Frame</strong> <span class="arrow">→</span> 有 frameRelation</span>
+    <span class="rel-arrow to">frameRelation <span class="arrow">→</span> 含 FERelation</span>
+    <span class="rel-arrow to">lexUnit <span class="arrow">→</span> 属于 Frame</span>
+    <span class="rel-arrow to">lexUnit <span class="arrow">→</span> 含 valences + subCorpus</span>
+    <span class="rel-arrow to">subCorpus <span class="arrow">→</span> 含 sentence</span>
+    <span class="rel-arrow from"><strong>fullText</strong> <span class="arrow">→</span> 含 sentence*</span>
+    <span class="rel-arrow to">sentence <span class="arrow">→</span> 含 annotationSet*</span>
+    <span class="rel-arrow to">annotationSet <span class="arrow">→</span> 引用 Frame + lexUnit</span>
+    <span class="rel-arrow from"><strong>header</strong> <span class="arrow">→</span> 引用 corpus/document</span>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- FULL EXAMPLE WALKTHROUGH -->
+<!-- ============================================================ -->
+<h3 style="text-align:center;color:#e2e8f0;font-size:1.8em;margin:60px 0 24px">完整实例：一句话走通全部 11 个 Schema</h3>
+<p style="text-align:center;color:#fbbf24;font-size:1.3em;font-weight:700;margin-bottom:30px">"They took revenge for the deaths of two loyalist prisoners."</p>
+
+<div class="full-flow">
+<h3>从一句话到全库串联</h3>
+
+<div class="timeline">
+
+  <!-- Step 1: frameIndex -->
+  <div class="tl-item tl-frame">
+    <h4>① frameIndex — 查目录，找到 Revenge 框架</h4>
+    <p>在 frameIndex.xml 中按 name 搜索 → 找到 <code>Revenge (ID:347)</code></p>
+    <div class="data" style="color:#7dd3fc">&lt;frame ID="347" name="Revenge" mDate="..."/&gt;</div>
+  </div>
+
+  <!-- Step 2: commonTypes -->
+  <div class="tl-item tl-common">
+    <h4>② commonTypes — 类型支撑</h4>
+    <p>frameIndex 用的 IDType、frameNameType、dateTimeType 全在 commonTypes 里定义。后续所有数据结构都依赖这套基础类型。</p>
+    <div class="data" style="color:#f9a8d4">IDType = int≥0, frameNameType = [A-Z].*, dateTimeType = MM/DD/YYYY ...</div>
+  </div>
+
+  <!-- Step 3: frame -->
+  <div class="tl-item tl-frame">
+    <h4>③ frame — 框架详情</h4>
+    <p>打开 Revenge.xml → 看到 13 个 FE、2 个 FEcoreSet、1 条继承关系、13 个 lexUnit。</p>
+    <div class="data"><span class="pill core">Avenger</span> <span class="pill core">Offender</span> <span class="pill core">Punishment</span> <span class="pill core">Injury</span> <span class="pill core">Injured_party</span> <span class="pill periph">Manner</span> <span class="pill periph">Time</span> <span class="pill extra">Result</span> ...
+    <br>FEcoreSet: {Injury ↔ Injured_party}, {Avenger ↔ Punishment}
+    <br>frameRelation: Inherits from → Rewards_and_punishments</div>
+  </div>
+
+  <!-- Step 4: semTypes -->
+  <div class="tl-item tl-semt">
+    <h4>④ semTypes — FE 的语义标签</h4>
+    <p>Avenger FE 引用了 semType "Sentient"(ID:5)，说明填充者必须是有知觉的存在。Injury FE 没有显式 semType。</p>
+    <div class="data" style="color:#fde68a">Avenger FE → &lt;semType name="Sentient" ID="5"/&gt;
+↓
+Sentient → superType: Animate_being(65) → ... → Physical_object</div>
+  </div>
+
+  <!-- Step 5: frameRelations -->
+  <div class="tl-item tl-fr">
+    <h4>⑤ frameRelations — 全局框架关系 + FE 映射</h4>
+    <p>Revenge Inherits from Rewards_and_punishments。在 frRelation.xml 中查找该关系，能看到上层 FE 如何映射到下层 FE。</p>
+    <div class="data" style="color:#fca5a5">frameRelationType name="Inherits from"
+  frameRelation superFrameName="Rewards_and_punishments" subFrameName="Revenge"
+    FERelation: super FE "Reward" → sub FE "Punishment"  (名称不同！)
+    FERelation: super FE "Evaluee" → sub FE "Offender"</div>
+  </div>
+
+  <!-- Step 6: luIndex -->
+  <div class="tl-item tl-lu">
+    <h4>⑥ luIndex — 定位 avenge.v 或 revenge.n</h4>
+    <p>在 luIndex.xml 查找 → revenge.n (ID:6067, status:Finished_Initial, frameID:347)</p>
+    <div class="data" style="color:#bef264">&lt;lu ID="6067" name="revenge.n" status="Finished_Initial" frameName="Revenge" hasAnnotation="true" numAnnotInstances="34"/&gt;</div>
+  </div>
+
+  <!-- Step 7: lexUnit -->
+  <div class="tl-item tl-lu">
+    <h4>⑦ lexUnit — avenge.v 的完整详情</h4>
+    <p>打开 lu6056.xml → header 列出所有13个FE的配色 → definition → lexeme(avenge) → valences(配价统计) → subCorpus(33条标注语料)</p>
+    <div class="data" style="color:#6ee7b7">valences:
+  FERealization[Avenger]: NP.Ext(25句) / CNI(7句) / Poss(1句)
+  FERealization[Injury]:  NP.Obj(14句) / NP.Ext(4句) / PP[for](1句) / PP[of](1句)
+  FERealization[Offender]: PP[on].Dep(16句) / NP.Obj(4句) / ...
+
+subCorpus → sentence*: "They took revenge for the deaths..."</div>
+  </div>
+
+  <!-- Step 8: header -->
+  <div class="tl-item tl-header">
+    <h4>⑧ header — lexUnit 里的上下文信息</h4>
+    <p>avenge.v 的 &lt;header&gt; 记录：属于哪个语料库、哪篇文档、Revenge 框架的 FE 全部配色方案（方便标注软件渲染）</p>
+    <div class="data" style="color:#fdba74">&lt;header&gt;
+  &lt;corpus ID="195" name="ANC"&gt;...&lt;/corpus&gt;
+  &lt;frame&gt;
+    &lt;FE name="Avenger" type="Core" bgColor="FF0000" fgColor="FFFFFF"/&gt;
+    &lt;FE name="Offender" type="Core" bgColor="9F79EE" fgColor="FFFFFF"/&gt;
+    ...
+  &lt;/frame&gt;
+&lt;/header&gt;</div>
+  </div>
+
+  <!-- Step 9: sentence -->
+  <div class="tl-item tl-sentence">
+    <h4>⑨ sentence — 标注该句的多层标签</h4>
+    <p>在 subCorpus 中找到该句，annotationSet 包含 Target/FE/GF/PT 等多层 label：</p>
+    <div class="data" style="color:#7dd3fc">&lt;text&gt;They took revenge for the deaths of two loyalist prisoners.&lt;/text&gt;
+
+Target 层: start=9 end=15 → "revenge"
+FE 层:   "They"(0-3) = Avenger  bgColor=FF0000
+         "for the deaths..."(17-end) = Injury  bgColor=00008B
+GF 层:   "They" = Ext
+PT 层:   "They" = NP
+itype:  Offender = INI(固有空缺，复仇句中常不提对方)</div>
+  </div>
+
+  <!-- Step 10: fullText -->
+  <div class="tl-item tl-ft">
+    <h4>⑩ fullText — 这句话也出现在全文语料中</h4>
+    <p>如果该句来自某篇全文标注文档(如 ANC 语料)，同一句话会同时出现在 fullText XML 中——词汇视角(lexUnit)和文档视角(fullText)都能看到同一标注。</p>
+    <div class="data" style="color:#d8b4fe">fullText XML: 同一 sentence → 可能有多个 annotationSet
+  - revenge.n → Revenge 框架
+  - 其他词触发的不同框架标注</div>
+  </div>
+
+  <!-- Step 11: fulltextIndex -->
+  <div class="tl-item tl-ft">
+    <h4>⑪ fulltextIndex — 反查语料来源</h4>
+    <p>想知道这篇文档属于哪个语料库？查 fulltextIndex → corpus=ANC, document=chapter8_911report</p>
+    <div class="data" style="color:#67e8f9">&lt;corpus ID="195" name="ANC" description="American National Corpus"&gt;
+  &lt;document ID="25397" name="chapter8_911report"/&gt;
+&lt;/corpus&gt;</div>
+  </div>
+
+</div><!-- timeline -->
+
+<div style="text-align:center;margin-top:30px;padding:20px;background:#1e293b;border-radius:12px">
+  <p style="font-size:1.3em;font-weight:700;color:#e2e8f0;margin-bottom:12px">数据流总路径</p>
+  <p style="color:#94a3b8;font-size:.95em;line-height:2">
+    <span style="color:#60a5fa">frameIndex</span> 找框架 →
+    <span style="color:#7dd3fc">frame</span> 读定义+FE+LU →
+    <span style="color:#fbbf24">semTypes</span> 查语义类型 →
+    <span style="color:#ef4444">frameRelations</span> 扩展关系网 →
+    <span style="color:#a3e635">luIndex</span> 定位 LU →
+    <span style="color:#34d399">lexUnit</span> 读配价+语料 →
+    <span style="color:#fb923c">header</span> 提供上下文 →
+    <span style="color:#38bdf8">sentence</span> 多层标注 →
+    <span style="color:#c084fc">fullText</span> 文档级视角 →
+    <span style="color:#22d3ee">fulltextIndex</span> 追溯语料来源<br>
+    <span style="color:#f472b6">commonTypes</span> 全程支撑所有类型定义
+  </p>
+</div>
+
+</div><!-- full-flow -->
+
+</div><!-- page -->
+</body>
+</html>
