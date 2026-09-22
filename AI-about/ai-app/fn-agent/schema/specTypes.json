@@ -45,8 +45,13 @@
     "orderType": {
       "type": "integer",
       "minimum": 0,
-      "description": "顺序编号, lexeme 的 order、段落号等。对应 commonTypes.xsd 的 orderType。"
+      "description": "顺序编号"
     },
+    "labelSpanType": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "标注起止位置、Label 的 start/end 属性"
+    },    
     "countType": {
       "type": "integer",
       "minimum": 0,
@@ -62,6 +67,23 @@
       "description": "FE 核心类型 4 选 1，对应 commonTypes.xsd 的 coreType。",
       "enum": ["Core", "Peripheral", "Extra-Thematic", "Core-Unexpressed"]
     },
+    "phraseType": {
+      "type": "string",
+      "description": "FrameNet 标准短语类型（Phrase Type）枚举，映射句法结构（Syntactic Category）层面。",
+      "enum": [
+        "NP", "N", "PP", "PPing", "AJP", "AVP", "VP", "VPing", "VPto", "VPbrst", "VPlit", 
+        "Sfin", "Sif", "Swh", "Sto", "Srel", "Sub", "Sforto", "Poss", "QUO", "INC", "REFL", "PRT"
+      ],
+      "description_mapping": "常用项注解：NP(名词短语), PP(介词短语), AJP(形容词短语), AVP(副词短语), Sfin(时态从句), Swh(wh-从句), QUO(直接引语), PRT(小品词)"
+    },
+    "grammaticalFunctionType": {
+      "type": "string",
+      "description": "FrameNet 标准句法功能（Grammatical Function）枚举，映射句法关系（Syntactic Relation）层面。",
+      "enum": [
+        "Ext", "Obj", "Obj2", "Comp", "Mod", "Gen", "Pos", "Head", "Dep", "Appos", "Supp"
+      ],
+      "description_mapping": "常用项注解：Ext(外部主语), Obj(直接宾语), Obj2(间接宾语), Comp(补语), Mod(修饰语), Dep(依存依赖), Supp(支持动词成分)"
+    },
     "LUNameType": {
       "type": "string",
       "pattern": "^[a-zA-Z0-9_.]+$",
@@ -69,8 +91,15 @@
     },
     "lexemeType": {
       "type": "object",
-      "description": "lexeme 类型，词素：name + POS(必填) breakBefore / headword / order(可选)用于 lexUnit 下的 lexeme 元素。对应 commonTypes.xsd 的 lexemeType。",
-      "required": ["name", "POS"],
+      "description": "词素，构成 lexUnit（词汇单元，LU） 的最小语法和词汇单位",
+      "required": ["name", "pos"],
+      "properties": {
+        "name": { "type": "string" },
+        "pos": { "$ref": "#/$defs/POSType" },
+        "break_before": { "type": "boolean", "description": "标识当前词素与前一个词素之间是否有关联空格或标点" },
+        "headword": { "type": "boolean", "description": "标识这个词素是否这组短语的核心成分" },
+        "order": { "$ref": "#/$defs/orderType" }
+      },
       "additionalProperties": false
     },
     "semTypeRefType": {
@@ -81,14 +110,11 @@
     }, 
     "frameReference": {
       "type": "object",
-      "description": "在 lexUnit、annotationSet 中引用 Frame。对应 commonTypes.xsd 的 frameReference。",
+      "description": "属性组, 用于引用 Frame",
       "required": ["frameID", "frameName"],
-      "additionalProperties": false
-    },
-    "basicLUAttributes": {
-      "type": "object",
-      "description": "lexUnit 的基础属性复用组。对应 commonTypes.xsd 的 basicLUAttributes。",
-      "required": ["ID", "name", "POS", "incorporatedFE"],
+      "properties": {
+        "frameID": {"$ref": "#/defs/"}
+      },
       "additionalProperties": false
     },       
     "metadata": {
@@ -138,8 +164,8 @@
     },
     "sharedSkeleton": {
       "type": "object",
-      "description": "共享顶层骨架：所有 schema 文档必须含这四个顶层键。",
-      "required": ["metadata", "validation_rules", "conventions", "external_refs"],
+      "description": "共享顶层骨架：所有 schema 文档必须含顶层键。",
+      "required": ["metadata", "validation_rules", "conventions"],
       "properties": {
         "metadata": { "$ref": "#/$defs/metadata" },
         "validation_rules": {
