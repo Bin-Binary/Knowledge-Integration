@@ -1,0 +1,202 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:struct:lexUnit:v1",
+  "title": "lexUnit (v1) 词元文档结构",
+  "description": "单一词元文档（lexUnit）的纯结构设计，对齐 FrameNet lexUnit.xsd,含 header、definition、lexeme（词素列表）、semType（语义类型引用）、valences 与 subCorpus（标注例句集，内嵌 sentence 结构）。",
+  "version": "v1",
+
+  "$defs": {      
+    "semTypeRef": {
+      "type": "object",
+      "description": "词元关联的语义类型引用，对应 commonTypes.xsd 的 semTypeRefType（ID/name）。",
+      "required": ["id", "name"],
+      "properties": {
+        "id": { "$ref": "urn:struct:specTypes:v1#/$defs/urnRef" },
+        "name": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+
+    "annoSetRef": {
+      "type": "object",
+      "description": "关联标注集引用，对应 lexUnit.xsd 的 annoSetType（仅 ID 属性）。",
+      "required": ["anno_set_id"],
+      "properties": {
+        "anno_set_id": { "$ref": "urn:struct:specTypes:v1#/$defs/urnRef" }
+      },
+      "additionalProperties": false
+    },
+
+    "valenceUnit": {
+      "type": "object",
+      "description": "价态单元，从FE（语义角色）/PT（短语类型）/GF（语法功能）三个层面刻画词汇单元（LU）的核心配价表现",
+      "required": ["fe_name", "pt", "gf"],
+      "properties": {
+        "fe_name": { 
+          "$ref": "urn:struct:specTypes:v1#/$defs/frameNameType", 
+          "description": "属于语义（Semantics）层面，映射当前框架所包含的核心或非核心框架元素名称" 
+        },
+        "pt": {
+          "$ref": "urn:struct:specTypes:v1#/$defs/phraseType", 
+          "description": "属于句法结构（Syntactic Category）层面，标注该要素在真实文本中的短语类型"
+        },
+        "gf": {
+          "$ref": "urn:struct:specTypes:v1#/$defs/grammaticalFunctionType",  
+          "description": "属于句法关系（Syntactic Relation）层面，标注该要素与触发词之间的语法功能关系" 
+        }
+      },
+      "additionalProperties": false
+    },
+    "governorType": {
+      "type": "string",
+      "description": "Governors 类别核心：Supp（支持谓词）/ Ctrl（控制词）/  Gov（普通外部支配词）",
+      "enum": ["Supp", "Ctrl", "Gov"]
+    },
+    "valences": {
+      "type": "object",
+      "description": "价态、用于描述一个LU在句子中与哪些语义角色一同出现，以及这些角色的句法表现",
+      "properties": {
+        "governors": {
+          "type": "array",
+          "description": "支配词，标注集（anno_sets）的这个词正在被这个类型（type）的支配词（governor）所影响或控制，支配词的原形是lemma",
+          "items": {
+            "type": "object",
+            "required": ["lemma", "type", "anno_sets"],
+            "properties": {
+              "lemma": { "type": "string" },
+              "type": { "$ref": "#/$defs/governorType" },
+              "anno_sets": {
+                "type": "array",
+                "items": { "$ref": "#/$defs/annoSetRef" }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "fe_realizations": {
+          "type": "array",
+          "description": "刻画LU扮演同一语义角色（fe_name）在标注集(pattern.anno_sets)中出现不同的价态实例(valence_unit)的次数（pattern.total），total=所有pattern.total的和 ",
+          "items": {
+            "type": "object",
+            "required": ["fe_name", "total", "patterns"],
+            "properties": {
+              "fe_name": { "type": "string", "description": "扮演同一语义角色" },
+              "total": { "$ref": "urn:struct:specTypes:v1#/$defs/countType" },
+              "patterns": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["total", "valence_unit", "anno_sets"],
+                  "properties": {
+                    "total": { 
+                      "$ref": "urn:struct:specTypes:v1#/$defs/countType",
+                      "description": "当前价态实例在标注集出现的次数"
+                    },
+                    "valence_unit": { 
+                      "$ref": "#/$defs/valenceUnit",
+                      "description": "同一个语义角色（FE），可以用不同的语法功能（GF）和短语类型（PT）来表达"
+                    },
+                    "anno_sets": {
+                      "type": "array",
+                      "items": { "$ref": "#/$defs/annoSetRef" }
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "fe_group_realizations": {
+          "type": "array",
+          "description": "刻画LU扮演多个语义角色（fe_names）在标注集(pattern.anno_sets)中出现不同的价态实例(valence_units)的次数（pattern.total），total=所有pattern.total的和 ",
+          "items": {
+            "type": "object",
+            "required": ["fe_names", "total", "pattern"],
+            "properties": {
+              "fe_names": {
+                "type": "array",
+                "description": "扮演多语义角色",
+                "items": { "type": "string" }
+              },
+              "total": { "$ref": "urn:struct:specTypes:v1#/$defs/countType" },
+              "pattern": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["total", "valence_units", "anno_sets"],
+                  "properties": {
+                    "total": { "$ref": "urn:struct:specTypes:v1#/$defs/countType" },
+                    "valence_units": {
+                      "type": "array",
+                      "description": "多个语义角色（FE）, 一定是多价态实例",
+                      "items": { "$ref": "#/$defs/valenceUnit" }
+                    },
+                    "anno_sets": {
+                      "type": "array",
+                      "items": { "$ref": "#/$defs/annoSetRef" }
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "subCorpus": {
+      "type": "object",
+      "description": "子语料（标注例句集），对应 lexUnit.xsd 的 subCorpusType（name + sentences）。",
+      "required": ["name", "sentences"],
+      "properties": {
+        "name": { "type": "string" },
+        "sentences": {
+          "type": "array",
+          "description": "句子结构引用 sentence.json 的sentenceType",
+          "items": { "$ref": "urn:struct:sentence:v1#/$defs/sentenceType" }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+
+  "type": "object",
+  "description": "每个 lexUnit 是一个独立 json 文件, 是信息密度最高的文件",
+  "required": ["$schema", "$id", "definition", "header", "valences", "sub_corpora", "lexemes", "sem_types"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "const": "https://json-schema.org/draft/2020-12/schema"
+    },
+    "$id": {
+      "type": "string",
+      "pattern": "^urn:lexUnit:[a-zA-Z0-9_.-]+:v[0-9]+(-[a-z][a-z0-9]*)?$"
+    },
+    "definition": { "type": "string", "minLength": 1, "description": "词元定义" },    
+    "header": { "$ref": "urn:struct:header:v1" },    
+    "valences": { "$ref": "#/$defs/valences" },    
+    "sub_corpora": {
+      "type": "array",
+      "description": "子语料清单（0 个或多个），对应 subCorpus 元素。",
+      "items": { "$ref": "#/$defs/subCorpus" }
+    },
+    "lexemes": {
+      "type": "array",
+      "description": "词素清单（1 个或多个），对应 lexeme 元素。",
+      "items": { "$ref": "urn:struct:specTypes:v1#/$defs/lexemeType" },
+      "minItems": 1
+    },  
+    "sem_types": {
+      "type": "array",
+      "description": "语义类型引用清单（0 个或多个），对应 semType 元素。",
+      "items": { "$ref": "#/$defs/semTypeRef" },
+      "uniqueItems": true
+    }
+  },
+  "additionalProperties": false
+}
