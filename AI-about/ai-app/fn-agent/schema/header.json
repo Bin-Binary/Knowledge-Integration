@@ -2,11 +2,21 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:struct:header:v1",
   "title": "header (v1) 标注数据可以追溯结构",
-  "description": "每个 lexUnit XML 和 fullText XML 开头都有一个 <header>，它记录这段标注来自哪个语料库、哪篇文档、属于哪个 Frame 的哪些 FE——是上下文说明，让后面的标注数据可追溯。被 lexUnit + fullText 两个 schema引用。对齐 header.xsd。",
+  "description": "每个 lexUnit 和 fullText 开头都有一个 <header>，它记录这段标注来自哪个语料库、哪篇文档、属于哪个 Frame 的哪些 FE——是上下文说明，让后面的标注数据可追溯。被 lexUnit + fullText 两个 schema引用。对齐 header.xsd。",
   "version": "v1",
 
   "$defs": {
-    "document ": {
+    "iso8601": {
+      "type": "string",
+      "format": "date-time",
+      "description": "统一时间格式，对应 commonTypes.xsd 的 dateTimeType。"
+    },
+    "sourceFileRef": {
+      "type": "string",
+      "pattern": "^\\./",
+      "description": "源文件相对路径引用，如 ./R-ROLES-00.json。对应 commonTypes.xsd 中引用其他 schema 文件的 schemaLocation。"
+    },
+    "document": {
       "type": "object",
       "description": "文档信息",
       "required": ["ID", "name"],
@@ -17,45 +27,85 @@
       },
       "additionalProperties": false
     },
-    "fe ": {
+    "fe": {
       "type": "object",
       "description": "FE信息",
       "required": ["name", "type"],
       "properties": {
         "name": { "type": "string", "description": "FE名称" },
-        "abbrev": { "type": "string", "description": "FE简称（可选）" },
+        "abbrev": { "type": "string", "description": "FE简称" },
         "type": { "type": "string", "description": "FE类别" }
+      },
+      "additionalProperties": false
+    },
+    "nameConstraint": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\s]+$",
+      "description": "名称约束：不含空白"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^v(0|[1-9]\\d*)(-[a-z][a-z0-9]*)?$",
+      "description": "版本号，如 v1、v1-draft。对应 commonTypes.xsd 的 cDate 之外新增的版本化设计。"
+    },
+    "validationRule": {
+      "type": "object",
+      "description": "一条校验规则。",
+      "required": ["rule", "expression"],
+      "properties": {
+        "rule": { "type": "string" },
+        "expression": { "type": "string" }
+      },
+      "additionalProperties": false
+    },    
+    "convention": {
+      "type": "object",
+      "description": "一条命名/格式约定。",
+      "required": ["name", "value"],
+      "properties": {
+        "name": { "type": "string" },
+        "value": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object",
+      "description": "元信息块。",
+      "required": ["name", "version", "description", "scope"],
+      "properties": {
+        "name": { "$ref": "#/$defs/nameConstraint" },
+        "version": { "$ref": "#/$defs/version" },
+        "description": { "type": "string" },
+        "scope": { "type": "string", "description": "本 schema 的适用范围声明。" }
       },
       "additionalProperties": false
     }
   },
 
   "type": "object",
-  "description": "header 文档顶层结构：单句的文本与全部标注信息，同时作为内部类型被 full-text / lex-unit 引用。",
-  "required": ["$schema", "$id", "metadata", "header"],
+  "description": "header",
+  "required": ["$schema", "$id", "corpus", "frame", "metadata", "validation_rules", "conventions"],
   "properties": {
-    "$schema": {
-      "type": "string",
-      "const": "https://json-schema.org/draft/2020-12/schema"
+    "corpus": {
+        "type": "array",
+        "description": "多个文档源语料库来源清单，标注文本所映射的多个底座文档源，单体结构为 document",
+        "items": { "$ref": "#/$defs/document" }
     },
-    "$id": {
-      "type": "string",
-      "pattern": "^urn:header:[a-z0-9-]+:v[0-9]+(-[a-z][a-z0-9]*)?$"
+    "frame": {
+        "type": "array",
+        "description": "语义框架清单，该文本段落被激活的多个核心 Frame 及其内部 FE 要素集合，单体结构为 fe",
+        "items": { "$ref": "#/$defs/fe" }        
     },
-    "metadata": { "$ref": "#/$defs/metadata" },
-    "header": { "$ref": "#/$defs/headerSchema" },
     "validation_rules": {
       "type": "array",
-      "description": "文档级校验规则：label 的 start/end 不越界；annotation_set.frame_name 与 frame_id 须一致且可解析；c_date 采用 %c 时间格式。",
-      "items": {
-        "type": "object",
-        "required": ["rule", "expression"],
-        "properties": {
-          "rule": { "type": "string" },
-          "expression": { "type": "string" }
-        },
-        "additionalProperties": false
-      }
+      "description": "文档级校验规则，供 jsonschema 之外的人工/语义校验或规则引擎提取。",
+      "items": { "$ref": "#/$defs/validationRule" }
+    },
+    "conventions": {
+      "type": "array",
+      "description": "命名与格式约定清单，供多标注者协同工作时对齐风格。",
+      "items": { "$ref": "#/$defs/convention" }
     }
   },
   "additionalProperties": false
