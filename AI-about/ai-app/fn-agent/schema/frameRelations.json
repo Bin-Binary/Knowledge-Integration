@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:struct:frameRelations:v1",
+  "title": "frameRelations (v1) 框架间关系结构",
+  "description": "框架间关系结构设计",
+  "version": "v1",
+
+  "$defs": {
+    "frameSchemaId": {
+      "type": "string",
+      "pattern": "^F-[A-Z]+(?:-[A-Z]+)*-00$",
+      "description": "框架 ID 引用，对应 frameRelations.xsd 中 supID/subID 的语义化表达（如 F-ACT-00）。"
+    },
+    "relationType": {
+      "type": "string",
+      "enum": [
+        "inheritance",
+        "perspective_on",
+        "using",
+        "subframe",
+        "precedes",
+        "causative_of",
+        "inchoative_of",
+        "metaphor",
+        "see_also"
+      ],
+      "description": "关系类型"
+    },
+    "frameRelation": {
+      "type": "object",
+      "description": "具体frame对关系实例",
+      "required": ["super_frame_schema_id", "sub_frame_schema_id"],
+      "properties": {
+        "super_frame_schema_id": { "$ref": "#/$defs/frameSchemaId" },
+        "sub_frame_schema_id": { "$ref": "#/$defs/frameSchemaId" },
+        "super_frame_schema_name": { "$ref": "urn:struct:specTypes:v1#/$defs/frame_name_type" },
+        "sub_frame_schema_name": { "$ref": "urn:struct:specTypes:v1#/$defs/frame_name_type" },
+        "note": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "frameRelationGroup": {
+      "type": "object",
+      "description": "关系类型分组。对应 frameRelations.xsd 的 frameRelationType（ID/name/superFrameName/subFrameName），其下承载该类型的所有帧对实例。",
+      "required": ["relation_type", "relations"],
+      "properties": {
+        "relation_type": { "$ref": "#/$defs/relationType" },
+        "super_frame_schema_id": {
+          "type": "string",
+          "description": "类型级的约定超帧 ID（可选，用于类型声明而非单个实例）。"
+        },
+        "sub_frame_schema_id": {
+          "type": "string",
+          "description": "类型级的约定子帧 ID（可选，对应 frameRelationType 的 subFrameName）。"
+        },
+        "relations": {
+          "type": "array",
+          "description": "该关系类型下的全部帧对实例（1 个或多个，对应 frameRelation 列表）。",
+          "items": { "$ref": "#/$defs/frameRelation" },
+          "minItems": 1
+        },
+        "validation_rules": {
+          "type": "array",
+          "description": "类型级校验规则：super/sub 帧须可解析；inherits_from 关系必须与子帧 metadata.parent_frame_schema_id 保持一致。",
+          "items": {
+            "type": "object",
+            "required": ["rule", "expression"],
+            "properties": {
+              "rule": { "type": "string" },
+              "expression": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+
+  "type": "object",
+  "description": "frameRelations 文档顶层结构：按关系类型分组的全部帧间关系。",
+  "required": ["$schema", "$id", "groups"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "const": "https://json-schema.org/draft/2020-12/schema"
+    },
+    "$id": {
+      "type": "string",
+      "pattern": "^urn:frameRelations:[a-z0-9-]+:v[0-9]+(-[a-z][a-z0-9]*)?$"
+    },
+    "groups": {
+      "type": "array",
+      "description": "按关系类型分组的全部帧间关系（0 个或多个）。",
+      "items": { "$ref": "#/$defs/frameRelationGroup" },
+      "uniqueItems": true
+    }
+  },
+  "additionalProperties": false
+}
