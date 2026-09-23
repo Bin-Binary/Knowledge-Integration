@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:struct:lu-index:v1",
-  "title": "lu-index (v1) 词元索引结构",
+  "$id": "urn:struct:luIndex:v1",
+  "title": "luIndex (v1) 词元索引结构",
   "description": "词元索引文档（luIndex）的纯结构设计，对齐 FrameNet luIndex.xsd：根 luIndex 含 legend（status 图例）与 lu 条目列表。每个 lu 条目是纯属性结构，对应 XSD 属性：ID/name/status/frameName/frameID/hasAnnotation/numAnnotInstances。顶层引用 spec-types.json 的共享类型。",
   "version": "v1",
 
@@ -64,7 +64,7 @@
   },
 
   "type": "object",
-  "description": "lu-index 文档顶层结构：legend 图例 + 词元索引条目列表。",
+  "description": "luIndex 文档顶层结构：legend 图例 + 词元索引条目列表。",
   "required": ["$schema", "$id", "metadata", "lus"],
   "properties": {
     "$schema": {
@@ -73,7 +73,7 @@
     },
     "$id": {
       "type": "string",
-      "pattern": "^urn:lu-index:[a-z0-9-]+:v[0-9]+(-[a-z][a-z0-9]*)?$"
+      "pattern": "^urn:luIndex:[a-z0-9-]+:v[0-9]+(-[a-z][a-z0-9]*)?$"
     },
     "metadata": { "$ref": "#/$defs/metadata" },
     "legend": {
