@@ -2,21 +2,10 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:struct:lexUnit:v1",
   "title": "lexUnit (v1) 词元文档结构",
-  "description": "单一词元文档（lexUnit）的纯结构设计，对齐 FrameNet lexUnit.xsd,含 header、definition、lexeme（词素列表）、semType（语义类型引用）、valences 与 subCorpus（标注例句集，内嵌 sentence 结构）。",
+  "description": "单一词元文档（lexUnit）的纯结构设计。",
   "version": "v1",
 
   "$defs": {      
-    "semTypeRef": {
-      "type": "object",
-      "description": "词元关联的语义类型引用，对应 commonTypes.xsd 的 semTypeRefType（ID/name）。",
-      "required": ["id", "name"],
-      "properties": {
-        "id": { "$ref": "urn:struct:specTypes:v1#/$defs/urnRef" },
-        "name": { "type": "string", "minLength": 1 }
-      },
-      "additionalProperties": false
-    },
-
     "annoSetRef": {
       "type": "object",
       "description": "关联标注集引用，对应 lexUnit.xsd 的 annoSetType（仅 ID 属性）。",
@@ -167,7 +156,7 @@
 
   "type": "object",
   "description": "每个 lexUnit 是一个独立 json 文件, 是信息密度最高的文件",
-  "required": ["$schema", "$id", "definition", "header", "valences", "sub_corpora", "lexemes", "sem_types"],
+  "required": ["$schema", "$id", "definition", "header", "valences", "sub_corpora", "lexemes", "sem_type_refs"],
   "properties": {
     "$schema": {
       "type": "string",
@@ -191,10 +180,10 @@
       "items": { "$ref": "urn:struct:specTypes:v1#/$defs/lexemeType" },
       "minItems": 1
     },  
-    "sem_types": {
+    "sem_type_refs": {
       "type": "array",
       "description": "语义类型引用清单（0 个或多个），对应 semType 元素。",
-      "items": { "$ref": "#/$defs/semTypeRef" },
+      "items": { "$ref": "urn:struct:specTypes:v1#/$defs/sem_type_ref" },
       "uniqueItems": true
     }
   },
