@@ -2,73 +2,53 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:struct:sentence:v1",
   "title": "sentence (v1) 句子标注结构",
-  "description": "句子标注文档的纯结构设计，对齐 FrameNet sentence.xsd：sentence 含 text 元素，其后为任意数量 annotationSet（含任意 layer，每 layer 含任意 label）。label 为纯属性结构（name/start/end/fgColor/bgColor/itype/feID/cBy）。因 sentence.xsd 同时被 fullText.xsd 与 lexUnit.xsd 复用，故作为独立 schema 供两者 $ref。顶层引用 spec-types.json 的共享类型。",
+  "description": "核心的标注数据结构",
   "version": "v1",
-
   "$defs": {
-    "version": {
-      "type": "string",
-      "pattern": "^v(0|[1-9]\\d*)(-[a-z][a-z0-9]*)?$"
-    },
-    "idRef": {
-      "type": "integer",
-      "minimum": 0,
-      "description": "非负整数 ID，对应 commonTypes.xsd 的 IDType。"
-    },
-    "order": {
-      "type": "integer",
-      "minimum": 0,
-      "description": "顺序数（rank/paragNo/sentNo），对应 commonTypes.xsd 的 orderType。"
-    },
-    "span": {
-      "type": "integer",
-      "minimum": 0,
-      "description": "标注跨度，对应 commonTypes.xsd 的 labelSpanType。"
-    },
-    "rgbColor": {
-      "type": "string",
-      "pattern": "^[0-9A-Fa-f]{6}$",
-      "description": "RGB 颜色，对应 commonTypes.xsd 的 RGBColorType。"
-    },
-
-    "labelSchema": {
+    "version": { "$ref": "urn:struct:specTypes:v1#/$defs/version" },
+    "idRef": { "$ref": "urn:struct:specTypes:v1#/$defs/urn_ref" },
+    "order": { "$ref": "urn:struct:specTypes:v1#/$defs/order_type" },
+    "span": { "$ref": "urn:struct:specTypes:v1#/$defs/label_spanType" },
+    "convention": { "$ref": "urn:struct:specTypes:v1#/$defs/convention" },
+    "labelType": {
       "type": "object",
-      "description": "标注标签，对应 sentence.xsd 的 labelType（纯属性：name/start/end/fgColor/bgColor/itype/feID/cBy）。",
+      "description": "标注标签，零实例化，对应 sentence.xsd 的 labelType。",
       "required": ["name"],
       "properties": {
         "name": { "type": "string" },
         "start": { "$ref": "#/$defs/span" },
         "end": { "$ref": "#/$defs/span" },
-        "fg_color": { "$ref": "#/$defs/rgbColor" },
-        "bg_color": { "$ref": "#/$defs/rgbColor" },
         "itype": {
           "type": "string",
           "enum": ["APos", "CNI", "INI", "DNI", "INC"],
-          "description": "标签类型，对应 labelType 的 itype 枚举。"
+          "description": "标签类型，，零实例化，对应 labelType 的 itype 枚举。"
         },
         "fe_id": { "type": "integer", "description": "对应 labelType 的可选 feID。" },
         "c_by": { "type": "string", "description": "标注者，对应 labelType 的可选 cBy。" }
       },
       "additionalProperties": false
     },
-
-    "layerSchema": {
+    "layerType": {
       "type": "object",
       "description": "标注层，对应 sentence.xsd 的 layerType（name 必填 + rank 可选 + label*）。",
       "required": ["name", "labels"],
       "properties": {
-        "name": { "type": "string" },
+        "name": { 
+          "type": "string",
+          "description": "常见标注层：Target FE GF PT NER",
+          "enum": ["Target", "FE", "GF", "PT", "NER"] 
+        },
         "rank": { "$ref": "#/$defs/order" },
         "labels": {
           "type": "array",
           "description": "本层的标签清单（0 个或多个）。",
-          "items": { "$ref": "#/$defs/labelSchema" }
+          "items": { "$ref": "#/$defs/labelType" }
         }
       },
       "additionalProperties": false
     },
 
-    "annotationSetSchema": {
+    "annotationSetType": {
       "type": "object",
       "description": "标注集，对应 sentence.xsd 的 annotationSetType：layer* + 一组可选属性（ID/status/frameName/frameID/luName/luID/cxnName/cxnID/cDate）。",
       "required": ["layers"],
@@ -89,13 +69,13 @@
         "layers": {
           "type": "array",
           "description": "层清单（1 个或多个）。",
-          "items": { "$ref": "#/$defs/layerSchema" }
+          "items": { "$ref": "#/$defs/layerType" }
         }
       },
       "additionalProperties": false
     },
 
-    "sentenceSchema": {
+    "sentenceType": {
       "type": "object",
       "description": "单句标注，对应 sentence.xsd 的 sentenceType：text + annotationSet* + 一组可选定位属性。供 full-text / lex-unit 等 schema $ref 复用。",
       "required": ["text", "annotation_sets"],
@@ -111,29 +91,18 @@
         "annotation_sets": {
           "type": "array",
           "description": "标注集清单（0 个或多个）。",
-          "items": { "$ref": "#/$defs/annotationSetSchema" }
+          "items": { "$ref": "#/$defs/annotationSetType" }
         }
       },
       "additionalProperties": false
     },
 
-    "metadata": {
-      "type": "object",
-      "description": "句子文档元信息。",
-      "required": ["name", "version", "description", "scope"],
-      "properties": {
-        "name": { "type": "string", "minLength": 1 },
-        "version": { "$ref": "#/$defs/version" },
-        "description": { "type": "string" },
-        "scope": { "type": "string" }
-      },
-      "additionalProperties": false
-    }
+    "metadata": { "$ref": "urn:struct:specTypes:v1#/$defs/metadata" }
   },
 
   "type": "object",
   "description": "sentence 文档顶层结构：单句的文本与全部标注信息，同时作为内部类型被 full-text / lex-unit 引用。",
-  "required": ["$schema", "$id", "metadata", "sentence"],
+  "required": ["$schema", "$id", "metadata", "sentence", "validation_rules", "conventions"],
   "properties": {
     "$schema": {
       "type": "string",
@@ -144,7 +113,7 @@
       "pattern": "^urn:sentence:[a-z0-9-]+:v[0-9]+(-[a-z][a-z0-9]*)?$"
     },
     "metadata": { "$ref": "#/$defs/metadata" },
-    "sentence": { "$ref": "#/$defs/sentenceSchema" },
+    "sentence": { "$ref": "#/$defs/sentenceType" },
     "validation_rules": {
       "type": "array",
       "description": "文档级校验规则：label 的 start/end 不越界；annotation_set.frame_name 与 frame_id 须一致且可解析；c_date 采用 %c 时间格式。",
@@ -157,6 +126,11 @@
         },
         "additionalProperties": false
       }
+    },
+    "conventions": {
+      "type": "array",
+      "description": "命名/格式约定清单，供作者对齐风格。",
+      "items": { "$ref": "#/$defs/convention" }
     }
   },
   "additionalProperties": false
