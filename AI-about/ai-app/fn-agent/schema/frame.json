@@ -1,327 +1,63 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:struct:frame:v1",
-  "title": "frame (v1) 框架文档结构",
-  "description": "单一框架文档（schema/frames/F-*.json 数据实例）的纯结构设计，对齐 FrameNet frame.xsd：帧根含 definition、FE（FE coreType 分组对应 core_fe/peripheral_fe）、frameRelation 与 lexUnit（对应 lus/lus_zh）。在此之上保留本系统独有优势：FE constraint 字段策略（对齐 constraint-field-spec）与继承语法 inherit/override/promote_to_core/added_constraints/inheritance_notes（对齐 frame-inheritance-spec）。顶层引用 spec-types.json 的共享类型，帧数据仅按本结构组织，不内嵌其他帧数据。",
+  "title": "frame (v1) 框架结构",
+  "description": "基于framenet原生frame.xsd进行设计和补充，用于描述领域框架",
   "version": "v1",
 
   "$defs": {
-    "version": {
-      "type": "string",
-      "pattern": "^v(0|[1-9]\\d*)(-[a-z][a-z0-9]*)?$"
-    },
-    "feelName": {
-      "type": "string",
-      "pattern": "^[a-z][a-z0-9_]*$",
-      "description": "FE 名：小写 snake_case，对齐 frame.xsd 的 FE 名小写规范。"
-    },
-
-    "metadata": {
+    "domain_sem_type": {
       "type": "object",
-      "description": "框架元信息：对应 frame.xsd 中根 frame 的 ID/name/cDate 属性，扩展为语义化字段并含父框架。",
-      "required": ["frame_schema_id", "frame_schema_name", "definition", "type", "version"],
-      "properties": {
-        "frame_schema_id": {
-          "type": "string",
-          "pattern": "^F-[A-Z]+(?:-[A-Z]+)*-00$",
-          "description": "框架 ID，对应 frame.xsd 的 frame/@ID。"
-        },
-        "frame_schema_name": {
-          "type": "string",
-          "pattern": "^[A-Z][a-zA-Z0-9_-]*$",
-          "description": "框架名（PascalCase 或 F-xxx 形态），对应 frame.xsd 的 frame/@name。"
-        },
-        "parent_frame_schema_id": {
-          "anyOf": [
-            { "type": "null" },
-            { "type": "string", "pattern": "^F-[A-Z]+(?:-[A-Z]+)*-00$" }
-          ],
-          "default": null,
-          "description": "父框架 ID，对应 frame.xsd 的 frameRelation@type=Inheritance 的显式单链简化。"
-        },
-        "definition": { "type": "string", "minLength": 1 },
-        "type": { "type": "string", "const": "frame" },
-        "version": { "$ref": "#/$defs/version" },
-        "external_refs": {
-          "type": "array",
-          "description": "外部 schema 引用（R-ROLES-00、system-queries、父框架等）。",
-          "items": { "$ref": "#/$defs/externalRef" },
-          "uniqueItems": true
-        }
-      },
-      "additionalProperties": false
+      "description": "领域语义标签，继承framenet的语义标签进行扩展, 当前(2026/9/23)原生语义类型可以约束领域，V1版本不扩展",
+      "allOf": [{ "$ref": "urn:struct:specTypes:v1#/$defs/sem_type_ref" }]
     },
-
-    "externalRef": {
+    "fe_schema": {
       "type": "object",
-      "required": ["target_schema_id", "source_file", "usage"],
+      "description": "FE的schema设计, 包含有7个framenet定义的原生属性，一个补充属性用于具体业务(可选)",
+      "required": ["id", "name", "create_time", "core_type", "definition"],
       "properties": {
-        "target_schema_id": { "type": "string", "minLength": 1 },
-        "source_file": { "type": "string", "pattern": "^\\./" },
-        "source_version": { "$ref": "#/$defs/version" },
-        "imported_at": { "type": "string", "format": "date-time" },
-        "usage": { "type": "string" }
-      },
-      "additionalProperties": false
-    },
-
-    "typeConstraint": {
-      "type": "object",
-      "description": "槽类型：对齐 constraint-field-spec 的 type 层。",
-      "required": ["kind", "ref"],
-      "properties": {
-        "kind": {
+        "id": {
           "type": "string",
-          "enum": ["entity", "frame", "role", "primitive"]
+          "pattern": "^urn:fe:[A-Z]+(?:-[A-Z]+)*-00:v[0-9]+(-[a-z][a-z0-9]*)?$"
         },
-        "ref": { "type": "string", "minLength": 1 },
-        "allow": {
-          "type": "array",
-          "items": { "type": "string" }
-        },
-        "cardinality": {
-          "type": "string",
-          "enum": ["one", "many"],
-          "default": "one"
-        },
-        "note": { "type": "string" }
-      },
-      "additionalProperties": false
-    },
-
-    "candidatePath": {
-      "type": "object",
-      "description": "声明式候选来源路径，对齐 constraint-field-spec 的 fillers.candidate_paths。",
-      "required": ["kind"],
-      "properties": {
-        "kind": {
-          "type": "string",
-          "enum": ["entity_relation", "unit_field", "artifact_field", "context_key"]
-        },
-        "value_field": { "type": "string" },
-        "from": { "type": "string" },
-        "relation": { "type": "string" },
-        "target_types": {
-          "type": "array",
-          "items": { "type": "string" }
-        },
-        "field": { "type": "string" },
-        "key": { "type": "string" },
-        "filter": { "type": "object" },
-        "note": { "type": "string" }
-      },
-      "additionalProperties": false
-    },
-
-    "frameRef": {
-      "type": "object",
-      "description": "对其他框架 FE 的引用：frame 使用 frame_schema_name（非 ID）。",
-      "required": ["frame", "fe"],
-      "properties": {
-        "frame": { "type": "string", "minLength": 1 },
-        "fe": { "$ref": "#/$defs/feelName" }
-      },
-      "additionalProperties": false
-    },
-
-    "fillersConstraint": {
-      "type": "object",
-      "description": "填充来源：对齐 constraint-field-spec 的 fillers 层。",
-      "required": ["sources"],
-      "properties": {
-        "sources": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "enum": ["explicit", "implicit", "qualia", "system", "default", "inferred", "frame", "context", "history"]
-          },
-          "uniqueItems": true
-        },
-        "qualia_paths": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "pattern": "^\\{?(entity|instrument|material|[A-Z][a-zA-Z0-9_-]*|[a-z][a-z0-9_]*)\\}?\\.qualia\\.(formal|constitutive|telic|agentive)$"
-          }
-        },
-        "candidate_paths": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/candidatePath" }
-        },
-        "system_queries": {
-          "type": "array",
-          "items": { "type": "string" }
-        },
-        "frame_refs": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/frameRef" }
-        },
-        "entity_refs": {
-          "type": "array",
-          "items": { "type": "string" }
-        },
-        "notes": { "type": "string" }
-      },
-      "additionalProperties": false
-    },
-
-    "defaultConstraint": {
-      "type": "object",
-      "description": "缺省策略：对齐 constraint-field-spec 的 default 层。",
-      "required": ["strategy", "fallback"],
-      "properties": {
-        "strategy": {
-          "type": "string",
-          "enum": ["query_system", "derive_qualia", "use_default", "infer", "ask", "block"]
-        },
-        "rule": { "type": "string" },
-        "fallback": {
-          "type": "string",
-          "enum": ["ask", "use_default", "block", "escalate"]
-        },
-        "assumptions": {
-          "type": "array",
-          "items": { "type": "string" }
-        },
-        "priority": { "type": "number" }
-      },
-      "additionalProperties": false
-    },
-
-    "multiCandidateConstraint": {
-      "type": "object",
-      "description": "多候选收敛：对齐 constraint-field-spec 的 multi_candidate 层。",
-      "required": ["strategy"],
-      "properties": {
-        "strategy": {
-          "type": "string",
-          "enum": ["score", "ask", "confirm", "default_top1", "block"]
-        },
-        "ranking": {
-          "type": "array",
-          "items": { "type": "string" }
-        },
-        "threshold": { "type": "number", "default": 0.15 },
-        "question_template": { "type": "string" },
-        "options_source": { "type": "string" },
-        "max_options": { "type": "number", "default": 3 },
-        "fallback": {
-          "type": "string",
-          "enum": ["ask", "default_top1", "block"]
-        }
-      },
-      "additionalProperties": false
-    },
-
-    "constraint": {
-      "type": "object",
-      "description": "FE 填充约束四件：type / fillers / default / multi_candidate。",
-      "required": ["type", "fillers", "default", "multi_candidate"],
-      "properties": {
-        "type": { "$ref": "#/$defs/typeConstraint" },
-        "fillers": { "$ref": "#/$defs/fillersConstraint" },
-        "default": { "$ref": "#/$defs/defaultConstraint" },
-        "multi_candidate": { "$ref": "#/$defs/multiCandidateConstraint" }
-      },
-      "additionalProperties": false
-    },
-
-    "addedConstraint": {
-      "type": "object",
-      "description": "追加约束：对齐 frame-inheritance-spec 的 added_constraints。",
-      "required": ["type", "expression"],
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "intentional", "future_oriented", "agent_desired", "agent_controlled",
-            "means_end", "implementable", "state_dependent", "permission",
-            "dependency", "environment"
-          ]
-        },
-        "expression": { "type": "string", "minLength": 1 }
-      },
-      "additionalProperties": false
-    },
-
-    "fe": {
-      "type": "object",
-      "description": "FE 定义：完整定义与继承语法（inherit/override/promote_to_core/added_constraints）二选一或组合。对应 frame.xsd 的 fe 元素，并延伸 constraint 设计。",
-      "minProperties": 1,
-      "properties": {
-        "inherit": {
-          "type": "string",
-          "pattern": "^[A-Z][a-zA-Z0-9_-]*\\.(core_fe|peripheral_fe)\\.[a-z][a-z0-9_]*$",
-          "description": "继承路径：{父框架标识.core_fe|peripheral_fe.FE名}，父框架标识用 frame_schema_id（如 F-ACT-00）。对应 frame.xsd frameRelation@type=Inheritance 的 FE 级对应。"
-        },
-        "promote_to_core": {
-          "type": "boolean",
-          "default": false
-        },
-        "override": {
+        "name": { "$ref": "urn:struct:specTypes:v1#/$defs/property_name_type" },
+        "abbrev": { "type": "string", "description": "别名" },
+        "definition": { "type": "string" },
+        "core_type": { "$ref": "urn:struct:specTypes:v1#/$defs/core_type" },
+        "sem_type": { "$ref": "urn:struct:specTypes:v1#/$defs/sem_type_ref" },
+        "create_time": { "$ref": "urn:struct:specTypes:v1#/$defs/iso8601" },
+        "additional_usage": {
           "type": "object",
-          "description": "覆盖字段：allowed_keys = definition / required / constraint / note；added_constraints 以追加形式放在 override 内（对齐现有数据实例形态）。",
+          "description": "用于约束具体领域场景下，1.fe的语义类型、2.填充源的候选路径、3...",
+          "required": ["domain_sem_type"],
           "properties": {
-            "definition": { "type": "string" },
-            "required": { "type": "boolean" },
-            "constraint": { "$ref": "#/$defs/constraint" },
-            "note": { "type": "string" },
-            "added_constraints": {
-              "type": "array",
-              "items": { "$ref": "#/$defs/addedConstraint" }
-            }
-          },
-          "minProperties": 1,
-          "additionalProperties": false
-        },
-        "added_constraints": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/addedConstraint" }
-        },
-        "definition": { "type": "string", "minLength": 1 },
-        "required": { "type": "boolean" },
-        "constraint": { "$ref": "#/$defs/constraint" },
-        "note": { "type": "string" }
-      },
-      "additionalProperties": false
-    },
-
-    "feGroup": {
-      "type": "object",
-      "description": "FE 分组：core_fe / peripheral_fe，键为 FE 名。对应 frame.xsd 的 coreType=Core/Peripheral 分组。",
-      "propertyNames": { "$ref": "#/$defs/feelName" },
-      "additionalProperties": { "$ref": "#/$defs/fe" },
-      "minProperties": 0
-    },
-
-    "inheritanceNotes": {
-      "type": "object",
-      "description": "继承摘要（人读，不参与运行时解析）：对齐 frame-inheritance-spec 的 inheritance_notes。",
-      "properties": {
-        "from_parent": {
-          "type": "array",
-          "items": { "type": "string" }
-        },
-        "promoted_to_core": {
-          "type": "array",
-          "items": { "type": "string" }
-        },
-        "newly_added": {
-          "type": "array",
-          "items": { "type": "string" }
-        },
-        "overridden": {
-          "type": "array",
-          "items": { "type": "string" }
+            "domain_sem_type": {"$ref": "#/$defs/domain_sem_type"}
+          }
         }
-      },
-      "additionalProperties": false
+      }
+    },
+
+    "lu_schema": {
+      "type": "object",
+      "description": "LU的schema设计, 包含有10个framenet定义的原生属性，一个补充属性用于具体业务(可选)",
+      "required": ["id", "name", "create_time", "definition", "sem_type", "lexeme"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^urn:lu:[A-Z]+(?:-[A-Z]+)*-00:v[0-9]+(-[a-z][a-z0-9]*)?$"
+        },
+        "name": { "$ref": "urn:struct:specTypes:v1#/$defs/property_name_type" },
+        "definition": { "type": "string" },
+        "sem_type": { "$ref": "urn:struct:specTypes:v1#/$defs/sem_type_ref" },
+        "create_time": { "$ref": "urn:struct:specTypes:v1#/$defs/iso8601" },   
+        "lexeme": { "$ref": "urn:struct:specTypes:v1#/$defs/lexeme_type" }           
+      }
     }
   },
-
+  
   "type": "object",
-  "description": "frame 文档顶层结构。",
-  "required": ["$schema", "$id", "metadata", "core_fe"],
+  "description": "frame结构",
+  "required": ["$schema", "$id", "definition", "fe", "lus"],
   "properties": {
     "$schema": {
       "type": "string",
@@ -331,15 +67,16 @@
       "type": "string",
       "pattern": "^urn:frame:[A-Z]+(?:-[A-Z]+)*-00:v[0-9]+(-[a-z][a-z0-9]*)?$"
     },
-    "metadata": { "$ref": "#/$defs/metadata" },
-    "core_fe": { "$ref": "#/$defs/feGroup" },
-    "peripheral_fe": { "$ref": "#/$defs/feGroup" },
-    "inheritance_notes": { "$ref": "#/$defs/inheritanceNotes" },
+    "name": { "$ref": "urn:struct:specTypes:v1#/$defs/frameNameType" },
+    "create_time": { "$ref": "urn:struct:specTypes:v1#/$defs/iso8601"},
+    "definition": {"type": "string", "description": "框架定义描述，句式：刻画/描述...."},
+    "fe": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/fe_schema" }
+    },
     "lus": {
       "type": "array",
-      "description": "英文词元清单，对应 frame.xsd 的 lexUnit/@name。",
-      "items": { "type": "string", "minLength": 1 },
-      "uniqueItems": true
+      "items": { "$ref": "#/$defs/lu_schema" }      
     },
     "lus_zh": {
       "type": "array",
