@@ -16,7 +16,7 @@
       "pattern": "^v(0|[1-9]\\d*)(-[a-z][a-z0-9]*)?$",
       "description": "版本号，如 v1、v1-draft。对应 commonTypes.xsd 的 cDate 之外新增的版本化设计。"
     },
-    "urnRef": {
+    "urn_ref": {
       "type": "string",
       "pattern": "^urn:[a-z][a-z0-9-]*:[a-zA-Z0-9_-]+:[v][0-9]+(-[a-z][a-z0-9]*)?$",
       "description": "统一资源名 $id 格式：urn:{type}:{name}:{version}。对应 commonTypes.xsd 的 IDType，但从纯数字 ID 升级为语义化 URN。"
@@ -26,28 +26,27 @@
       "minLength": 1,
       "description": "自然语言定义。对应 commonTypes.xsd 的 defType（definition 元素共用）。"
     },
-    "nameConstraint": {
+    "frame_name_type": {
       "type": "string",
-      "minLength": 1,
-      "pattern": "^[^\\s]+$",
-      "description": "名称约束：不含空白"
+      "pattern": "^[A-Z][a-zA-Z0-9_-]*$",
+      "description": "一个以大写字母开头的单词（可以包含下划线、连字符等）"
     },
-    "frameNameType": {
+    "property_name_type": {
       "type": "string",
-      "pattern": "^[A-Z][a-zA-Z0-9_]+$",
-      "description": "Frame/FE 名称，大写开头。对应 commonTypes.xsd。"
-    },
-    "sourceFileRef": {
+      "pattern": "^[a-z][A-Za-z0-9_-]*$",
+      "description": "一个以小写字母开头的单词（可以包含下划线、连字符等）"
+    },    
+    "source_file_ref": {
       "type": "string",
       "pattern": "^\\./",
       "description": "源文件相对路径引用，如 ./R-ROLES-00.json。对应 commonTypes.xsd 中引用其他 schema 文件的 schemaLocation。"
     },
-    "orderType": {
+    "order_type": {
       "type": "integer",
       "minimum": 0,
       "description": "顺序编号"
     },
-    "labelSpanType": {
+    "label_spanType": {
       "type": "integer",
       "minimum": 0,
       "description": "标注起止位置、Label 的 start/end 属性"
@@ -62,7 +61,7 @@
       "description": "14种词性枚举，对应 commonTypes.xsd 的 POSType。",
       "enum": ["V", "N", "A", "ADV", "AVP", "PREP", "C", "SCON", "CCON", "PRON", "ART", "NUM", "INTJ", "IDIO"]
     },
-    "coreType": {
+    "core_type": {
       "type": "string",
       "description": "FE 核心类型 4 选 1，对应 commonTypes.xsd 的 coreType。",
       "enum": ["Core", "Peripheral", "Extra-Thematic", "Core-Unexpressed"]
@@ -84,12 +83,12 @@
       ],
       "description_mapping": "常用项注解：Ext(外部主语), Obj(直接宾语), Obj2(间接宾语), Comp(补语), Mod(修饰语), Dep(依存依赖), Supp(支持动词成分)"
     },
-    "LUNameType": {
+    "lu_name_type": {
       "type": "string",
       "pattern": "^[a-zA-Z0-9_.]+$",
       "description": "LU 名称格式,词.词性,如 avenge.v，对应 commonTypes.xsd 的 LUNameType。"
     },
-    "lexemeType": {
+    "lexeme_type": {
       "type": "object",
       "description": "词素，构成 lexUnit（词汇单元，LU） 的最小语法和词汇单位",
       "required": ["name", "pos"],
@@ -102,21 +101,19 @@
       },
       "additionalProperties": false
     },
-    "semTypeRefType": {
+    "sem_type_ref": {
       "type": "object",
-      "description": "语义类型引用：ID + name。被 FE、lexUnit、semTypes使用，是引用，完整定义在 semTypes.json。对应 commonTypes.xsd 的 semTypeRefType。",
-      "required": ["name", "POS"],
-      "additionalProperties": false
-    }, 
-    "frameReference": {
-      "type": "object",
-      "description": "属性组, 用于引用 Frame",
-      "required": ["frameID", "frameName"],
+      "description": "语义类型引用，进行补充分类的元数据，1.贴在 frame，用来定义这个“框架场景”本身的性质和功能 / 2.贴在fe或lu, 用来限制或描述能够填入该角色的实体特征。这里是引用，完整定义在 semTypes.json。对应 commonTypes.xsd 的 semTypeRefType。",
+      "required": ["name", "id"],
       "properties": {
-        "frameID": {"$ref": "#/defs/"}
+        "name": {"$ref": "#/$defs/property_name_type"},
+        "id": {
+          "type": "string",
+          "pattern": "^urn:semantic:[A-Z]+(?:-[A-Z]+)*-00:v[0-9]+(-[a-z][a-z0-9]*)?$"
+        }
       },
       "additionalProperties": false
-    },       
+    },   
     "metadata": {
       "type": "object",
       "description": "所有 schema 文档共享的元信息块。",
