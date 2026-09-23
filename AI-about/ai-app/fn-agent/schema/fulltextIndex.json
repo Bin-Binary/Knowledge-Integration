@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:struct:fulltext-index:v1",
-  "title": "fulltext-index (v1) 全文索引结构",
+  "$id": "urn:struct:fulltextIndex:v1",
+  "title": "fulltextIndex (v1) 全文索引结构",
   "description": "全文索引文档（fulltextIndex）的纯结构设计，对齐 FrameNet fulltextIndex.xsd：根 fulltextIndex 含 0 或多个 corpus（corpDocType，来自 header.xsd）。corpus 结构与 full_text 的 corpus 图例一致，仅承载 ID/name/description + document 序列的索引形态。顶层引用 spec-types.json 的共享类型。",
   "version": "v1",
 
@@ -57,7 +57,7 @@
   },
 
   "type": "object",
-  "description": "fulltext-index 文档顶层结构：语料索引列表。",
+  "description": "fulltextIndex 文档顶层结构：语料索引列表。",
   "required": ["$schema", "$id", "metadata", "corpora"],
   "properties": {
     "$schema": {
@@ -66,7 +66,7 @@
     },
     "$id": {
       "type": "string",
-      "pattern": "^urn:fulltext-index:[a-z0-9-]+:v[0-9]+(-[a-z][a-z0-9]*)?$"
+      "pattern": "^urn:fulltextIndex:[a-z0-9-]+:v[0-9]+(-[a-z][a-z0-9]*)?$"
     },
     "metadata": { "$ref": "#/$defs/metadata" },
     "corpora": {
