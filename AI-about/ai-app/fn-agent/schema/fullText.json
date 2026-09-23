@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:struct:full-text:v1",
-  "title": "full-text (v1) 全文标注文档结构",
-  "description": "全文标注文档（fullTextAnnotation）的纯结构设计，对齐 FrameNet fullText.xsd：根 fullTextAnnotation 含必需的 header，后跟 0 或多个 sentence（结构同 lexicographic 标注，即 sentenceType）。header 携带 corpus/document/frame-FE 图例，sentence 结构引用 sentence.json。顶层引用 spec-types.json 的共享类型。",
+  "$id": "urn:struct:fullText:v1",
+  "title": "fullText (v1) 全文标注文档结构",
+  "description": "全文标注文档（fullTextAnnotation）的纯结构设计",
   "version": "v1",
 
   "$defs": {
@@ -48,7 +48,7 @@
 
     "frameLegend": {
       "type": "object",
-      "description": "框架 FE 图例，对应 header.xsd 的 header/frame 元素：FE 序列（name/abbrev/type/bgColor/fgColor）。",
+      "description": "框架 FE 图例",
       "properties": {
         "frame_schema_id": { "$ref": "#/$defs/idRef" },
         "frame_schema_name": { "type": "string" },
@@ -100,7 +100,7 @@
   },
 
   "type": "object",
-  "description": "full-text 文档顶层结构：header + 全文句子序列。",
+  "description": "fullText 文档顶层结构：header + 全文句子序列。",
   "required": ["$schema", "$id", "metadata", "header", "sentences"],
   "properties": {
     "$schema": {
@@ -109,7 +109,7 @@
     },
     "$id": {
       "type": "string",
-      "pattern": "^urn:full-text:[a-z0-9-]+:v[0-9]+(-[a-z][a-z0-9]*)?$"
+      "pattern": "^urn:fullText:[a-z0-9-]+:v[0-9]+(-[a-z][a-z0-9]*)?$"
     },
     "metadata": { "$ref": "#/$defs/metadata" },
     "header": { "$ref": "#/$defs/headerSchema" },
