@@ -26,6 +26,36 @@
         "core_type": { "$ref": "urn:struct:specTypes:v1#/$defs/core_type" },
         "sem_type": { "$ref": "urn:struct:specTypes:v1#/$defs/sem_type_ref" },
         "create_time": { "$ref": "urn:struct:specTypes:v1#/$defs/iso8601" },
+        "requires": {
+          "type": "array",
+          "description": "某 FE 出现时，以下列出的其他 FE 必须出现",
+          "items": {
+            "type": "object",
+            "required": ["fe_id", "fe_name"],
+            "properties": {
+              "fe_name": { "$ref": "urn:struct:specTypes:v1#/$defs/property_name_type" },
+              "fe_id": {
+                "type": "string",
+                "pattern": "^urn:fe:[A-Z]+(?:-[A-Z]+)*-00:v[0-9]+(-[a-z][a-z0-9]*)?$"
+              }
+            }
+          }
+        },
+        "excludes": {
+          "type": "array",
+          "description": "某 FE 出现时，以下列出的其他 FE 不能出现",
+          "items": {
+            "type": "object",
+            "required": ["fe_id", "fe_name"],
+            "properties": {
+              "fe_name": { "$ref": "urn:struct:specTypes:v1#/$defs/property_name_type" },
+              "fe_id": {
+                "type": "string",
+                "pattern": "^urn:fe:[A-Z]+(?:-[A-Z]+)*-00:v[0-9]+(-[a-z][a-z0-9]*)?$"
+              }
+            }
+          }
+        },
         "additional_usage": {
           "type": "object",
           "description": "用于约束具体领域场景下，1.fe的语义类型、2.填充源的候选路径、3...",
@@ -72,6 +102,11 @@
     "definition": {"type": "string", "description": "框架定义描述，句式：刻画/描述...."},
     "fe": {
       "type": "array",
+      "items": { "$ref": "#/$defs/fe_schema" }
+    },
+    "fe_core_set": {
+      "type":"array",
+      "description": "成分在场。语义：填充核心语义角色集合中任一一个，所有角色都算在场。描述“只要出现了其中一个，就能表达完备的场景，其他几个就可以不出现”的现象。",
       "items": { "$ref": "#/$defs/fe_schema" }
     },
     "lus": {
