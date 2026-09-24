@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:frame:MECHANISM-ENTRY-00:v1",
+  "name": "机制入口框架",
+  "create_time": "2026-09-23T00:00:00Z",
+  "definition": "刻画主题级根锚点：聚合机制概念的组织、产出与解释职能三维度，导航至各子框架",
+  "fe": [
+    {
+      "id": "urn:fe:MECHANISM-ENTRY-00:v1-theme-object",
+      "name": "主题对象",
+      "definition": "机制（作为组织性产出的解释单元）",
+      "core_type": "Core",
+      "sem_type": "urn:sem:Physical_object",
+      "create_time": "2026-09-23T00:00:00Z"
+    },
+    {
+      "id": "urn:fe:MECHANISM-ENTRY-00:v1-constitutive-dimension",
+      "name": "构成维度",
+      "definition": "实体与活动的特定组织——机制构成框架",
+      "core_type": "Core",
+      "sem_type": "urn:sem:Relation",
+      "create_time": "2026-09-23T00:00:00Z"
+    },
+    {
+      "id": "urn:fe:MECHANISM-ENTRY-00:v1-productive-dimension",
+      "name": "产效维度",
+      "definition": "规律性产出特定结果——机制产效框架",
+      "core_type": "Core",
+      "sem_type": "urn:sem:Relation",
+      "create_time": "2026-09-23T00:00:00Z"
+    },
+    {
+      "id": "urn:fe:MECHANISM-ENTRY-00:v1-epistemic-dimension",
+      "name": "认知职能维度",
+      "definition": "回答现象如何产生——机制认知职能框架",
+      "core_type": "Core",
+      "sem_type": "urn:sem:Relation",
+      "create_time": "2026-09-23T00:00:00Z"
+    }
+  ],
+  "lus": [
+    {
+      "id": "urn:lu:MECHANISM-ENTRY-00:v1-mechanism",
+      "name": "mechanism",
+      "definition": "a series of entities and activities organized in a particular way, capable of producing a certain specific outcome in a regular manner",
+      "sem_type": "urn:sem:Noun",
+      "create_time": "2026-09-23T00:00:00Z",
+      "lexeme": { "name": "mechanism", "pos": "N" }
+    }
+  ],
+  "lus_zh": ["机制"]
+}
