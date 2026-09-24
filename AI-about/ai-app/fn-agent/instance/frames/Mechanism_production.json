@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:frame:MECHANISM-PRODUCTION-00:v1",
+  "name": "机制产效框架",
+  "create_time": "2026-09-23T00:00:00Z",
+  "definition": "刻画机制产出结果的规律性特征",
+  "fe": [
+    {
+      "id": "urn:fe:MECHANISM-PRODUCTION-00:v1-productive-regularity",
+      "name": "产出规律性",
+      "definition": "规律性地（产出倾向弱读：可重复地产出；定律强读：组分交互由定律支配——争论开放）",
+      "core_type": "Core",
+      "sem_type": "urn:sem:Relation",
+      "create_time": "2026-09-23T00:00:00Z"
+    },
+    {
+      "id": "urn:fe:MECHANISM-PRODUCTION-00:v1-specific-result",
+      "name": "特定结果",
+      "definition": "某种特定结果（对应经典定义中的终点条件；现象在机制整体层，结果在机制产出末端）",
+      "core_type": "Core",
+      "sem_type": "urn:sem:State_of_affairs",
+      "create_time": "2026-09-23T00:00:00Z"
+    }
+  ],
+  "lus": [
+    {
+      "id": "urn:lu:MECHANISM-PRODUCTION-00:v1-produce",
+      "name": "produce",
+      "definition": "to bring about a specific outcome in a regular manner",
+      "sem_type": "urn:sem:Verb",
+      "create_time": "2026-09-23T00:00:00Z",
+      "lexeme": { "name": "produce", "pos": "V" }
+    }
+  ],
+  "lus_zh": ["产生", "产出"]
+}
