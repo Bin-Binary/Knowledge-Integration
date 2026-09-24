@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:frame:MECHANISM-EPISTEMIC-00:v1",
+  "name": "机制认知职能框架",
+  "create_time": "2026-09-23T00:00:00Z",
+  "definition": "刻画机制概念在解释实践中的问题定位",
+  "fe": [
+    {
+      "id": "urn:fe:MECHANISM-EPISTEMIC-00:v1-explanandum",
+      "name": "解释对象",
+      "definition": "某现象（机制作为整体的行为；现象在机制整体层）",
+      "core_type": "Core",
+      "sem_type": "urn:sem:Phenomenon",
+      "create_time": "2026-09-23T00:00:00Z"
+    },
+    {
+      "id": "urn:fe:MECHANISM-EPISTEMIC-00:v1-target-question-type",
+      "name": "目标问题类型",
+      "definition": "如何产生（机制的因果-组织性解释路径）",
+      "core_type": "Core",
+      "sem_type": "urn:sem:Relation",
+      "create_time": "2026-09-23T00:00:00Z"
+    },
+    {
+      "id": "urn:fe:MECHANISM-EPISTEMIC-00:v1-subordinate-question-type",
+      "name": "从属问题类型",
+      "definition": "是什么（从属而非排除；机制的描述性识别问题）",
+      "core_type": "Peripheral",
+      "sem_type": "urn:sem:Relation",
+      "create_time": "2026-09-23T00:00:00Z"
+    }
+  ],
+  "lus": [
+    {
+      "id": "urn:lu:MECHANISM-EPISTEMIC-00:v1-explain",
+      "name": "explain",
+      "definition": "to answer how a given phenomenon comes about",
+      "sem_type": "urn:sem:Verb",
+      "create_time": "2026-09-23T00:00:00Z",
+      "lexeme": { "name": "explain", "pos": "V" }
+    }
+  ],
+  "lus_zh": ["解释"]
+}
