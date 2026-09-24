@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:frame:MECHANISM-CONSTITUTION-00:v1",
+  "name": "机制构成框架",
+  "create_time": "2026-09-23T00:00:00Z",
+  "definition": "刻画机制的组织性构成要件",
+  "fe": [
+    {
+      "id": "urn:fe:MECHANISM-CONSTITUTION-00:v1-component-entities",
+      "name": "组成实体",
+      "definition": "一系列实体",
+      "core_type": "Core",
+      "sem_type": "urn:sem:Physical_object",
+      "create_time": "2026-09-23T00:00:00Z"
+    },
+    {
+      "id": "urn:fe:MECHANISM-CONSTITUTION-00:v1-component-activities",
+      "name": "组成活动",
+      "definition": "活动（实体所从事的产生变化者）",
+      "core_type": "Core",
+      "sem_type": "urn:sem:Event",
+      "create_time": "2026-09-23T00:00:00Z"
+    },
+    {
+      "id": "urn:fe:MECHANISM-CONSTITUTION-00:v1-organization-manner",
+      "name": "组织方式",
+      "definition": "特定方式（类型学包括：空间组织、时间组织、因果/序列组织）",
+      "core_type": "Core",
+      "sem_type": "urn:sem:Relation",
+      "create_time": "2026-09-23T00:00:00Z"
+    }
+  ],
+  "lus": [
+    {
+      "id": "urn:lu:MECHANISM-CONSTITUTION-00:v1-organize",
+      "name": "organize",
+      "definition": "to arrange entities and activities in a particular way",
+      "sem_type": "urn:sem:Verb",
+      "create_time": "2026-09-23T00:00:00Z",
+      "lexeme": { "name": "organize", "pos": "V" }
+    },
+    {
+      "id": "urn:lu:MECHANISM-CONSTITUTION-00:v1-compose",
+      "name": "compose",
+      "definition": "to make up the constituent parts of a mechanism",
+      "sem_type": "urn:sem:Verb",
+      "create_time": "2026-09-23T00:00:00Z",
+      "lexeme": { "name": "compose", "pos": "V" }
+    }
+  ],
+  "lus_zh": ["组织", "构成"]
+}
