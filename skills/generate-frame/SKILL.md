@@ -1,12 +1,6 @@
 ---
 name: generate-frame
-description: >
-  FrameNet 端到端框架语义学分析技能。对给定主题、语料（文本/地址）或命令执行完整建模流水线：
-  获取语料 → 原文翻译 → 事实/缺口/误解抽取 → 主题入口框架 + 语义框架表 → 框架间关系表
-  （FrameNet 标准 9 种关系）。输出文件族：主文档 .md 始终生成；
-  可选项：① 缺口补全（独立文件，从官方/权威源检索）；② HTML 统一视图页面。
-  均为同级文件、由主文档引用。当用户要求"框架分析 / FrameNet 标注 / 语义框架建模 /
-  知识结构审计 / 补全缺口 / 生成html页面"，或显式调用 generate-frame 时使用本技能。
+description: FrameNet 端到端框架语义学分析技能。当用户要求"框架分析、FrameNet 标注、语义框架建模、知识结构审计 / 补全缺口 / 生成html页面"，或显式调用 generate-frame 时使用本技能
 ---
 
 # generate-frame — FrameNet 端到端框架语义学分析
