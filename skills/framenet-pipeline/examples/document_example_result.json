@@ -1,0 +1,1320 @@
+{
+  "document": "Python List",
+  "global_frame_index": {
+    "Aggregate": {
+      "trigger_words": [
+        "Lists",
+        "collections"
+      ],
+      "fragments": [
+        "F01"
+      ],
+      "max_confidence": "high",
+      "core_fes": [
+        "Individuals",
+        "Aggregate"
+      ],
+      "source": "framenet_lu"
+    },
+    "Sequence": {
+      "trigger_words": [
+        "sequences",
+        "order"
+      ],
+      "fragments": [
+        "F01",
+        "F08"
+      ],
+      "max_confidence": "high",
+      "core_fes": [
+        "Entity_1",
+        "Entity_2",
+        "Entities"
+      ],
+      "source": "framenet_lu"
+    },
+    "Typicality": {
+      "trigger_words": [
+        "typically"
+      ],
+      "fragments": [
+        "F01"
+      ],
+      "max_confidence": "high",
+      "core_fes": [
+        "State_of_affairs",
+        "Feature"
+      ],
+      "source": "framenet_lu"
+    },
+    "Using": {
+      "trigger_words": [
+        "used"
+      ],
+      "fragments": [
+        "F01"
+      ],
+      "max_confidence": "low",
+      "core_fes": [
+        "Agent",
+        "Instrument",
+        "Purpose"
+      ],
+      "source": "framenet_lu"
+    },
+    "Storing": {
+      "trigger_words": [
+        "store"
+      ],
+      "fragments": [
+        "F01"
+      ],
+      "max_confidence": "high",
+      "core_fes": [
+        "Agent",
+        "Theme",
+        "Location"
+      ],
+      "source": "framenet_lu"
+    },
+    "Diversity": {
+      "trigger_words": [
+        "homogeneous"
+      ],
+      "fragments": [
+        "F01"
+      ],
+      "max_confidence": "high",
+      "core_fes": [
+        "Group",
+        "Dimension"
+      ],
+      "source": "framenet_lu"
+    },
+    "Entity": {
+      "trigger_words": [
+        "items",
+        "elements"
+      ],
+      "fragments": [
+        "F01",
+        "F14"
+      ],
+      "max_confidence": "medium",
+      "core_fes": [
+        "Entity"
+      ],
+      "source": "framenet_lu"
+    },
+    "Change_of_state": {
+      "trigger_words": [
+        "mutable"
+      ],
+      "fragments": [
+        "F01"
+      ],
+      "max_confidence": "low",
+      "core_fes": [
+        "Entity",
+        "Final_state",
+        "Initial_state"
+      ],
+      "source": "llm_inference"
+    },
+    "Signification": {
+      "trigger_words": [
+        "denote"
+      ],
+      "fragments": [
+        "F04"
+      ],
+      "max_confidence": "medium",
+      "core_fes": [
+        "Sign",
+        "Signified"
+      ],
+      "source": "framenet_lu"
+    },
+    "Absence": {
+      "trigger_words": [
+        "empty"
+      ],
+      "fragments": [
+        "F04"
+      ],
+      "max_confidence": "low",
+      "core_fes": [
+        "Absent_entity",
+        "Context"
+      ],
+      "source": "framenet_lu"
+    },
+    "Creating": {
+      "trigger_words": [
+        "builds"
+      ],
+      "fragments": [
+        "F08"
+      ],
+      "max_confidence": "medium",
+      "core_fes": [
+        "Creator",
+        "Created_entity"
+      ],
+      "source": "framenet_lu"
+    },
+    "Activity": {
+      "trigger_words": [
+        "method",
+        "function"
+      ],
+      "fragments": [
+        "F09",
+        "F12"
+      ],
+      "max_confidence": "low",
+      "core_fes": [
+        "Actor",
+        "Action"
+      ],
+      "source": "framenet_lu"
+    },
+    "Ordering": {
+      "trigger_words": [
+        "sorts",
+        "sorted"
+      ],
+      "fragments": [
+        "F09",
+        "F14"
+      ],
+      "max_confidence": "high",
+      "core_fes": [
+        "Ordered_entity",
+        "Ordering_predicate"
+      ],
+      "source": "framenet_lu"
+    },
+    "Receiving": {
+      "trigger_words": [
+        "accepts"
+      ],
+      "fragments": [
+        "F11"
+      ],
+      "max_confidence": "medium",
+      "core_fes": [
+        "Recipient",
+        "Theme"
+      ],
+      "source": "framenet_lu"
+    },
+    "Removing": {
+      "trigger_words": [
+        "extract"
+      ],
+      "fragments": [
+        "F12"
+      ],
+      "max_confidence": "medium",
+      "core_fes": [
+        "Agent",
+        "Theme",
+        "Source"
+      ],
+      "source": "framenet_lu"
+    }
+  },
+  "frame_relations": [
+    {
+      "source_frame": "Aggregate",
+      "target_frame": "Using",
+      "relation_type": "hierarchical",
+      "framenet_relation": "via_common_ancestor",
+      "direction": "sibling",
+      "common_ancestor": "Event",
+      "fe_mappings": [],
+      "path_source": [
+        "Aggregate",
+        "Come_together",
+        "Event"
+      ],
+      "path_target": [
+        "Using",
+        "Intentionally_affect",
+        "Intentionally_act",
+        "Transitive_action",
+        "Event"
+      ]
+    },
+    {
+      "source_frame": "Aggregate",
+      "target_frame": "Storing",
+      "relation_type": "hierarchical",
+      "framenet_relation": "via_common_ancestor",
+      "direction": "sibling",
+      "common_ancestor": "Event",
+      "fe_mappings": [],
+      "path_source": [
+        "Aggregate",
+        "Come_together",
+        "Event"
+      ],
+      "path_target": [
+        "Storing",
+        "Placing",
+        "Transitive_action",
+        "Cause_motion",
+        "Motion",
+        "Placing_scenario",
+        "Objective_influence",
+        "Event"
+      ]
+    },
+    {
+      "source_frame": "Aggregate",
+      "target_frame": "Creating",
+      "relation_type": "hierarchical",
+      "framenet_relation": "via_common_ancestor",
+      "direction": "sibling",
+      "common_ancestor": "Event",
+      "fe_mappings": [],
+      "path_source": [
+        "Aggregate",
+        "Come_together",
+        "Event"
+      ],
+      "path_target": [
+        "Creating",
+        "Transitive_action",
+        "Objective_influence",
+        "Event"
+      ]
+    },
+    {
+      "source_frame": "Aggregate",
+      "target_frame": "Receiving",
+      "relation_type": "hierarchical",
+      "framenet_relation": "via_common_ancestor",
+      "direction": "sibling",
+      "common_ancestor": "Event",
+      "fe_mappings": [],
+      "path_source": [
+        "Aggregate",
+        "Come_together",
+        "Event"
+      ],
+      "path_target": [
+        "Receiving",
+        "Getting",
+        "Receiving_scenario",
+        "Transfer",
+        "Event"
+      ]
+    },
+    {
+      "source_frame": "Aggregate",
+      "target_frame": "Removing",
+      "relation_type": "hierarchical",
+      "framenet_relation": "via_common_ancestor",
+      "direction": "sibling",
+      "common_ancestor": "Event",
+      "fe_mappings": [],
+      "path_source": [
+        "Aggregate",
+        "Come_together",
+        "Event"
+      ],
+      "path_target": [
+        "Removing",
+        "Transitive_action",
+        "Cause_motion",
+        "Motion",
+        "Removing_scenario",
+        "Objective_influence",
+        "Event"
+      ]
+    },
+    {
+      "source_frame": "Typicality",
+      "target_frame": "Diversity",
+      "relation_type": "hierarchical",
+      "framenet_relation": "via_common_ancestor",
+      "direction": "sibling",
+      "common_ancestor": "Gradable_attributes",
+      "fe_mappings": [],
+      "path_source": [
+        "Typicality",
+        "Gradable_attributes"
+      ],
+      "path_target": [
+        "Diversity",
+        "Similarity",
+        "Type",
+        "Gradable_attributes"
+      ]
+    },
+    {
+      "source_frame": "Using",
+      "target_frame": "Storing",
+      "relation_type": "hierarchical",
+      "framenet_relation": "via_common_ancestor",
+      "direction": "sibling",
+      "common_ancestor": "Transitive_action",
+      "fe_mappings": [],
+      "path_source": [
+        "Using",
+        "Intentionally_affect",
+        "Intentionally_act",
+        "Transitive_action"
+      ],
+      "path_target": [
+        "Storing",
+        "Placing",
+        "Transitive_action"
+      ]
+    },
+    {
+      "source_frame": "Using",
+      "target_frame": "Creating",
+      "relation_type": "hierarchical",
+      "framenet_relation": "via_common_ancestor",
+      "direction": "sibling",
+      "common_ancestor": "Transitive_action",
+      "fe_mappings": [],
+      "path_source": [
+        "Using",
+        "Intentionally_affect",
+        "Intentionally_act",
+        "Transitive_action"
+      ],
+      "path_target": [
+        "Creating",
+        "Transitive_action"
+      ]
+    },
+    {
+      "source_frame": "Using",
+      "target_frame": "Receiving",
+      "relation_type": "hierarchical",
+      "framenet_relation": "via_common_ancestor",
+      "direction": "sibling",
+      "common_ancestor": "Event",
+      "fe_mappings": [],
+      "path_source": [
+        "Using",
+        "Intentionally_affect",
+        "Intentionally_act",
+        "Transitive_action",
+        "Event"
+      ],
+      "path_target": [
+        "Receiving",
+        "Getting",
+        "Receiving_scenario",
+        "Transfer",
+        "Event"
+      ]
+    },
+    {
+      "source_frame": "Using",
+      "target_frame": "Removing",
+      "relation_type": "hierarchical",
+      "framenet_relation": "via_common_ancestor",
+      "direction": "sibling",
+      "common_ancestor": "Transitive_action",
+      "fe_mappings": [],
+      "path_source": [
+        "Using",
+        "Intentionally_affect",
+        "Intentionally_act",
+        "Transitive_action"
+      ],
+      "path_target": [
+        "Removing",
+        "Transitive_action"
+      ]
+    },
+    {
+      "source_frame": "Storing",
+      "target_frame": "Creating",
+      "relation_type": "hierarchical",
+      "framenet_relation": "via_common_ancestor",
+      "direction": "sibling",
+      "common_ancestor": "Transitive_action",
+      "fe_mappings": [],
+      "path_source": [
+        "Storing",
+        "Placing",
+        "Transitive_action"
+      ],
+      "path_target": [
+        "Creating",
+        "Transitive_action"
+      ]
+    },
+    {
+      "source_frame": "Storing",
+      "target_frame": "Receiving",
+      "relation_type": "hierarchical",
+      "framenet_relation": "via_common_ancestor",
+      "direction": "sibling",
+      "common_ancestor": "Event",
+      "fe_mappings": [],
+      "path_source": [
+        "Storing",
+        "Placing",
+        "Transitive_action",
+        "Cause_motion",
+        "Motion",
+        "Placing_scenario",
+        "Objective_influence",
+        "Event"
+      ],
+      "path_target": [
+        "Receiving",
+        "Getting",
+        "Receiving_scenario",
+        "Transfer",
+        "Event"
+      ]
+    },
+    {
+      "source_frame": "Storing",
+      "target_frame": "Removing",
+      "relation_type": "hierarchical",
+      "framenet_relation": "via_common_ancestor",
+      "direction": "sibling",
+      "common_ancestor": "Transitive_action",
+      "fe_mappings": [],
+      "path_source": [
+        "Storing",
+        "Placing",
+        "Transitive_action"
+      ],
+      "path_target": [
+        "Removing",
+        "Transitive_action"
+      ]
+    },
+    {
+      "source_frame": "Creating",
+      "target_frame": "Receiving",
+      "relation_type": "hierarchical",
+      "framenet_relation": "via_common_ancestor",
+      "direction": "sibling",
+      "common_ancestor": "Event",
+      "fe_mappings": [],
+      "path_source": [
+        "Creating",
+        "Transitive_action",
+        "Objective_influence",
+        "Event"
+      ],
+      "path_target": [
+        "Receiving",
+        "Getting",
+        "Receiving_scenario",
+        "Transfer",
+        "Event"
+      ]
+    },
+    {
+      "source_frame": "Creating",
+      "target_frame": "Removing",
+      "relation_type": "hierarchical",
+      "framenet_relation": "via_common_ancestor",
+      "direction": "sibling",
+      "common_ancestor": "Transitive_action",
+      "fe_mappings": [],
+      "path_source": [
+        "Creating",
+        "Transitive_action"
+      ],
+      "path_target": [
+        "Removing",
+        "Transitive_action"
+      ]
+    },
+    {
+      "source_frame": "Receiving",
+      "target_frame": "Removing",
+      "relation_type": "hierarchical",
+      "framenet_relation": "via_common_ancestor",
+      "direction": "sibling",
+      "common_ancestor": "Event",
+      "fe_mappings": [],
+      "path_source": [
+        "Receiving",
+        "Getting",
+        "Receiving_scenario",
+        "Transfer",
+        "Event"
+      ],
+      "path_target": [
+        "Removing",
+        "Transitive_action",
+        "Cause_motion",
+        "Motion",
+        "Removing_scenario",
+        "Objective_influence",
+        "Event"
+      ]
+    }
+  ],
+  "fragment_annotations": {
+    "F01": {
+      "fragment_text": "Lists are mutable sequences, typically used to store collections of homogeneous items (where the precise degree of similarity will vary by application).",
+      "annotations": [
+        {
+          "word": "Lists",
+          "position": [
+            0,
+            5
+          ],
+          "selected_frame": "Aggregate",
+          "confidence": "medium",
+          "reasoning": "In programming, Lists are ordered collections. Aggregate frame (Individuals forming a group).",
+          "core_fes": [
+            "Individuals",
+            "Aggregate"
+          ],
+          "fe_binding": {
+            "Individuals": "the items in the list",
+            "Aggregate": "list"
+          },
+          "all_candidates": [
+            "Location_of_light",
+            "Light_movement",
+            "People_by_vocation",
+            "Text",
+            "Perception_active",
+            "Seeking",
+            "Expertise",
+            "Becoming_a_member"
+          ],
+          "source": "framenet_lu"
+        },
+        {
+          "word": "sequences",
+          "position": [
+            18,
+            27
+          ],
+          "selected_frame": "Sequence",
+          "confidence": "high",
+          "reasoning": "Sequences directly matches Sequence frame.",
+          "core_fes": [
+            "Entity_1",
+            "Entity_2",
+            "Entities"
+          ],
+          "fe_binding": {
+            "Entities": "items in the sequence"
+          },
+          "all_candidates": [
+            "Causation",
+            "Condition_symptom_relation",
+            "Sequence"
+          ],
+          "source": "framenet_lu"
+        },
+        {
+          "word": "typically",
+          "position": [
+            29,
+            38
+          ],
+          "selected_frame": "Typicality",
+          "confidence": "high",
+          "reasoning": "Typically matches Typicality.",
+          "core_fes": [
+            "State_of_affairs",
+            "Feature"
+          ],
+          "fe_binding": {
+            "State_of_affairs": "use of lists to store items"
+          },
+          "all_candidates": [
+            "Typicality"
+          ],
+          "source": "framenet_lu"
+        },
+        {
+          "word": "used",
+          "position": [
+            39,
+            43
+          ],
+          "selected_frame": "Using",
+          "confidence": "low",
+          "reasoning": "Used means utilized for a purpose. Using frame is approximate.",
+          "core_fes": [
+            "Agent",
+            "Instrument",
+            "Purpose"
+          ],
+          "fe_binding": {
+            "Agent": "programmer",
+            "Instrument": "lists",
+            "Purpose": "to store collections"
+          },
+          "all_candidates": [
+            "Emotion_directed",
+            "Biological_urge",
+            "Emphasizing",
+            "Being_attached",
+            "Being_detached"
+          ],
+          "source": "framenet_lu"
+        },
+        {
+          "word": "store",
+          "position": [
+            47,
+            52
+          ],
+          "selected_frame": "Storing",
+          "confidence": "high",
+          "reasoning": "Store directly matches Storing frame.",
+          "core_fes": [
+            "Agent",
+            "Theme",
+            "Location"
+          ],
+          "fe_binding": {
+            "Agent": "implied",
+            "Theme": "collections",
+            "Location": "lists"
+          },
+          "all_candidates": [
+            "Store",
+            "Businesses",
+            "Rejuvenation",
+            "Judgment",
+            "Storing",
+            "Containing"
+          ],
+          "source": "framenet_lu"
+        },
+        {
+          "word": "collections",
+          "position": [
+            53,
+            64
+          ],
+          "selected_frame": "Aggregate",
+          "confidence": "high",
+          "reasoning": "Collections = group of individuals. Aggregate frame.",
+          "core_fes": [
+            "Individuals",
+            "Aggregate"
+          ],
+          "fe_binding": {
+            "Individuals": "items",
+            "Aggregate": "collections"
+          },
+          "all_candidates": [
+            "Aggregate",
+            "Product_line",
+            "Commerce_collect",
+            "Memory"
+          ],
+          "source": "framenet_lu"
+        },
+        {
+          "word": "homogeneous",
+          "position": [
+            68,
+            79
+          ],
+          "selected_frame": "Diversity",
+          "confidence": "high",
+          "reasoning": "Homogeneous matches Diversity (negative polarity).",
+          "core_fes": [
+            "Group",
+            "Dimension"
+          ],
+          "fe_binding": {
+            "Group": "collections/items",
+            "Dimension": "homogeneous"
+          },
+          "all_candidates": [
+            "Diversity"
+          ],
+          "source": "framenet_lu"
+        },
+        {
+          "word": "items",
+          "position": [
+            80,
+            85
+          ],
+          "selected_frame": "Entity",
+          "confidence": "medium",
+          "reasoning": "Items matches Entity frame.",
+          "core_fes": [
+            "Entity"
+          ],
+          "fe_binding": {
+            "Entity": "individual elements"
+          },
+          "all_candidates": [
+            "Emotion_directed",
+            "Entity"
+          ],
+          "source": "framenet_lu"
+        },
+        {
+          "word": "mutable",
+          "position": [
+            10,
+            17
+          ],
+          "selected_frame": "Change_of_state",
+          "confidence": "low",
+          "reasoning": "Mutable = changeable. Closest: Change_of_state.",
+          "core_fes": [
+            "Entity",
+            "Final_state",
+            "Initial_state"
+          ],
+          "fe_binding": {},
+          "all_candidates": [],
+          "source": "llm_inference"
+        }
+      ]
+    },
+    "F04": {
+      "fragment_text": "Using a pair of square brackets to denote the empty list: []",
+      "annotations": [
+        {
+          "word": "denote",
+          "position": [
+            35,
+            41
+          ],
+          "selected_frame": "Signification",
+          "confidence": "medium",
+          "reasoning": "Denote means to signify/represent. Signification frame matches.",
+          "core_fes": [
+            "Sign",
+            "Signified"
+          ],
+          "fe_binding": {
+            "Sign": "square brackets []",
+            "Signified": "empty list"
+          },
+          "all_candidates": [
+            "Linguistic_meaning"
+          ],
+          "source": "framenet_lu"
+        },
+        {
+          "word": "empty",
+          "position": [
+            46,
+            51
+          ],
+          "selected_frame": "Absence",
+          "confidence": "low",
+          "reasoning": "Empty indicates absence of content.",
+          "core_fes": [
+            "Absent_entity",
+            "Context"
+          ],
+          "fe_binding": {
+            "Absent_entity": "items",
+            "Context": "the list"
+          },
+          "all_candidates": [
+            "Containers",
+            "Emptying",
+            "Removing",
+            "Fullness",
+            "Stimulus_focus"
+          ],
+          "source": "framenet_lu"
+        }
+      ]
+    },
+    "F05": {
+      "fragment_text": "Using square brackets, separating items with commas: [a], [a, b, c]",
+      "annotations": [
+        {
+          "word": "separating",
+          "position": [
+            23,
+            33
+          ],
+          "selected_frame": null,
+          "confidence": "none",
+          "reasoning": "No FrameNet match and LLM did not infer a frame",
+          "core_fes": [],
+          "fe_binding": {},
+          "all_candidates": [],
+          "source": "none"
+        },
+        {
+          "word": "commas",
+          "position": [
+            45,
+            51
+          ],
+          "selected_frame": null,
+          "confidence": "none",
+          "reasoning": "No FrameNet match and LLM did not infer a frame",
+          "core_fes": [],
+          "fe_binding": {},
+          "all_candidates": [],
+          "source": "none"
+        }
+      ]
+    },
+    "F07": {
+      "fragment_text": "Using the type constructor: list() or list(iterable)",
+      "annotations": [
+        {
+          "word": "constructor",
+          "position": [
+            15,
+            26
+          ],
+          "selected_frame": null,
+          "confidence": "none",
+          "reasoning": "No FrameNet match and LLM did not infer a frame",
+          "core_fes": [],
+          "fe_binding": {},
+          "all_candidates": [],
+          "source": "none"
+        },
+        {
+          "word": "iterable",
+          "position": [
+            43,
+            51
+          ],
+          "selected_frame": null,
+          "confidence": "none",
+          "reasoning": "No FrameNet match and LLM did not infer a frame",
+          "core_fes": [],
+          "fe_binding": {},
+          "all_candidates": [],
+          "source": "none"
+        }
+      ]
+    },
+    "F08": {
+      "fragment_text": "The constructor builds a list whose items are the same and in the same order as iterable items.",
+      "annotations": [
+        {
+          "word": "builds",
+          "position": [
+            16,
+            22
+          ],
+          "selected_frame": "Creating",
+          "confidence": "medium",
+          "reasoning": "Builds = constructs. Creating frame.",
+          "core_fes": [
+            "Creator",
+            "Created_entity"
+          ],
+          "fe_binding": {
+            "Creator": "constructor",
+            "Created_entity": "a list"
+          },
+          "all_candidates": [
+            "Buildings",
+            "Building",
+            "Body_description_holistic"
+          ],
+          "source": "framenet_lu"
+        },
+        {
+          "word": "order",
+          "position": [
+            71,
+            76
+          ],
+          "selected_frame": "Sequence",
+          "confidence": "high",
+          "reasoning": "Order matches Sequence - items in arrangement.",
+          "core_fes": [
+            "Entities"
+          ],
+          "fe_binding": {
+            "Entities": "iterable items"
+          },
+          "all_candidates": [
+            "Boundary",
+            "Adjacency",
+            "Medical_conditions",
+            "Chaos",
+            "Request",
+            "Sequence",
+            "Rank",
+            "Organization"
+          ],
+          "source": "framenet_lu"
+        },
+        {
+          "word": "constructor",
+          "position": [
+            4,
+            15
+          ],
+          "selected_frame": null,
+          "confidence": "none",
+          "reasoning": "No FrameNet match and LLM did not infer a frame",
+          "core_fes": [],
+          "fe_binding": {},
+          "all_candidates": [],
+          "source": "none"
+        },
+        {
+          "word": "whose",
+          "position": [
+            30,
+            35
+          ],
+          "selected_frame": null,
+          "confidence": "none",
+          "reasoning": "No FrameNet match and LLM did not infer a frame",
+          "core_fes": [],
+          "fe_binding": {},
+          "all_candidates": [],
+          "source": "none"
+        },
+        {
+          "word": "iterable",
+          "position": [
+            80,
+            88
+          ],
+          "selected_frame": null,
+          "confidence": "none",
+          "reasoning": "No FrameNet match and LLM did not infer a frame",
+          "core_fes": [],
+          "fe_binding": {},
+          "all_candidates": [],
+          "source": "none"
+        }
+      ]
+    },
+    "F09": {
+      "fragment_text": "This method sorts the list in place, using only < comparisons between items.",
+      "annotations": [
+        {
+          "word": "method",
+          "position": [
+            5,
+            11
+          ],
+          "selected_frame": "Activity",
+          "confidence": "low",
+          "reasoning": "A method is a procedural activity.",
+          "core_fes": [
+            "Actor",
+            "Action"
+          ],
+          "fe_binding": {
+            "Actor": "list object",
+            "Action": "sorting"
+          },
+          "all_candidates": [
+            "Means"
+          ],
+          "source": "framenet_lu"
+        },
+        {
+          "word": "sorts",
+          "position": [
+            12,
+            17
+          ],
+          "selected_frame": "Ordering",
+          "confidence": "high",
+          "reasoning": "Sorts directly matches Ordering frame.",
+          "core_fes": [
+            "Ordered_entity",
+            "Ordering_predicate"
+          ],
+          "fe_binding": {
+            "Ordered_entity": "list elements",
+            "Ordering_predicate": "< comparison"
+          },
+          "all_candidates": [
+            "Type",
+            "Differentiation"
+          ],
+          "source": "framenet_lu"
+        },
+        {
+          "word": "comparisons",
+          "position": [
+            50,
+            61
+          ],
+          "selected_frame": null,
+          "confidence": "none",
+          "reasoning": "No FrameNet match and LLM did not infer a frame",
+          "core_fes": [],
+          "fe_binding": {},
+          "all_candidates": [],
+          "source": "none"
+        }
+      ]
+    },
+    "F11": {
+      "fragment_text": "sort() accepts two arguments that can only be passed by keyword (keyword-only arguments):",
+      "annotations": [
+        {
+          "word": "accepts",
+          "position": [
+            7,
+            14
+          ],
+          "selected_frame": "Receiving",
+          "confidence": "medium",
+          "reasoning": "Accepts = takes/receives arguments. Receiving frame.",
+          "core_fes": [
+            "Recipient",
+            "Theme"
+          ],
+          "fe_binding": {
+            "Recipient": "sort() method",
+            "Theme": "keyword arguments"
+          },
+          "all_candidates": [
+            "Respond_to_proposal",
+            "Receiving"
+          ],
+          "source": "framenet_lu"
+        },
+        {
+          "word": "keyword",
+          "position": [
+            56,
+            63
+          ],
+          "selected_frame": null,
+          "confidence": "none",
+          "reasoning": "No FrameNet match and LLM did not infer a frame",
+          "core_fes": [],
+          "fe_binding": {},
+          "all_candidates": [],
+          "source": "none"
+        },
+        {
+          "word": "keyword",
+          "position": [
+            65,
+            72
+          ],
+          "selected_frame": null,
+          "confidence": "none",
+          "reasoning": "No FrameNet match and LLM did not infer a frame",
+          "core_fes": [],
+          "fe_binding": {},
+          "all_candidates": [],
+          "source": "none"
+        }
+      ]
+    },
+    "F12": {
+      "fragment_text": "key specifies a function of one argument that is used to extract a comparison key from each list element.",
+      "annotations": [
+        {
+          "word": "function",
+          "position": [
+            16,
+            24
+          ],
+          "selected_frame": "Activity",
+          "confidence": "low",
+          "reasoning": "Programming function = procedural unit.",
+          "core_fes": [
+            "Actor",
+            "Action"
+          ],
+          "fe_binding": {
+            "Actor": "key function",
+            "Action": "extract comparison key"
+          },
+          "all_candidates": [
+            "Contingency",
+            "Social_event",
+            "Being_operational",
+            "Tool_purpose",
+            "Inherent_purpose",
+            "Mathematical_relationship"
+          ],
+          "source": "framenet_lu"
+        },
+        {
+          "word": "extract",
+          "position": [
+            57,
+            64
+          ],
+          "selected_frame": "Removing",
+          "confidence": "medium",
+          "reasoning": "Extract = pull out value. Removing frame.",
+          "core_fes": [
+            "Agent",
+            "Theme",
+            "Source"
+          ],
+          "fe_binding": {
+            "Agent": "key function",
+            "Theme": "comparison key",
+            "Source": "each list element"
+          },
+          "all_candidates": [
+            "Removing",
+            "Mining"
+          ],
+          "source": "framenet_lu"
+        },
+        {
+          "word": "specifies",
+          "position": [
+            4,
+            13
+          ],
+          "selected_frame": null,
+          "confidence": "none",
+          "reasoning": "No FrameNet match and LLM did not infer a frame",
+          "core_fes": [],
+          "fe_binding": {},
+          "all_candidates": [],
+          "source": "none"
+        },
+        {
+          "word": "comparison",
+          "position": [
+            67,
+            77
+          ],
+          "selected_frame": null,
+          "confidence": "none",
+          "reasoning": "No FrameNet match and LLM did not infer a frame",
+          "core_fes": [],
+          "fe_binding": {},
+          "all_candidates": [],
+          "source": "none"
+        }
+      ]
+    },
+    "F14": {
+      "fragment_text": "If set to True, then the list elements are sorted as if each comparison were reversed.",
+      "annotations": [
+        {
+          "word": "elements",
+          "position": [
+            30,
+            38
+          ],
+          "selected_frame": "Entity",
+          "confidence": "medium",
+          "reasoning": "Elements = individual items. Entity frame.",
+          "core_fes": [
+            "Entity"
+          ],
+          "fe_binding": {
+            "Entity": "list elements"
+          },
+          "all_candidates": [
+            "Ingredients"
+          ],
+          "source": "framenet_lu"
+        },
+        {
+          "word": "sorted",
+          "position": [
+            43,
+            49
+          ],
+          "selected_frame": "Ordering",
+          "confidence": "high",
+          "reasoning": "Sorted directly matches Ordering frame.",
+          "core_fes": [
+            "Ordered_entity"
+          ],
+          "fe_binding": {
+            "Ordered_entity": "list elements"
+          },
+          "all_candidates": [
+            "Diversity"
+          ],
+          "source": "framenet_lu"
+        },
+        {
+          "word": "comparison",
+          "position": [
+            61,
+            71
+          ],
+          "selected_frame": null,
+          "confidence": "none",
+          "reasoning": "No FrameNet match and LLM did not infer a frame",
+          "core_fes": [],
+          "fe_binding": {},
+          "all_candidates": [],
+          "source": "none"
+        },
+        {
+          "word": "reversed",
+          "position": [
+            77,
+            85
+          ],
+          "selected_frame": null,
+          "confidence": "none",
+          "reasoning": "No FrameNet match and LLM did not infer a frame",
+          "core_fes": [],
+          "fe_binding": {},
+          "all_candidates": [],
+          "source": "none"
+        }
+      ]
+    }
+  },
+  "skipped_fragments": [
+    "F02",
+    "F03",
+    "F06",
+    "F10",
+    "F13",
+    "F15"
+  ],
+  "statistics": {
+    "total_fragments": 15,
+    "processed_fragments": 9,
+    "skipped_fragments": 6,
+    "total_annotated_words": 34,
+    "unique_frames": 15,
+    "frame_relations_found": 16,
+    "confidence_distribution": {
+      "high": 8,
+      "medium": 7,
+      "low": 5,
+      "none": 14
+    },
+    "framenet_lu_matched": 19,
+    "llm_inferred": 1
+  },
+  "slicing": {
+    "stats": {
+      "total": 15,
+      "high": 7,
+      "medium": 2,
+      "low": 5,
+      "skip": 1
+    },
+    "eligible_fragments": 9,
+    "skipped_fragments": 6,
+    "min_value_filter": "medium"
+  }
+}
