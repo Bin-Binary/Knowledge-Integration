@@ -1,0 +1,259 @@
+{
+  "text": "Lists are mutable sequences, typically used to store collections of homogeneous items",
+  "timestamp": "2026-10-14T15:40:52.109679",
+  "statistics": {
+    "total_content_words": 9,
+    "annotated_words": 9,
+    "confidence_distribution": {
+      "high": 5,
+      "medium": 2,
+      "low": 2,
+      "none": 0
+    },
+    "framenet_lu_matched": 8,
+    "llm_inferred": 1,
+    "unmatched": 0
+  },
+  "annotations": [
+    {
+      "word": "Lists",
+      "position": [
+        0,
+        5
+      ],
+      "selected_frame": "Text",
+      "confidence": "medium",
+      "reasoning": "In programming context, a 'list' is a textual/data structure that contains items. The Text frame (a written/structured record) is closest, though it's not a perfect fit for programming lists.",
+      "core_fes": [
+        "Text"
+      ],
+      "fe_binding": {
+        "Text": "Lists (the data structure)"
+      },
+      "all_candidates": [
+        "Location_of_light",
+        "Light_movement",
+        "People_by_vocation",
+        "Text",
+        "Perception_active",
+        "Seeking",
+        "Expertise",
+        "Becoming_a_member"
+      ],
+      "source": "framenet_lu"
+    },
+    {
+      "word": "sequences",
+      "position": [
+        18,
+        27
+      ],
+      "selected_frame": "Sequence",
+      "confidence": "high",
+      "reasoning": "'Sequences' directly matches the Sequence frame - entities occurring in a temporally/logically ordered arrangement. In programming, sequences are ordered collections.",
+      "core_fes": [
+        "Entity_1",
+        "Entity_2",
+        "Entities"
+      ],
+      "fe_binding": {
+        "Entities": "the items in the sequence"
+      },
+      "all_candidates": [
+        "Causation",
+        "Condition_symptom_relation",
+        "Sequence"
+      ],
+      "source": "framenet_lu"
+    },
+    {
+      "word": "typically",
+      "position": [
+        29,
+        38
+      ],
+      "selected_frame": "Typicality",
+      "confidence": "high",
+      "reasoning": "'Typically' directly matches the Typicality frame - describing a state of affairs as representative of its class.",
+      "core_fes": [
+        "State_of_affairs",
+        "Feature"
+      ],
+      "fe_binding": {
+        "State_of_affairs": "the use of lists to store homogeneous items",
+        "Feature": "typical usage pattern"
+      },
+      "all_candidates": [
+        "Typicality"
+      ],
+      "source": "framenet_lu"
+    },
+    {
+      "word": "used",
+      "position": [
+        39,
+        43
+      ],
+      "selected_frame": "Emphasizing",
+      "confidence": "low",
+      "reasoning": "None of the candidates (Emotion_directed, Biological_urge, Being_attached etc.) match 'used' in the sense of 'utilized for a purpose'. The closest might be Emphasizing via 'focused', but this is a stretch. This word likely needs a Use/Utilization frame that doesn't exist in FrameNet v17.",
+      "core_fes": [
+        "Consideration",
+        "Agent"
+      ],
+      "fe_binding": {},
+      "all_candidates": [
+        "Emotion_directed",
+        "Biological_urge",
+        "Emphasizing",
+        "Being_attached",
+        "Being_detached"
+      ],
+      "source": "framenet_lu"
+    },
+    {
+      "word": "store",
+      "position": [
+        47,
+        52
+      ],
+      "selected_frame": "Storing",
+      "confidence": "high",
+      "reasoning": "In 'used to store collections', 'store' is a verb meaning to put away data for safekeeping/future access. Directly matches the Storing frame (Agent places Theme in Location).",
+      "core_fes": [
+        "Agent",
+        "Theme",
+        "Location"
+      ],
+      "fe_binding": {
+        "Agent": "implied (programmer/user of lists)",
+        "Theme": "collections of homogeneous items",
+        "Location": "lists (the data container)"
+      },
+      "all_candidates": [
+        "Store",
+        "Businesses",
+        "Rejuvenation",
+        "Judgment",
+        "Storing",
+        "Containing"
+      ],
+      "source": "framenet_lu"
+    },
+    {
+      "word": "collections",
+      "position": [
+        53,
+        64
+      ],
+      "selected_frame": "Aggregate",
+      "confidence": "high",
+      "reasoning": "'Collections' as a group of items matches the Aggregate frame - a collection of individuals forming a group.",
+      "core_fes": [
+        "Individuals",
+        "Aggregate"
+      ],
+      "fe_binding": {
+        "Individuals": "homogeneous items",
+        "Aggregate": "collections"
+      },
+      "all_candidates": [
+        "Aggregate",
+        "Product_line",
+        "Commerce_collect",
+        "Memory"
+      ],
+      "source": "framenet_lu"
+    },
+    {
+      "word": "homogeneous",
+      "position": [
+        68,
+        79
+      ],
+      "selected_frame": "Diversity",
+      "confidence": "high",
+      "reasoning": "'Homogeneous' directly matches the Diversity frame (with negative polarity) - describing a group whose members are similar to each other.",
+      "core_fes": [
+        "Group",
+        "Dimension"
+      ],
+      "fe_binding": {
+        "Group": "collections/items",
+        "Dimension": "homogeneous (low diversity)"
+      },
+      "all_candidates": [
+        "Diversity"
+      ],
+      "source": "framenet_lu"
+    },
+    {
+      "word": "items",
+      "position": [
+        80,
+        85
+      ],
+      "selected_frame": "Entity",
+      "confidence": "medium",
+      "reasoning": "'Items' matches the Entity frame - a highly schematic entity. In this context, items are the individual elements stored in collections.",
+      "core_fes": [
+        "Entity"
+      ],
+      "fe_binding": {
+        "Entity": "the individual elements in a list"
+      },
+      "all_candidates": [
+        "Emotion_directed",
+        "Entity"
+      ],
+      "source": "framenet_lu"
+    },
+    {
+      "word": "mutable",
+      "position": [
+        10,
+        17
+      ],
+      "selected_frame": "Change_of_state",
+      "confidence": "low",
+      "reasoning": "'Mutable' means capable of being changed after creation. The closest FrameNet frame is Change_of_state, though it describes events of change rather than the property of changeability. A better fit might be a hypothetical 'Mutability' frame.",
+      "core_fes": [
+        "Entity",
+        "Final_state",
+        "Initial_state"
+      ],
+      "fe_binding": {},
+      "all_candidates": [],
+      "source": "llm_inference"
+    }
+  ],
+  "frame_index": {
+    "Text": [
+      "Lists"
+    ],
+    "Sequence": [
+      "sequences"
+    ],
+    "Typicality": [
+      "typically"
+    ],
+    "Emphasizing": [
+      "used"
+    ],
+    "Storing": [
+      "store"
+    ],
+    "Aggregate": [
+      "collections"
+    ],
+    "Diversity": [
+      "homogeneous"
+    ],
+    "Entity": [
+      "items"
+    ],
+    "Change_of_state": [
+      "mutable"
+    ]
+  }
+}
