@@ -40,4 +40,4 @@ Precedes(Placing);
 See also(Placing,Cause_motion)
 
 ## 词元
-[assemble.v, glue.v, build.v, weld.v, put together.v, construct.v, assembly.n, construction.n, make.v, fit together.v, piece together.v, erect.v, raise.v, fashion.v, construction [entity].n]
+[clear.v, confiscate.v, discard.v, dislodge.v, drain.v, eject.v, eliminate.v, empty.v, evacuate.v, evict.v, expel.v, extract.v, oust.v, expunge.v, excise.v]
