@@ -102,3 +102,116 @@ summary: 每当一个对象(Entity)被内存分配与实例化创建(Creating)�
 当程序运行到 is 或 is not 语法糖时，解释器（ceval.c）在（虚拟机执行引擎 _PyEval_EvalFrameDefault） 内部被激活。为了实现比较对象身份（Purpose），它通过C 语言指针直接对比（Manner）来调取底层的 id() 映射值（Source），判断两个变量是否引用一致。
 这一行为属于典型的断言反馈的交际行为（Communicative_act），它的主题（Topic） 是将“引用一致性”这一状态信息（Information） 交付给上层的控制流。在此期间，解释器不会动态创建新对象 （Creating） 的动作，因为True/False早在解释器启动初始化的瞬间（Time） 就作为永生单例准备就绪；解释器此时仅做寻址交付，将相应的布尔单例压入求值栈顶。而一旦遇到 is not 运算符，整个判定则进入Negation（否定机制），如果实际物理情况（Factual_situation） 判定其地址不等，便会精准返回与 is 完全相反的真值。
 **总之，is 比较的是身份；但对字面量，身份本身不可预测——所以实践上只在判 None、判单例时才敢相信它**
+
+- str.capitalize()
+Return a copy of the string with its first character capitalized and the rest lowercased.
+Changed in version 3.8: The first character is now put into titlecase rather than uppercase. This means that characters like digraphs will only have their first letter capitalized, instead of the full character. （返回一个字符串的副本，其中首字母大写，其余字母小写。
+在3.8版本中更改：现在首字母被转换为首字母大写形式（titlecase），而不是全部大写。这意味着像双字母组合（digraphs）这样的字符只会将其首字母大写，而不是整个字符。） -> [Arriving, Duplication]
+
+playbook:
+    - Arriving:
+        Theme: 新字符串对象
+        Goal: Theme 到达的目的地，认知缺口，需查资料 -> 新的内存对象（副本所在堆位置）
+        
+        Source: 原字符串对象在堆内存中的存储位置/引用
+        Path: 运动轨迹，认知缺口，需查资料 -> 深水区，后续了解：拷贝内存轨迹
+        Manner: 运动的方式，认知缺口，需查资料 -> 新建完整副本，非原地修改
+        Means: 运动的手段，认知缺口，需查资料 -> CPython的Unicode capitalize算法（先titlecase首字符，再str.lower() 处理其余部分）
+        Mode_of_transportation: 交通方式，认知缺口，需查资料 -> CPython运行时 + 内存分配器（分配新对象、搬运数据到目标地址的底层机制）
+        Time: 运动的时间，认知缺口，需查资料 -> 缺省
+        
+        Place: 运动的地点，认知缺口，需查资料 -> 堆内存区
+        Cotheme: 同步移动的第二对象，，认知缺口，需查资料 -> 缺省
+        New_situation: Theme 到达后 Goal 的状态，，认知缺口，需查资料 -> 新字符串对象占用堆内存，引用返回调用方（refcount=1）
+        Depictive: Theme 到达时的状态，认知缺口，需查资料 -> 首字母大写、其余小写
+        Purpose: 到达目的，认知缺口，需查资料 -> 缺省
+        Frequency: 到达频率认知缺口，需查资料 -> 缺省
+        Period_of_iterations: 重复到达的时间段，认知缺口，需查资料 -> 缺省
+
+    - Duplication:
+        Creator：解释器
+        Original：原始字符串
+        Copy：字符串副本
+
+        Source: Original 所在位置，认知缺口，需查资料 -> 原字符串对象在堆内存中的存储位置（其引用被 capitalize 读取）
+        Purpose: 目的，认知缺口，需查资料 -> 不改原串的安全规范化拷贝
+        Time: 时间，认知缺口，需查资料 -> 缺省
+        Place: 地点，认知缺口，需查资料 -> 缺省
+        Instrument: 工具，认知缺口，需查资料 -> capitalize() 方法调用——解释器执行 LOAD_METHOD/CALL 字节码的调用机制
+        Manner: 实现复制的方式，认知缺口，需查资料 -> 新建完整副本：非原地修改、非引用/视图共享；因 str 不可变无深/浅之分，等同全新构造
+        Means: 实现复制的行手段，认知缺口，需查资料 -> CPython unicode_capitalize：按 PEP 393 紧凑表示分配新 Unicode 对象并拷贝字符数据（ASCII 常用快路径）
+        Degree: 程度，认知缺口，需查资料 -> 全量：整串所有字符均被纳入复制与变换（无部分复制、无切片视图）
+        Fidelity: Copy 与 Original 的匹配度，认知缺口，需查资料 -> 高保真：长度与字符序列完全一致，唯一差异是大小写映射（case mapping）变更
+
+        Goal: Copy 复制到的目标位置，认知缺口，需查资料 -> 新分配的堆内存地址（紧凑型 PyUnicodeObject 所在位置）
+        Characterization: Copy 的媒介特征，认知缺口，需查资料 -> 全新独立的不可变 str：紧凑单块内存布局、非切片非视图，内部按码点（UCS-1/2/4）编码
+        Iterations: 复制次数，认知缺口，需查资料 -> 缺省
+        Frequency: 复制频率，认知缺口，需查资料 -> 缺省
+        Co-participant: 共同参与者，认知缺口，需查资料 -> 调用方（发起 capitalize 的宿主表达式 / 返回值的绑定目标），与 Creator(解释器) 共同参与完成复制
+
+summary：str的capitalize方法实现了改变字符串首字母大写其余小写的效果。
+经历两个阶段，阶段一、解释器拷贝原始str对象生成首字母大写其余小写的新str对象；阶段二、返回新str对象的内存地址引用。
+每个阶段经历多个步骤，阶段一的步骤: 1.读取宿主引用 -> 2.方法寻找 -> 3. 移交控制权给Cpyhon运行时执行unicode_capitalize -> 4. 内存评估与空间分配 -> 5. 字符变换；
+阶段二的步骤： 1. CPython运行时初始化新str对象引用计数为1 -> 2. 地址压栈，返回新str对象的堆内存虚拟地址引用(id()可见值)并压入栈顶 -> 3. 绑定/流转，地址引用返回给调用方
+
+gap: 
+1. 怎么读取对象引用 -> 解释器使用LOAD_FAST（局部变量读取）/LOAD_GLOBAL（全局变量读取）读取原始str对象在堆中的引用到栈顶；字面量"abc".capitalize() 走 LOAD_CONST
+2. capitalize方法怎么寻找 -> 解释器通过对象引用执行LOAD_METHOD（读取对象的方法引用）,去str类及MRO查找capitalize方法
+3. 控制权怎么移交给Cpython运行时 -> 运行CALL（处理“引用传递”与“引用计数”）指令，带入方法所需的堆内存地址引用
+4. 内存评估与空间分配发生什么 -> unicode_capitalize读取原始str对象的长度和字符类型（基于PEP 393 的 UCS-1/2/4 紧凑表示布局）。内存分配器在堆内存区（Heap）中，开辟一块全新且独立的PyUnicodeObject 紧凑单块内存（Goal）
+5. 字符变换怎么处理 -> 1.读取原始str对象首字符转换为Titlecase形式 2. 调用str.lower()处理其余字符，拷贝进新内存堆
+
+- str.casefold()
+Return a casefolded copy of the string. Casefolded strings may be used for caseless matching.
+
+Casefolding is similar to lowercasing but more aggressive because it is intended to remove all case distinctions in a string. For example, the German lowercase letter 'ß' is equivalent to "ss". Since it is already lowercase, lower() would do nothing to 'ß'; casefold() converts it to "ss". (返回字符串的折叠大小写副本。折叠大小写的字符串可用于不区分大小写的匹配。
+折叠大小写与转换为小写类似，但更为激进，因为它旨在消除字符串中的所有大小写差异。例如，德语小写字母 'ß' 等同于 "ss"。由于 'ß' 已经是小写，lower() 对其不会产生任何效果；而 casefold() 会将其转换为 "ss") -> [Arriving, Duplication]
+
+基于已学习的Arriving, Duplication学习这个新方法，以下为预测：
+playbook:
+    - Duplication
+        Original: 原始str对象的数据内容
+        Copy: 新str对象
+        Creator: 解释器
+
+        Purpose: 消除str的数据内容大小写差异
+        Time: 缺省
+        Place: id()可见的虚拟堆内存
+        Source: 原始str对象虚拟堆内地址引用
+        Manner: 创建新str对象
+        Means: unicode_casefold (更激进的映射表查表算法，多对一或一对多映射); 调用方和解释器配合调用casefold（）
+        Instrument: 原str的引用定位 -> LOAD_GLOBAL/LOAD_FAST/LOAD_CONST; 调用方法定位-> LOAD_METHOD ; 控制权移交Cpyhon运行时-> CALL
+        Degree: 整个原始str对象的数据内容
+        Fidelity: 激进度：**打破原有的字符结构**，ß→ss、İ→i̇ 长度可增
+
+        Goal: 新开辟的虚拟内存堆
+        Characterization: PEP 393 的UCS-1/2/4紧凑表示布局
+        Iterations: 缺省
+        Frequency：缺省
+        Co-participant：调用发-> str / 解释器
+
+    - Arriving:
+        Theme: 新str对象
+        Goal: 新开辟的虚拟内存堆
+
+        Path: id()可观测值(虚拟内存堆引用) -> 压入栈顶 -> 返回引用给调用方
+        Source: 缺省
+        Time: 复制并字符转换后
+        Manner: 引用传递
+        Means: CALL处理引用传递/引用计数
+        Mode_of_transportation：和Means重叠，缺省
+
+        Purpose: 返回新str的虚拟内存堆地址引用给调用方
+        Depictive: 折叠态：字符内容全小写；可能字符膨胀
+        New_situation: 引用计数=1/地址绑定->[字面量，局部变量，全局变量]
+        Frequency: 1
+        Period_of_iterations: 缺省
+        Place: 缺省
+        Cotheme: 缺省
+
+summary: str的casefold()实现了字符串大小写差异消除的效果。
+经历两个阶段，阶段一：复制原始str并字符转换为全部小写；阶段二：返回转换后的str给调用方。
+每个阶段经历多个步骤：阶段一的步骤：1.原始str的引用定位（解释器调用LAOD_FAST/LOAD_GLOBAL/LOAD_CONST）-> 2.casefold方法定位(解释器调用LOAD_METHOD(沿着str类和MRO查找)) -> 3.控制权移交Cpyton运行时(CALL携带地址引用进行移交)，执行对应c函数(此处为认知缺口，但不继续深入) -> 4.创建新str对象(内存评估与空间分配) -> 5.字符转换（全小写）；
+阶段二的步骤：1. 新str对象虚拟内存堆的地址返回-> 2.地址压栈（绑定）-> 3.返回引用给调用方
+
+推测：casefold与capitalize的主要区别在Purpose, Depictive，Means内嵌的底层细节还有最重要的Fidelity：字符膨胀以及连锁的新str对象所需的物理内存空间（Goal），可能远大于原字符串。 CPython在底层必须动态计算并扩容单块连续内存
