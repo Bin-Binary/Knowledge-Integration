@@ -4,7 +4,6 @@
 ## 核心FE
 - Theme: 移动的对象，如 "The officer approached"
 - Goal: Theme 到达的目的地，如 "arrived in Paris"
-- Configuration: 排列后Theme或其组成成分所处的状态/关系
 
 ## 外围FE
 - Source: 起点（此框架中较少见）
