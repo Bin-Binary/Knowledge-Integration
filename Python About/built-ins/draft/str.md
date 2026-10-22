@@ -215,3 +215,103 @@ summary: str的casefold()实现了字符串大小写差异消除的效果。
 阶段二的步骤：1. 新str对象虚拟内存堆的地址返回-> 2.地址压栈（绑定）-> 3.返回引用给调用方
 
 推测：casefold与capitalize的主要区别在Purpose, Depictive，Means内嵌的底层细节还有最重要的Fidelity：字符膨胀以及连锁的新str对象所需的物理内存空间（Goal），可能远大于原字符串。 CPython在底层必须动态计算并扩容单块连续内存
+
+- str.count(sub[, start[, end]])
+Return the number of non-overlapping occurrences of substring sub in the range [start, end]. Optional arguments start and end are interpreted as in slice notation.
+If sub is empty, returns the number of empty strings between characters which is the length of the string plus one（返回在范围【start, end】内子字符串sub的不重叠出现次数。可选参数start和end的解释方式与切片表示法相同。 如果sub为空，则返回字符之间空字符串的数量，即字符串长度加一。）-> [Arriving, Dimension, --Negation--，Scrutiny]
+
+playbook:
+    - Negation1:
+        Negated_proposition: sub子串不为空
+        Factual_situation: sub字串为空
+
+    - Negation2:
+        Negated_proposition: 范围内sub子串不重叠
+        Factual_situation: 范围内sub子串重叠
+
+    - Dimension:
+        Dimension: 数量
+        Object: str
+        Measurement: <=长度+1（Negation1.Negated_proposition） / =长度+1（Negation1.Factual_situation）
+        Locus: 被[start, end]范围切片的后str
+
+    **Arraving1是幻觉认知，count不切片、不复制、零字符串分配**
+    - Arraving1：
+        Theme: 被[start, end]范围切片的后str -> 更正: 规范化后的绝对索引边界, 即(window_ptr, window_len)
+        Goal: 原始str -> 更正: 原始str在内存字节数组（char[]）上的安全检索边界
+        Path: 认知缺口，以下从两个维度推测：1.堆 -> 栈？；2.命名空间？ ->更正: 控制流转移：由CALL字节码指令将这3个参数（sub, start, end）带入CPython底层的string_count函数
+        Source: 原始str的地址引用
+        Manner: 认知缺口，推测：读取str对象数据并执行strip()，返回执行后的str -> 更正: 只读内存视窗
+        Means：认知缺口，推测：1.定位对象地址：LOAD_FAST/LAOD_GLOBAL/LOAD_CONST -> 2.定位调用方法：LOAD_METHOD, 沿着str类、MRO链查找strip() -> 3.控制权移交Cpython运行时并执行底层c函数：CALL -> 更正: 1.解释器依次执行LOAD_FAST/LOAD_GLOBAL和LOAD_ATTR定位到count方法 -> 2.执行CALL移交控制权给CPython运行时的内置C函数 -> 3. C函数内部调用索引规范化宏，将Python风格的start/end（可能是负数或 None）转化为原字符串绝对安全的 C 数组下标
+        Mode_of_transportation: 原始str的地址引用
+        New_situation: 原始str不变
+        Depictive: 认知缺口，新的str对象(原始str的地址引用)/临时的变量？ -> 更正: 两个纯 C语言的 Py_ssize_t（长整型）数值。它们寄生在当前虚拟机的 C 级别调用栈（C Stack）中，不是 Python 堆中的对象
+        Purpose：返回被[start, end]范围切片的后str，这里为缺口，不清楚Depictive -> 更正: 划定安全的、免拷贝的只读内存扫描区间
+        Time/Place/Frequency/Period_of_iterations: 缺省
+
+    - Arraving2：
+        Theme: 计数后的数量,一个全新的、代表计数值的Python整数对象PyLongObject
+        Goal: 切片的后str -> 更正：虚拟机当前栈帧的求值栈（Evaluation Stack）顶
+        Path: 认知缺口，以下从两个维度推测：1.堆 -> 栈？；2.命名空间？ -> 更正：1.C 栈局部变量(Source) --> 2.堆内存对象封装 -->3.压入Python虚拟机的求值栈顶（Goal）
+        Source: 认知缺口，Arraving1.Depictive导致的连锁影响 -> 更正: C 语言运行栈上的纯整数变量（Py_ssize_t）
+        Manner: 认知缺口，Arraving1.Depictive导致的连锁影响 -> 推测和内置的compare函数有关 -> 更正：C语言循环遍历与累加
+        Means：认知缺口，Arraving1.Depictive导致的连锁影响 -> 更正： 
+        1. 如果子串（sub）为空（Negation1.Factual_situation），则不启动循环，利用算术运算直接生成数值 len + 1。
+        2. 如果子串非空，利用 Fastsearch 算法在 Arriving1 划定的绝对边界区间内进行不重叠（Negation2.Negated_proposition）查表扫描，C 计数器累加。
+        3. 扫描结束后，调用 PyLong_FromSsize_t() 将这个 C 计数器的数值包装（Box）为一个标准的 Python 整数对象
+
+        Mode_of_transportation: 认知缺口，Arraving1.Depictive导致的连锁影响 -> 更正：虚拟机的求值栈
+        New_situation: 不受影响 -> 更正： 创建的整数对象引用计数初始化为1，压入栈顶，随时准备返回给调用方
+        Depictive: 符合 Dimension.Measurement 约束的一个独立整数实体
+        Purpose：返回被不重叠计数
+        Time/Place/Frequency/Period_of_iterations: 缺省
+
+summary: 
+推测：“Manner是读取str数据并执行strip()或返回切片后的后 str 新对象，Means是通过类似切片手段构造临时变量”
+事实：count不切片、不复制、零字符串分配、也没有创建任何新的临时字符串对象
+新认知：基于原始str进行的检索类(对象获取)操作除了通过创建(复制/构造/字面量)，还有“只读内存视窗”
+|类型|代表方法|行为|
+|:--|:--|:--|
+|创建(复制/构造/字面量)| capitalize/ center（width > len）/ casefold/ 切片 |新对象，开辟新内存空间 |
+|只读视窗(扫描)|count/ find/ startswith/ endswith/ in| 零分配、索引窗口直指缓冲 |
+|同一性回传|center（width <= len）/ 小整数/ 空串| 复用既有对象 |
+
+“只读内存视窗”：1.定位左窗口：str对象的首地址 + 偏移量 （window_ptr=str_ptr + start）-> 2.确定视窗大小：window_len = end - start
+
+另外，这个方法的描述携带了不设预期结果的校验语义（计数结果），使用Scrutiny比Negation更好：
+Scrutiny:
+    Cognizer: 解释器
+    Groud: 原str
+    Instrument: 只读内存可视窗口    
+    Phenomenon: sub子串
+    Medium: 缺省
+
+- str.encode(encoding='utf-8', errors='strict')
+Return the string encoded to bytes.
+
+encoding defaults to 'utf-8'; see Standard Encodings for possible values.
+
+errors controls how encoding errors are handled. If 'strict' (the default), a UnicodeError exception is raised. Other possible values are 'ignore', 'replace', 'xmlcharrefreplace', 'backslashreplace' and any other name registered via codecs.register_error(). See Error Handlers for details.
+
+For performance reasons, the value of errors is not checked for validity unless an encoding error actually occurs, Python Development Mode is enabled or a debug build is used （将字符串编码为字节。 
+encoding 默认值为 'utf-8'；可参见标准编码以了解可能的取值。 
+errors 控制编码错误的处理方式。如果设置为'strict'（默认值），则会引发 UnicodeError 异常。其他可能的取值包括 'ignore'、'replace'、'xmlcharrefreplace'、'backslashreplace' 以及通过 codecs.register_error() 注册的任何其他名称。详情请参阅错误处理器。 
+出于性能考虑，除非实际发生编码错误、启用了 Python 开发模式或使用了调试版本，否则不会检查 errors 参数的有效性。） -> [Arriving, Translating]
+
+- str.endswith(suffix[, start[, end]])
+Return True if the string ends with the specified suffix, otherwise return False. suffix can also be a tuple of suffixes to look for. With optional start, test beginning at that position. With optional end, stop comparing at that position. Using start and end is equivalent to str[start:end].endswith(suffix) （如果字符串以指定的后缀结尾，则返回 True，否则返回 False。suffix 也可以是一个需要查找的后缀元组。如果提供了可选的 start 参数，则从该位置开始测试。如果提供了可选的 end 参数，则在该位置停止比较。使用 start 和 end 的效果等同于 str[start:end].endswith(suffix)） -> [Arriving, Scrutiny]
+playbook:
+    Arriving描绘布尔对象地址引用的移动轨迹：布尔对象是永生单例，获取方式为同一性回传。堆内地址 -> 栈
+    Scrutiny描绘解释器（Cognizer）不带预期地使用内存视窗(Instrumnet)扫描原始str(Ground)中的suffix（Phenomenon）
+
+## fast_lean 
+- str.expandtabs(tabsize=8)
+[Demension, Arriving, Duplication, Replacing, Contingency]
+The Method's Profiling is Arriving's Depictive. The Theme's Demension's Measurement（length）is changed and '/t' is replaced by space wich number depend on the with Outcome what is decided by Determinant(tabsize), but it remain str object. 
+
+- str.find(sub[, start[, end]])
+Return the lowest index ......, Arriving.Theme 是一个int, 盲猜不创建、复用小整数池的int地址。
+...the string where substring sub is found within the slice s[start:end].Optional arguments start and end are interpreted as in slice notation, Scrutiny.Phenomenon是sub子串, 返回的是int对象，slice应该是语法说明，不是真发生创建行为，采取内存视窗的方式获取str的内容到执行栈。
+
+- str.index(sub[, start[, end]])
+Like find(), but raise ValueError when the substring is not found, 和find明显差异在Arriving.Theme是int/异常对象，
