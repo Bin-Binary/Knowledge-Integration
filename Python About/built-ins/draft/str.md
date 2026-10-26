@@ -687,7 +687,7 @@ DataFlow<FETransmission>（数据流：实体与槽位的动态绑定，非Frame
 *3.只读内存视窗*: 根据字符串的物理存储类型（4字节的 UCS4/2字节的 UCS2 /1字节的 Latin1），在内存中动态暴露出一个只读连续字符数组Py_UCS4 *data作为物理视窗，供后续校验字符归属[@Categorization] 进行低开销的指针位移（Pointer Offset）
 
 Timeline<RunTime>（时序：关联槽位的生命周期，非Frame内容，用于盲演时间轴）:
-T0（压栈与数据绑定）: 解释器[@Varification.Inspector]在CPython虚拟机的栈帧中，通过内置C函数指针之间调用（PyCFunction_Call）[@Removing.Manner]的方式，免去LOAD_FAST等通用高阶字节码开销，以直接内存地址映射[@Removing.Means] 完成输入绑定
+T0（压栈与数据绑定）: 解释器[@Varification.Inspector]在CPython虚拟机的栈帧中，通过内置C函数指针之间调用（PyCFunction_Call）[@Varification.Manner]的方式，免去LOAD_FAST等通用高阶字节码开销，以直接内存地址映射[@Varification.Means] 完成输入绑定
 
 T1（边界检查）：虚拟机通过微代码对象头反射（O(1) 复杂度字段读取）[@Varification.Manner]的方式，绕过LOAD_METHOD查找len() 的高阶开销，直接读取 [@Varification.Medium] 的内部长度字段，流向[@Sufficiency.Enabled_situation]框架进行非空验证
 
