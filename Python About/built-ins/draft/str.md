@@ -704,3 +704,179 @@ Cause：T2期间，某个被送入[@Categorization.Item]的字符，在底层Py_
 
 3. Branch_normal_closure（正常闭环）
 Cause：T2期间，指针ptr顺利自增至length边界。期间每一个填充至 [@Varification.Unconfirmed_content] 的字符，均通过了位图掩码的 OR 链条测试（满足了 [@Varification.Degree] 的全量约束） -> Effect：时序顺利抵达T3，系统向调用者安全投递Py_True
+
+- str.isalpha()
+**Symbolic Layer**
+<PythonDoc:3.14.9>
+"Return True if all characters in the string are alphabetic and there is at least one character, False otherwise. Alphabetic characters are those characters defined in the Unicode character database as “Letter”, i.e., those with general category property being one of “Lm”, “Lt”, “Lu”, “Ll”, or “Lo”.
+<PythonDoc:3.14.9/> -> 校验字符串内的所有字符是字母类型(“Letter”)<funtion>
+
+
+**Conceptual Layer**
+"Return True if all characters in the string are alphabetic and there is at least one character, False otherwise" -> [Verification]
+"Alphabetic characters are those characters defined in the Unicode character database as “Letter”, i.e., those with general category property being one of “Lm”, “Lt”, “Lu”, “Ll”, or “Lo”" -> [Categorization]
+
+<nltk_data:framenet_v17>
+Varification:
+    Inspector: 解释器
+    Unconfirmed_content: 所有字符是字母
+    Medium: str对象
+    Condition: 非空字符串
+    Means: 遍历字符串,根据字符的general category判断
+
+Categorition:
+    Cognizer: Cpython
+    Category: Letter
+    Item: characters
+    Means: 
+    Criteria: general category
+    Circumstances: $\forall x, \, gc(x) \in \{Lu, Ll, Lt, Lm, Lo\} \implies x \in L$
+<nltk_data:framenet_v17/> -> 对类型进行校验的场景 <scenario>
+
+<Logical_Squence_Predict>
+1. 获取str <对象创建><对象复用> -> 2. 非空校验<直接读取属性> -> 3. 循环判断分类
+<Logical_Squence_Predict> 
+
+<Logical_Squence_Fact>
+1. 获取str <对象创建><对象复用> : <对象创建>**被<DataFlow_Fact_1>推翻,**，获取str是<对象复用>
+2. 非空校验<直接读取属性>: 
+3. 循环判断分类: 预测和观测一致
+<Logical_Squence_Fact> 
+
+**Indicated Layer**
+<DataFlow_Predict>
+1. 输入与存储: 解释器在内存创建一个静态字符串对象(pyUnicodeObject),返回内存地址到当前作用域；返回复用对象的内存地址 -> 2. 处理与流转：非空校验与循环判断字符类别 -> 3. 生成与输出：输出True/False到当前作用域，原字符串对象若无其他引用则等待垃圾回收（GC）
+<DataFlow_Predict/>
+---
+<DataFlow_Fact>
+1. 输入与存储:...解释器在内存创建一个静态字符串对象(pyUnicodeObject),返回内存地址到当前作用域"**被<DataFlow_Fact_1>推翻,** 在[同一个函数内部]的环境：
+词法/语法分析：编译器扫描到源码中的字面量 "Hhǅʰxxx 333" -> 分配内存（编译期）: 在内存中创建了一个PyUnicodeObject -> 绑定常量表：创建好的字符串对象的内存地址，被塞进了这个函数对应的字节码对象（PyCodeObject）的常量元组co_consts中 -> 运行期直接读取：从已经存在的 co_consts[1] 中直接把这个指针读出来
+2. 处理与流转：预测和观测一致
+3. 生成与输出: 预测和观测一致
+<DataFlow_Fact/>
+
+<DataFlow_Fact_1>
+```Python 新建对象
+import dis
+def test_func():
+    return "Hhǅʰxxx 333".isalpha()
+dis.dis(test_func)
+print(test_func.__code__.co_consts)
+# >>> dis.dis(test_func)
+#   1           0 RESUME                   0
+#   2           2 LOAD_CONST               1 ('Hhǅʰxxx')
+#               4 LOAD_METHOD              0 (isalpha)
+#              26 PRECALL                  0
+#              30 CALL                     0
+#              40 RETURN_VALUE
+# (None, 'Hhǅʰxxx 333')
+
+# 在【不同的作用域/全局环境】下
+a = "Hhǅʰxxx 333"
+b = "Hhǅʰxxx 333"
+print(a is b)  
+# False [环境:交互式命令行]
+
+a = "hello_123"
+b = "hello_123"
+print(a is b)  
+# True [环境:交互式命令行]
+```
+```Python 复用对象
+import sys
+target_str = "Hhǅʰ中"
+ref_before = sys.getrefcount(target_str)
+result = target_str.isalpha()
+ref_after = sys.getrefcount(target_str)
+print(f"调用前引用计数: {ref_before}")
+print(f"调用后引用计数: {ref_after}")
+print(f"计数是否改变: {ref_before != ref_after}")  
+
+# 计数是否改变: False
+
+```
+<DataFlow_Fact_1/>
+
+<DataFlow_Fact_2>
+```Python 非空校验
+import timeit
+time_empty = timeit.timeit('"".isalpha()', number=10_000_000)
+time_invalid = timeit.timeit('"Hhǅʰyyyyyyyyyyyyyyxxx 333".isalpha()', number=10_000_000)
+print(f"空字符串耗时: {time_empty:.4f} 秒")
+print(f"非空字符耗时: {time_invalid:.4f} 秒")
+print(f"空字符串是否比非空字符显著更快: {time_empty < time_invalid}")
+# 空字符串耗时: 0.2550 秒
+# 非空字符耗时: 0.8679 秒
+# 空字符串是否比非空字符显著更快: True
+```
+
+```Python 循环判断字符类别
+import unicodedata
+target = "Hhǅʰyyyyyyyyyyyyyyxxx "
+for i, char in enumerate(target):
+    category = unicodedata.category(char)
+    is_char_alpha = char.isalpha()
+    print(f"位置 {i} | 字符: {char} | Unicode分类: {category} | 是否属于Letter: {is_char_alpha}")
+
+# 位置 0 | 字符: H | Unicode分类: Lu | 是否属于Letter: True
+# 位置 1 | 字符: h | Unicode分类: Ll | 是否属于Letter: True
+# 位置 2 | 字符: ǅ | Unicode分类: Lt | 是否属于Letter: True
+# 位置 3 | 字符: ʰ | Unicode分类: Lm | 是否属于Letter: True
+# 位置 4 | 字符: x | Unicode分类: Ll | 是否属于Letter: True
+# 位置 5 | 字符: x | Unicode分类: Ll | 是否属于Letter: True
+# 位置 6 | 字符: x | Unicode分类: Ll | 是否属于Letter: True
+# 位置 7 | 字符:   | Unicode分类: Zs | 是否属于Letter: False
+```
+<DataFlow_Fact_2/>
+
+<DataFlow_Fact_3>
+```Python
+import sys
+import ctypes
+target_str = "HhDžhyyyyyyyyyyyyyyxxx_unique_999"
+memory_address = id(target_str)  
+def get_ref_by_address(address):
+    return ctypes.c_ssize_t.from_address(address).value
+print("--- 开始纯物理层观测 ---")
+print(f"1. 字符串物理地址: {memory_address}")
+print(f"2. 初始状态（Python层引用计数）: {sys.getrefcount(target_str)}")
+print(f"3. 初始状态（C底层物理计数）  : {get_ref_by_address(memory_address)}")
+my_result = target_str.isalpha()
+del target_str 
+physical_ref_count = get_ref_by_address(memory_address)
+print(f"4. del后，通过物理地址测得的底层引用计数: {physical_ref_count}")
+print(f"5. 当前局部变量表是否安全持有结果: {'my_result' in locals()}")
+
+# 1. 字符串物理地址: 2273593105488
+# 2. 初始状态（Python层引用计数）: 2
+# 3. 初始状态（C底层物理计数）  : 1
+# 4. del后，通过物理地址测得的底层引用计数: 2273593104768
+# 5. 当前局部变量表是否安全持有结果: True
+```
+<DataFlow_Fact_3/>
+---
+
+<TimeLine_Predict>
+T0.Creating↓<Hook>:  -> T1.Using↓<Hook>: -> T2.Destructor↓<Hook>:
+<TimeLine_Predict/>
+
+<TimeLine_Fact>
+<TimeLine_Fact/>
+---
+
+<Causality_Predict>
+<Causality_Predict/>
+
+<Causality_Fact>
+<Causality_Fact/>
+---
+summary:
+最小对立对<minimal-pair>：
+1. str的生命周期管理：自动全局驻留（Intern）机制 VS 非全局驻留 -> 全Python进程中的写这个字面量（纯ASCII字符串（包含字母、数字、下划线））都强制指向同一块内存
+2. str的空间与性能： 编译器常量折叠 vs 运行时动态创建 -> 常量折叠：`"Hh" * 3`在编译期折叠成 `"HhHhHh"`到PyCodeObject的co_consts常量表，运行期只需执行一次``LOAD_CONST`指针复用；运行时动态创建：运行期分配堆内存、拼接字符、创建新对象。
+
+互补分布<complementary-distribution>:
+
+TIPS：
+<minimal-pair>相似中的差异，是分析逻辑，把一个模糊的整体拆开，看清微观的**边界**
+<complementary-distribution>差异中的相同，是构建的逻辑。抛开环境的导致的表现差异性，看清功能上一致性，建立宏观的秩序与规律
