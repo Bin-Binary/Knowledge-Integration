@@ -860,7 +860,101 @@ print(f"5. 当前局部变量表是否安全持有结果: {'my_result' in locals
 T0.Creating↓<Hook>:  -> T1.Using↓<Hook>: -> T2.Destructor↓<Hook>:
 <TimeLine_Predict/>
 
-<TimeLine_Fact>
+<TimeLine_Fact_T0>
+## 构建不同字面量的组件观测
+
+1. 定义结构体
+```python
+import ctypes, struct
+
+class State(ctypes.LittleEndianStructure):
+    _pack_ = 4
+    _fields_ = [
+        ("interned", ctypes.c_uint, 2),
+        ("kind",     ctypes.c_uint, 3),
+        ("compact",  ctypes.c_uint, 1),
+        ("ascii",    ctypes.c_uint, 1),
+        ("ready",    ctypes.c_uint, 1),
+        ("_pad",     ctypes.c_uint, 24),
+    ]
+
+class PyASCIIObject(ctypes.LittleEndianStructure):
+    _pack_ = 8
+    _fields_ = [
+        ("ob_refcnt", ctypes.c_ssize_t),
+        ("ob_type",   ctypes.c_void_p),
+        ("length",    ctypes.c_ssize_t),
+        ("hash",      ctypes.c_ssize_t),
+        ("state",     State),
+        ("_pad",      ctypes.c_uint),
+        ("wstr",      ctypes.c_void_p),
+    ]
+
+class PyCompactUnicodeObject(ctypes.LittleEndianStructure):
+    _pack_ = 8
+    _fields_ = [
+        ("_base",       PyASCIIObject),
+        ("utf8_length", ctypes.c_ssize_t),
+        ("utf8",        ctypes.c_void_p),
+        ("wstr_length", ctypes.c_ssize_t),
+    ]
+
+class DataUnion(ctypes.Union):
+    _fields_ = [
+        ("any",   ctypes.c_void_p),
+        ("latin1", ctypes.POINTER(ctypes.c_uint8)),
+        ("ucs2",  ctypes.POINTER(ctypes.c_uint16)),
+        ("ucs4",  ctypes.POINTER(ctypes.c_uint32)),
+    ]
+
+class PyUnicodeObject(ctypes.LittleEndianStructure):
+    _pack_ = 8
+    _fields_ = [
+        ("_base", PyCompactUnicodeObject),
+        ("data",  DataUnion),
+    ]
+```
+2. 创建字符串并开辟观测窗
+```python
+target_L = "Hhǅʰ你"
+unicode_obj = PyUnicodeObject.from_address(id(target_L))
+obj = PyCompactUnicodeObject.from_address(id(target_L))
+```
+
+3. 观测
+state
+```python
+obj._base.state.interned, obj._base.state.kind, obj._base.state.compact, obj._base.state.ascii, obj._base.state.ready
+```
+>>> obj._base.state.interned, obj._base.state.kind, obj._base.state.compact, obj._base.state.ascii, obj._base.state.ready
+(0, 2, 1, 0, 1)
+
+data
+```python
+unicode_obj.data.any, unicode_obj.data.latin1, unicode_obj.data.ucs2, unicode_obj.data.ucs4
+```
+>>> unicode_obj.data.any, unicode_obj.data.latin1, unicode_obj.data.ucs2, unicode_obj.data.ucs4
+(193656729603932232, <__main__.LP_c_ubyte object at 0x00000298CD1CB6D0>, <__main__.LP_c_ushort object at 0x00000298CD1CB750>, <__main__.LP_c_ulong object at 0x00000298CD1CB8D0>)
+
+4. 看所有字段
+```python
+obj._base.ob_refcnt, obj._base.length, obj.utf8_length, obj.utf8, obj.wstr_length
+```
+>>> obj._base.ob_refcnt, obj._base.length, obj.utf8_length, obj.utf8, obj.wstr_length
+(1, 5, 0, None, 5)
+
+5. 读 UCS-2 字符数据（kind=2 compact 数据在 +0x48）
+```python
+addr = id(target_L) + ctypes.sizeof(obj)
+chars = [ctypes.c_uint16.from_address(addr + i*2).value for i in range(obj._base.length)]
+chars
+"".join(chr(c) for c in chars)
+```
+>>> chars
+[72, 104, 453, 688, 20320]
+>>> "".join(chr(c) for c in chars)
+'Hhǅʰ你'
+
 <TimeLine_Fact/>
 ---
 
