@@ -1,0 +1,36 @@
+# Change_of_leadership
+这个框架涉及到新领导的任命或旧领导的免职。Selector带来了领导层的变化，例如，通过选举或推翻一个领导者。框架中的一些词描述了领导人成功下台（例如罢黜、罢免），其他词则简单地描述了企图（例如起义、叛乱）。3月17日，马梅多夫任命拉基姆·加西耶夫为国防部长。
+Selector 使 Old_leader/Old_order 更替为 New_leader（承担 Role/Function），或使 Body 获选履职
+
+## 核心FE
+- Selector: 促成领导权变更的主体（多为群体），动词句中通常为主语
+- Old_leader: 被免职（或尝试免职）的旧领导者，动词句中常作直接宾语，名词目标中常出现在 against 介词短语
+- New_leader: 被任命的新领导者，动词句中常作宾语
+- Role: Old/New_leader 担任的职位头衔，可单独表达作次级谓语或介词补足语
+- Old_order: 领导层变更前存在的政治秩序
+- Function: 新领导者将履行的职责/职能
+- Body: 被选举/任命执行治理职能的群体
+
+## 外围FE
+- Degree: 事件发生的程度
+- Manner: 行动的方式
+- Means: Selector 完成领导层变更的手段
+- Time: 时间
+- Place: 地点
+
+## 主题外功能FE
+- Depictive: 描述行动中某参与者的状态
+- Result: 事件的结果
+- Circumstances: 导致领导权变更的情境
+
+## FE关系
+Excludes:
+- Role ↔ Old_order
+- Function ↔ Old_order
+
+## 框架关系
+Inherits from(Appointing); 
+Is Causative of(Leadership)
+
+## 词元
+[coup.n, insurrection.n, mutiny.n, rebellion.n, revolution.n, uprising.n, overthrow.n, revolt.n, election.n，elect.v, mutiny.v, overthrow.v, revolt.v, oust.v, depose.v, dethrone.v, take over.v, topple.v, throne.v, enthrone.v]
