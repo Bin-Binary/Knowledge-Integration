@@ -5,6 +5,8 @@ from typing import Optional
 
 try:
     import nltk
+    if r"C:\lbyier\nltk_data" not in nltk.data.path:
+        nltk.data.path.insert(0, r"C:\lbyier\nltk_data")
     from nltk.corpus import framenet as fn
 except ImportError:
     nltk = None
