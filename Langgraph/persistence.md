@@ -23,26 +23,24 @@ However, key theoretical questions remain:
 
 Q1. What are the cognitive effects when mental content is manifested as an explicit proposition, an embedded question, or a hidden question?
 
-- Explicit Proposition: It centers on the literal information presented, though it potentially risks remaining at a surface level with insufficient cognitive depth.
+- Explicit Proposition: It centers on the literal information presented, with output tending toward paraphrase-level rewording of the source text rather than introducing concepts beyond the prompt (Figure 1).
 
-- Embedded Question: Mnemonic content directly associated with the core query is significantly enhanced, leading to stronger memory retention.
+- Embedded Question: Framing the context as an interrogative structure triggers retrieval of domain-specific parametric knowledge not present in the prompt, yielding outputs with deeper technical granularity and causal reasoning compared to the explicit proposition condition (Figure 2).
 
-- Hidden Question: While it yields immediate gains in processing speed, it remains highly contingent upon prior knowledge; lacking the requisite background schema, the highly compressed noun phrase becomes remarkably difficult to decode.
+- Hidden Question: A highly compressed noun phrase forces reliance on internal schema for decompression; this is contingent upon prior knowledge and prone to schema-biased semantic drift rather than decoding failure (Figure 3).
 
 Q2: What is the structural relationship between these three types of representation that exhibit discrepancies in mental content?
 
-- Synergy: Multi-Layered Attention Alignment and Tripartite Optimization
-When deployed simultaneously, these three components target distinct layers of the LLM’s attention mechanism, satisfying literal, causal, and structural retrieval constraints, respectively. This architectural synergy establishes a joint optimization framework: the explicit proposition constrains the semantic search space to mitigate conceptual drift, the embedded question drives causal inference and feature decompression, and the hidden question enforces macro-structural regularization to maximize informational density.
-This tripartite collaboration is empirically validated by GLM-V5.1 through comparative ablation analysis, exhibiting deterministic token-level and structural shifts across configurations:
+- Observed Pairwise Interactions (single-model, single-run observation):
 
-• Explicit Propositions vs. Hidden Questions (Semantic Constraint vs. Space Drift):
-Under the isolated Hidden Question baseline (Figure 3), the model relies entirely on parametric memory, drifting the fourth node to `4. Time Travel & Replay: Debugging, Testing & Branching` and introducing unprompted external tokens like MemoryScribe. Conversely, the Hybrid Condition (Figure 4) leverages explicit propositions to constrain the output generation boundaries, suppressing schema misalignment and enforcing semantic fidelity via the exact token sequence: `4. Remember Across Interactions — Long-Term Memory.` This demonstrates that explicit propositions function as bounded constraints that prune the latent search space of hidden question noun phrases.
+• Explicit Propositions vs. Hidden Questions:
+Under the isolated Hidden Question baseline (Figure 3), the model drifts the fourth node from "remember information across interactions" to `4. Time Travel & Replay` (and introduces the hallucinated token MemoryScribe, which is not a real LangGraph component). The Hybrid Condition (Figure 4) aligns the fourth node to `4. Remember Across Interactions — Long-Term Memory.`, confirming that explicit propositions function as semantic anchors that reduce schema-biased drift.
 
-• Embedded Questions vs. Explicit Propositions (Causal Decompression vs. Superficial Mapping):
-The standalone Explicit Proposition setup (Figure 1) limits the LLM's attention allocation to surface-level text rewriting, yielding redundant literal mappings (e.g., `Stateful Conversations — Enables multi-turn interactions where the agent retains context`). In contrast, the Hybrid Condition (Figure 4) incorporates interrogative vectors to parameterize deep factual decompression. Under Node 2, the model transitions from passive description to rigorous causal inference, explicitly computing downstream engineering dependencies: `allowing the agent to resume from the last checkpoint rather than restarting from scratch. This is critical for long-running workflows (e.g., document review, multi-stage pipelines) where re-execution is costly or impossible.`
+• Embedded Questions vs. Explicit Propositions:
+The standalone Explicit Proposition setup (Figure 1) yields literal paraphrase mappings (e.g., `Stateful Conversations — Enables multi-turn interactions where the agent retains context`). The Hybrid Condition (Figure 4) produces deeper causal inference under the same node, e.g.: `allowing the agent to resume from the last checkpoint rather than restarting from scratch. This is critical for long-running workflows (e.g., document review, multi-stage pipelines) where re-execution is costly or impossible.`
 
-• Hidden Questions vs. Embedded Questions (Structural Regularization vs. Syntactic Dispersion):
-While the isolated Embedded Question baseline (Figure 2) yields structurally dispersed bulleted breakdowns, the unified Hybrid Framework (Figure 4) injects the hidden question's noun phrase topology to enforce macro-level structural regularization. This mathematical compression collapses the representation into dense, dual-token conceptual headers (e.g., `1. Continue a Conversation — Stateful Continuity`) and drives structural convergence in the final Synthesis block, reducing the multi-turn data stream into `four production requirements: continuity, durability, resilience, and intelligence.`
+• Hidden Questions vs. Embedded Questions:
+The isolated Embedded Question baseline (Figure 2) produces a multi-point enumerated breakdown. The Hybrid Condition (Figure 4) compresses this into denser dual-phrase conceptual headers (e.g., `1. Continue a Conversation — Stateful Continuity`) and a convergent synthesis mapping scenarios to `four production requirements: continuity, durability, resilience, and intelligence.`
 
 ## Runtime Instances
 
