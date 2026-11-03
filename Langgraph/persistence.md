@@ -12,18 +12,17 @@
    The Scenario states "Cognizer saved the Mental_content in Memory, and can retrieve it. The Mental_content can be Explicit Proposition，Embedded  Question or Hidden Question via Noun Phrase(e.g. *the price* ≈ what is the price)" -> [Schemata@Persistence:Debug]:
    `[Generate]` 1.Explicit Proposition/ 2.Embedded Question/ 3.Hidden Question ->
    `[Save]` 1.Memory/ 2.DB ->
-   `[Retrieve Keyword]` 1.Keyword can be computing
+   `[Retrieve]` 1.Deterministic Indexing Keys (e.g.,mental_content_id, thread_id)/ 2.Algorithmically Computed Feature Items (e.g, vector, scalar, matrix, tensor, graph)
  
 2. [nltk_data:framenet_v17@Activity_resume]"...resume after an interruption, recover from a failure..."
     The Scenario states "The Agent resumes the Activity state to normal, and the progress is saved before the interruption" -> Trigger[Schemata@Fallback:Release].This Scenario appends an optional `[After State]` 1.Normal /2.Interruption /3.Failure /4.Termination
 
-## Assertions
-Persistence serves as a fundamental prerequisite for continuing a conversation, resuming operations after interruptions or failures, and maintaining interactions across extended scopes (e.g., long-context conversations).
-However, key theoretical questions remain:
+## Questions
+key theoretical questions remain:
 
 Q1. What are the cognitive effects when mental content is manifested as an explicit proposition, an embedded question, or a hidden question?
 
-- Explicit Proposition: It centers on the literal information presented, with output tending toward paraphrase-level rewording of the source text rather than introducing concepts beyond the prompt (Figure 1).
+- Explicit Proposition: It centers on the literal information presented, tending toward paraphrase-level rewording of the source text rather than introducing concepts beyond the prompt (Figure 1).
 
 - Embedded Question: Framing the context as an interrogative structure triggers retrieval of domain-specific parametric knowledge not present in the prompt, yielding outputs with deeper technical granularity and causal reasoning compared to the explicit proposition condition (Figure 2).
 
@@ -44,7 +43,7 @@ The isolated Embedded Question baseline (Figure 2) produces a multi-point enumer
 
 ## Runtime Instances
 
-### Observe Agent's Performance First
+### Observing First
 We observe the agent's performance across an identical task by manipulating three distinct types of representation, each characterized by a unique mental content profile.
 
 #### Step 1: Fixing the Mental Contents
@@ -244,8 +243,169 @@ As illustrated in Figure 4, the empirical output from GLM-V5.1 under the Multi-M
 • Multi-Perspective Dense Summarization: Rather than biasing toward a single representation modality, the attention matrix integrates the literal completeness of explicit propositions, the causal parameterization of embedded questions, and the macro-level abstraction of hidden questions into a highly concentrated, production-oriented token sequence. The model retains the semantic substance of the raw facts while simultaneously capturing the functional trade-offs driven by the interrogative vectors, preventing both literal redundancy and analytical superficiality.
 • Emergent Structural Unification: The overlapping data streams across the three configurations generate a high-density reinforcement loop within the attention layers. This reinforcement prompts the autoregresive sequence generation to abstract upward, projecting the divergent data streams into a cross-tabulated evaluation matrix (Scenario | Without Persistence | With Persistence) and driving structural convergence in the final Synthesis block. The resulting output maps the concrete operational scenarios directly to four high-level architectural invariants: continuity, durability, resilience, and intelligence.
 
+### Persistence Schemata
+#### Generate
+``` python
+"""
+[Schemata@MentalContent]
+Cognitive Representation Layer derived from FrameNet v17 'Remembering_information'.
 
+This module models the structured mental data structures (MentalContent) that a Cognizer 
+encodes and preserves across distributed agent runtimes. It formalizes three distinct 
+levels of literal and implied proposition representations, serving as a typified data 
+carrier layer for the Persistence system.
 
+Frame Element (FE) Isomorphism:
+    * Core FE: Cognizer        -> `cognizer_id`
+    * Core FE: Mental_content  -> `mental_content`
+    * Periphery FE: Topic      -> `periphery_topic`
+    * Periphery FE: Accuracy   -> `periphery_accuracy`
+    * Periphery FE: Time       -> `periphery_timestamp`
 
+Dual-Channel Retrieval Bindings:
+    1. Deterministic Keys     -> `deterministic_mental_content_id`, `deterministic_thread_id`
+    2. Algorithmic Features   -> `algorithmically_feature_items` (Mapped via Enum tokens)
+
+Dependency Note:
+    This file acts as a standalone domain layer. It contains no dependency on the 
+    Persistence layer, fulfilling the Single Responsibility Principle (SRP) under Strategy A.
+"""
+from abc import ABC
+from enum import Enum, auto
+from typing import List, Optional, Any, Dict
+
+class AlgorithmicallyComputedFeatureItems(Enum):
+    """Algorithmically Computed Feature Items (vector, scalar, matrix, tensor, graph)"""
+    SCALAR: auto()
+    VECTOR: auto()
+    MATRIX: auto()
+    TENSOR: auto()
+    GRAPH: auto()
+    
+class MentalContent(ABC):
+    """Cognizer saved the Mental Content in Memory, and can retrieve it. 
+    The Mental Content can be Explicit Proposition，Embedded  Question or Hidden Question via Noun Phrase(e.g. *the price* ≈ what is the price)
+    Two retrive manner:
+    - Deterministic Indexing Keys（mental_content_id, thread_id）
+    - Algorithmically Computed Feature Items (vector, scalar, matrix, tensor, graph)
+    """
+    def __init__(
+        self, 
+        cognizer_id: str,        
+        mental_content: str,
+        deterministic_mental_content_id: str,
+        deterministic_thread_id: Optional[str] = None,
+        algorithmically_feature_items: Optional[
+            Dict[AlgorithmicallyComputedFeatureItems, Any]
+        ] = None,
+        periphery_topic: Optional[List[str]] = None,
+        periphery_accuracy: Optional[List[float]] = None,
+        periphery_timestamp: Optional[float] = None
+    ):
+        self.cognizer_id = cognizer_id    
+        self.mental_content = mental_content
+        self.deterministic_mental_content_id = deterministic_mental_content_id
+        self.deterministic_thread_id = deterministic_thread_id
+        self.algorithmically_feature_items = algorithmically_feature_items
+        self.periphery_topic = periphery_topic
+        self.periphery_accuracy = periphery_accuracy
+        self.periphery_timestamp = periphery_timestamp
+
+class ExplicitProposition(MentalContent):
+    """Explicit Proposition: It centers on the literal information presented, 
+    tending toward paraphrase-level rewording of the source text rather than introducing concepts
+    """
+
+class EmbeddedQuestion(MentalContent):
+    """Embedded Question: Framing the context as an interrogative structure triggers retrieval of domain-specific parametric knowledge not present in the prompt, 
+    yielding outputs with deeper technical granularity and causal reasoning compared to the explicit proposition condition
+    """
+
+class NounPhrase(MentalContent):
+    """Hidden Question: A highly compressed noun phrase forces reliance on internal schema for decompression; 
+    this is contingent upon prior knowledge and prone to schema-biased semantic drift rather than decoding failure.
+    via Noun Phrase(e.g. *the price* ≈ what is the price)
+    """
+```
+
+#### Save And Retrieve
+```python
+"""
+[Schemata@Persistence]
+State Lifecycle Management Layer for Distributed Graph Compilations.
+
+This module defines the abstract contract for persisting and retrieving structural 
+MentalContent across and beyond `a single graph run` in LangGraph applications. 
+
+Strategy A Alignment:
+    In strict adherence to the Single Responsibility Principle (SRP), this layer is 
+    completely decoupled from the cognitive encoding stage ([Generate]). It establishes 
+    pure data lifecycle boundaries, focusing explicitly on [Save] and [Retrieve] operations.
+
+Behavioral Interface Boundaries:
+    * [Save]      -> Commits Core/Periphery elements into localized Memory or centralized DB backends.
+    * [Retrieve]  -> Executes cross-channel extraction via Deterministic IDs or Algorithmic matrices,
+                     applying Peripheral multi-variate filters to counter semantic drift.
+
+Dependency Note:
+    Imports `MentalContent` and `AlgorithmicallyComputedFeatureItems` from `mental_content.py` 
+    to bound its data transaction arguments.
+"""
+from abc import ABC, abstractmethod
+from typing import Optional, Dict, Any
+
+from mental_content import MentalContent, AlgorithmicallyComputedFeatureItems
+
+class Persistence(ABC):
+    """[nltk_data:framenet_v17@Remembering_information]
+    Abstract Base Class defining the structural persistence schema for LangGraph applications.
+    
+    This class codifies the isomorphic mapping between Cognitive Linguistics (FrameNet v17 
+    'Remembering_information' frame) and Distributed Agent State Management, enabling applications 
+    to preserve and recall cognitive states across and beyond `a single graph run`.
+
+    Scenario Alignment:
+        "Cognizer saved the Mental_content in Memory, and can retrieve it. The Mental_content 
+        can be Explicit Proposition, Embedded Question, or Hidden Question via Noun Phrase."
+
+    Behavioral Flow Pipeline (Mnemonic Lifecycle):
+        1. [Generate] -> 2. [Save] -> 3. [Retrieve]
+
+    1. [Generate] (Cognitive Encoding Formats):
+        * ExplicitProposition : Centers on literal information presented (paraphrase-level rewording).
+        * EmbeddedQuestion    : Triggers domain-specific parametric knowledge retrieval (causal reasoning).
+        * NounPhrase          : Highly compressed noun phrase forcing reliance on internal schema 
+                                (prone to schema-biased semantic drift rather than decoding failure).
+
+    2. [Save] (Storage Backend Topologies):
+        * 1. Memory : Volatile, short-term checkpointer within localized execution context.
+        * 2. DB     : Non-volatile, long-term hybrid storage (Relational, Vector, or Graph backend).
+
+    3. [Retrieve] (Dual-Channel Memory Access Mechanisms):
+        * 1. Deterministic Indexing Keys:
+             Direct KV lookups based on strict identifiers.
+             e.g., `deterministic_mental_content_id`, `deterministic_thread_id`
+        * 2. Algorithmically Computed Feature Items:
+             Continuous or structural representation matching via mathematical matrices.
+             e.g., `SCALAR`, `VECTOR` (dense/sparse), `MATRIX`, `TENSOR`, `GRAPH`
+             
+    Technical Note:
+        While the pipeline begins at [Generate], the concrete implementation of `Persistence` 
+        strictly enforces the SRP (Single Responsibility Principle), delegating generation to 
+        the `Cognizer` or Factory layers, while explicitly managing the [Save] and [Retrieve] lifecycles.
+    """
+    @abstractmethod
+    def save_mental_content() -> bool:
+        raise NotImplementedError("Subclasses must implement save_mental_content according to the storage schema.")
+    
+    @abstractmethod
+    def retrieve_mental_content(
+        self,
+        deterministic_keys: Optional[Dict[str, str]] = None,
+        algorithmic_features: Optional[Dict[AlgorithmicallyComputedFeatureItems, Any]] = None,
+        periphery_filters: Optional[Dict[str, Any]] = None
+    ) -> Optional[MentalContent]:
+        raise NotImplementedError("Subclasses must implement retrieve_mental_content according to the indexing schema.")
+```
 ## References
 [1] LangChain, “Persistence,” Docs by LangChain. [Online]. Available: https://docs.langchain.com/oss/python/langgraph/persistence. [Accessed: Nov. 2, 2026].
