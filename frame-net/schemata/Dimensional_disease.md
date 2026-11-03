@@ -1,7 +1,7 @@
 # Dimensional Disease
 Dimensional Disease occurs when Source Entities exhibit discrepancies in Dimensions, thereby preventing direct computation or fusion. [0]
 
-## schemate
+## Schema
 [Source Entities] [1] 1.Heterogenous data/ 2.Multi-dimensional attributes -> 
 [Discrepancies Dimension] [2] 1.Dimensional Space/ 2.Dimensional Measurement ->
 [Inhibitor Factor] [3] 1.Dimensional Escape / 2.Dimensional Normalization

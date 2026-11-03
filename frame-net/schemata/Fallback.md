@@ -1,7 +1,7 @@
 # Fallback
 A fallback schema is a sequence of tiered remediation measures, activated by designated trigger conditions.
 
-## Schemata
+## Schema
 [Trigger Condition] 1.Failed/ 2.Timeout/ 3.Nullity 4.Cannot self-heal-> 
 [Remediation Measures] 1.Graceful Degradation/ 2.Multi-tier Fallback/ 3.Side Effects/ 4.Manual Intervention-Optional-> 
 [After State] 1.Normal /2.Interruption /3.Failure /4.Termination
