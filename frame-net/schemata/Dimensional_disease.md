@@ -1,10 +1,10 @@
 # Dimensional Disease
-Dimensional Disease occurs when Source Entities exhibit discrepancies in Dimensions, thereby preventing direct computation or fusion.
+Dimensional Disease occurs when Source Entities exhibit discrepancies in Dimensions, thereby preventing direct computation or fusion. [0]
 
 ## schemate
-[Source Entities] 1.Heterogenous data/ 2.Multi-dimensional attributes -> 
-[Discrepancies Dimension] 1.Dimensional Space/ 2.Dimensional Measurement ->
-[Inhibitor Factor] 1.Dimensional Escape / 2.Dimensional Normalization
+[Source Entities] [1] 1.Heterogenous data/ 2.Multi-dimensional attributes -> 
+[Discrepancies Dimension] [2] 1.Dimensional Space/ 2.Dimensional Measurement ->
+[Inhibitor Factor] [3] 1.Dimensional Escape / 2.Dimensional Normalization
 
 ## Instances
 1. [RAG] 
@@ -20,3 +20,12 @@ Inhibitor Factor: via CSS @font-face { size-adjust: X%; } -> Resolved by Dimensi
 ## Minimal Pair
 
 ## Macro Invariant
+
+## References
+[0] Note: This condition stems from horizontal heterogeneity in terms of "space/structure"; that is, due to differences in their spatial paradigms or units of measurement, entities are not directly compatible within the same cross-section of time.
+
+[1] Note: Here, the heterogeneity is induced by spatial or structural differences.
+
+[2] Note: This refers to the inconsistency of entities across the horizontal topological space, as well as the metric fault lines induced by variations in reference units, numerical boundaries, or geometric dimensions.
+
+[3] Note: This refers to an intervention mechanism wherein the system attempts to forcibly preempt an eruption of incompatibility, either by transcending the current spatial topology or by performing standardized mappings of the heterogeneous metrics.
