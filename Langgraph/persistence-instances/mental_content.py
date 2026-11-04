@@ -62,7 +62,14 @@ class MentalContent(ABC):
         self.periphery_topic = periphery_topic
         self.periphery_accuracy = periphery_accuracy
         self.periphery_timestamp = periphery_timestamp
+        # 对应 TargetProcess 要求的时相指针字段
+        self._terminal_node_culmination: float = 0.0
 
+    @property
+    def chronological_gradient_latch_time(self) -> float:
+        """1:1 结构映射：过程快照的锁定时间点"""
+        return self._terminal_node_culmination
+       
 class ExplicitProposition(MentalContent):
     """Explicit Proposition: It centers on the literal information presented, 
     tending toward paraphrase-level rewording of the source text rather than introducing concepts
@@ -78,3 +85,7 @@ class NounPhrase(MentalContent):
     this is contingent upon prior knowledge and prone to schema-biased semantic drift rather than decoding failure.
     via Noun Phrase(e.g. *the price* ≈ what is the price)
     """
+    @property
+    def control_risk_profile(self) -> ControlRiskProfile:
+        """1:1 概念映射：高度压缩、极易产生反噬死锁的特征类型"""
+        return ControlRiskProfile.HIGHLY_COMPRESSED
