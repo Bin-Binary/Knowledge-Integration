@@ -41,6 +41,72 @@ The standalone Explicit Proposition setup (Figure 1) yields literal paraphrase m
 • Hidden Questions vs. Embedded Questions:
 The isolated Embedded Question baseline (Figure 2) produces a multi-point enumerated breakdown. The Hybrid Condition (Figure 4) compresses this into denser dual-phrase conceptual headers (e.g., `1. Continue a Conversation — Stateful Continuity`) and a convergent synthesis mapping scenarios to `four production requirements: continuity, durability, resilience, and intelligence.`
 
+- Q3: What architectural mechanisms actuate the internalization and consolidation pipeline, transitioning from external informational input into high-order internal schemata, and ultimately into unconscious, highly compressed symbols?
+
+• Explicit First(Event Frozen)
+Enumerates explicit propositions to formulate a candidate profile, subsequently filtering them into coarse-grained silver seeds, and finally purifying the subset to isolate high-fidelity golden seeds
+
+• Embedding Question(Process Evaluation)
+？
+
+• Hidden Question
+?
+
+\(\text{Explicit\ [Candidate\ }\rightarrow \text{\ Silver\ }\rightarrow \text{\ Golden\ Fact]}\xrightarrow{\text{进化}}{\text{T1 触发因果质询}}\text{Embedding\ [Candidate\ }\rightarrow \text{\ Silver\ }\rightarrow \text{\ Golden\ Inference]}\xrightarrow{\text{极致压缩}}{\text{T2 触发终极截断}}\text{Hidden\ [Candidate\ }\rightarrow \text{\ Silver\ }\rightarrow \text{\ Golden\ Schema]}\)
+
+- Q4: What is the impact of Algorithmicall on content?
+e.g, mental_content: "Cognizer saved the Mental Content in Memory, and can retrieve it" 
+
+• Algorithmicall's (e.g, Scalar Vector Matrix Tensor Graph) characterize and affecting
+Scalar: 
+@characterize: "Cognizer saved the ..." -> 1.0(Confidence Level/ CL)
+
+Vector: 
+@characterize: "Cognizer saved the ..." -> [0.992, -0.012, 0.884, ..., 0.125] (Dense Spatial Embedding);
+@affecting: 
+- Semantic RAG lookup scenario: "The agent stores the thoughts in its mind onto a hard drive and can retrieve and use them later" -> [0.992, -0.012, 0.884, ..., 0.125] -> "Cognizer saved the ..."
+
+- Cross-lingual ingestion scenario: “认知者把精神内容保留在记忆中了吗？” -> e.g., via [M-BERT/text-embedding-3] [0.992, -0.012, 0.884, ..., 0.125] -> "Cognizer saved the ..."
+
+- Coarse-grained Filtration Stage scenario:  Concurrent streaming tokens -> e.g., via [HNSW/IVF-FLAT] index scanning within 10ms -> Filter candidate memory pool -> [0.992, -0.012, 0.884, ..., 0.125] -> "Cognizer saved the ..."
+
+Matrix: 
+@characterize: "Cognizer saved the Mental Content in Memory, and can retrieve it" -> [[1.00, 0.85, 0.70, 0.90], ..., [0.90, 0.80, 0.75, 1.00]] (Token-to-Token Self-Attention Grid);
+@affecting:
+- Long-text noise injection scenario: "I remember she was selfish... complaints about French being surrender monkeys... remember Napoleon?" -> Restrict AI focus via attention grid weights [Cognizer: 1.00, Retrieve: 0.90] -> Extinguish tangential drift -> Force lock onto core semantic gravity -> "Cognizer saved the ..."
+
+- Contextual reranking scenario: Disambiguate raw retrieved candidate token pool -> Core token correlation score evaluation via matrix self-attention matrix -> Re-index ranking priority in prompt generation window -> "Cognizer saved the ..."
+
+Tensor:
+@characterize: "Cognizer saved the ..." -> [[[0.12, 0.88], [0.45, 0.55], [0.90, 0.10]], ..., [[0.00, 1.00], [0.00, 1.00], [0.01, 0.99]]] (3-Order State Hidden Lattice: Quality Level x Risk Profile x Retrieval Channel);
+@affecting:
+- Highly-compressed entity decompression scenario: Volatile short tag "That Pattern" (NounPhrase) -> [ControlRiskProfile.HIGHLY_COMPRESSED] warning triggered -> Compute current state tensor dot product -> Enforce joint probability boundary restrictions at [GOLDEN] lattice intersection -> Prevent schema-biased semantic collapse -> Decompress to "Cognizer saved the ..."
+
+- Multi-agent runtime alignment scenario: Concurrent heterogenous execution trace logs -> Map varying cognitive states into multi-dimensional tensor lattice -> Perform structural sanity cross-check across Candidate/Silver/Golden boundaries -> Invalidate anomalous drift states -> Validate "Cognizer saved the ..."
+
+Graph:
+@characterize: "Cognizer saved the Mental Content in Memory, and can retrieve it" -> Nodes: [Cognizer, Mental_content, Memory, Retrieval] & Edges: [encodes_and_preserves, saved_in, can_retrieve] (Directed Acyclic Dependency Topology);
+@affecting:
+- EmbeddedQuestion deep causal lookup scenario: "How can information availability be verified if a disruption occurs?" -> Execute multi-hop traversal along topology edges: [Cognizer] --(can_retrieve)--> [Mental_content] --(saved_in)--> [Memory] -> Extract complete technical causal pathway -> "Cognizer saved the ..."
+
+- Implicit entity structural decompression scenario: Fragmented artifact phrase "the price" -> Target abstract schema identification via Graph relational schema links -> Map instances to target nodes -> Reconstruct missing semantic nodes dynamically -> Expand entity to "what is the price"
+
+• Algorithmicall's Cost And Profit
+@Cost
+| Algorithm Item | Software/Computational Implementation Path | Computational Resource Complexity (Time/Space) | 1M Scale Hardware Recommendation (1M Pool HW Recommendation) | Hardware Cost Tier |
+| :-- | :-- | :-- | :-- | :-- |
+| Scalar | Pure Python / SQL dictionary field assignment | \(O(1)\) time, tens of bytes memory | Share existing relational database (no additional hardware required) | Extremely Low (near 0) |
+| Vector | Text Embedding model + vector index scanning | \(O(1)\) write, \(O(\log N)\) retrieval | Single-core CPU / lowest-spec lightweight vector database node | Low (pure memory overhead) |
+| Matrix | Transformer hidden layer self-attention weight extraction | \(O(L^2)\) quadratic computation of sequence length | Production environments recommend offline/asynchronous extraction and compression using GPUs | Medium |
+| Tensor | Joint probability state computation / cognitive state space mapping | \(O(D_1 \times D_2 \times D_3)\) high-order lattice dot product | High-concurrency state alignment requires a small amount of dedicated memory and lightweight inference cores | Medium |
+| Graph | Graph database (topological correlation, multi-hop pointer grid) | \(O(b^d)\) multi-hop traversal, exponential branching | Heavily dependent on in-memory graph database nodes with high IOPS (large memory) | High (memory hog) |
+
+@Profit
+• Vector handles wide-area fuzzy radar scanning to guarantee maximum recall breadth.
+• Matrix + Tensor manage noise resistance and intercept semantic drift, ensuring operational safety and system purity.
+• Graph drives deep non-linear relationship mining to guarantee the depth of reasoning.
+• Scalar governs lightweight traffic control, ensuring high-throughput system performance under massive concurrency.
+
 ## Runtime Instances
 
 ### Observing First
@@ -148,29 +214,7 @@ Figure 4. The raw text output generated by [LLM:GLM-V5.1] regarding LangGraph pe
 **Analysis**
 
 ### Persistence Schemata
-```
-时空对齐：三类认知表示（Generate）在控制环中的本质
 
-当你把 Generate 层的这三个具体子类投入到系统的动态博弈中时，它们具备了完全不同的时空惯性与对抗特征。我们在写具体系统的流控（Backpressure）和校准（Calibration）时，必须针对它们分别施策：
-【认知输入流 (Process)】 ───>  [ExplicitProposition] ───> (惯性低/极易截断为 Event)
-                       ───>  [EmbeddedQuestion]    ───> (因果计算延迟高/需放宽 Temporal Span)
-                       ───>  [NounPhrase]          ───> (漂移风险极高/必须严格校验 Phase Lag)
-
-1. ExplicitProposition（显式命题）
-
-• 时空本质： 属于源文本的字面重组，没有向外部未知的因果链延展。在 Meta_Process 中，它的演进梯度最平缓，信息熵极低。
-• 控制策略： 它是最安全的“经验切片”。Activity 在将其降维成 Event 沉淀（Save）时，发生“过程暴政（系统雪崩）”的风险几乎为零。其 periphery_accuracy 应逼近 1.0。
-
-2. EmbeddedQuestion（嵌入式问题）
-
-• 时空本质： 它触发了不在当前上下文中的“领域参数化知识搜索（因果推理）”。在控制论中，这意味着它强行拉长了 Activity 的 Execution Cost ➔ Temporal Span（运行时间窗口）。
-• 控制策略： 系统必须做好应对高延迟的准备。如果执行超时，控制环在触发 CulminationTrigger.TEMPORAL_TIMEOUT 进行防御性持久化时，必须保留当时的中间拓扑状态（如检索图谱的局部快照）。
-
-3. NounPhrase（名词短语 / 隐式问题）
-
-• 时空本质： 它是高度压缩的、具有极强“时间断层（Temporal Fault Line）”隐患的实体。因为它极度依赖 Agent 内部的旧 Schema 去解压（Decompress）。如果外部环境已经流变，而它还拿着 t0 时刻解压出的旧规则去匹配，就会立刻沦为 Imprint Freeze（印记冻结） 的头号温床，发生严重的 Schema-biased semantic drift（认知偏置漂移）。
-• 控制策略： 在 Retrieve 此类内容时，必须强制对齐其 periphery_timestamp，进行最严苛的 max_allowed_phase_lag_seconds（最大相位滞后）校验，一旦超期，立即执行解耦开锁（Unlatching）
-```
 #### Generate
 ``` python
 
