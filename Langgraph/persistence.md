@@ -107,6 +107,84 @@ Graph:
 • Graph drives deep non-linear relationship mining to guarantee the depth of reasoning.
 • Scalar governs lightweight traffic control, ensuring high-throughput system performance under massive concurrency.
 
+- Q5: Explict Proposition generation, trigger timing and refine the content?
+@trigger timing -> program control:
+| Strategy | Trigger Condition | Semantics |
+| :--- | :--- | :--- |
+| **Dialogue Session Termination** | User explicitly exits or closes the session | The entire dialogue sequence can be fully persistence-solidified. |
+| **Topic Switching** | Topic transition detected | The previous topic window closes, making it suitable for archiving. |
+| **Capacity Threshold** | Message length exceeds the limit | Prevents short-term memory overflow. |
+However, programmatically identifying topic switching to trigger a Topic transition detected flag remains challenging, as explicit quantitative metrics are inherently lacking.
+
+@refine the content
+```markdown
+You are a Memory Consolidation Extractor. Your task is to distill atomic explicit propositions from multi-turn dialogue.
+
+## Input
+e.g,
+<topic>Current Topic</topic>
+<messages>
+[round:1 role:user] hmm
+[round:2 role:user] I went to the supermarket and bought milk today, ran into Old Wang on the way and chatted for a bit
+[round:3 role:user] Wait, not Old Wang, it was Old Li
+[round:4 role:assistant] You went to the supermarket...
+</messages>
+
+## Extraction Rules
+
+### R1. Filter: Discard non-propositional messages
+Discard the following types — output no EP for them:
+- Backchannel tokens: hmm, okay, oh, yeah, right
+- Pure directives: please continue, change the topic
+- Repetition/paraphrase: assistant restating user content
+
+### R2. Correct: Later-turn corrections override earlier turns
+When a subsequent turn supplies a correction (denial, amendment), the corrected content takes precedence — do not output the overridden EP.
+
+Detection patterns:
+e.g,
+| Correction Pattern | Example |
+|---|---|
+| Direct denial | "No / wait / that's wrong" + corrected content |
+| Partial replacement | "It should be X, not Y" |
+| Conditional addition | "Just to clarify, actually..." |
+
+### R3. Split: One message into multiple EPs
+When a single message contains multiple independent propositions, each EP carries exactly one proposition.
+Splitting criterion: if deleting either clause still leaves the other as a complete truth-apt statement → split.
+
+### R4. Rewrite: Remove dialogue packaging
+e.g,
+| Operation | Input | Output |
+|---|---|---|
+| Remove 1st/2nd person | "I went to the supermarket today" | "User went to the supermarket today" |
+| Remove hedging/tone | "I think this plan is pretty good, right?" | "The plan is viable" |
+| Remove conversational reference | "The issue you just mentioned..." | Extract the actual proposition referred to |
+| Remove directive wrapper | "Can you help me check X?" | "Query result for X is..." |
+| Resolve ambiguous anaphora | "He gave me a document" | Resolve "he" → specific referent from context |
+
+- Q6: "How should the window size and sliding step size of the message sliding window be designed?"
+@window size: 
+• Static Boundary Formula: W_size(Max Limit) = Token(Model_max) − Token(System_prompt) − Token(Model_output) − Token(Tool/Rag_context)
+
+ Can the static window boundaries be optimized by letting an LLM analyze the accumulated explicit propositional memory within real scenarios and then solidify the configurations?
+ `Context/Idea: Instead of guessing fixed constraints, we initialize the window with default values. As the Agent operates, it manifests and accumulates explicit propositions (facts, logic, and context) within the conversation. A meta-LLM then analyzes this memory structure to dynamically adjust and freeze the optimal static boundaries for production.`
+
+• Run Time Formula: Total_Tokens = Token(System_prompt) + Token(Current_input) + ∑ Token(History_turns)
+
+How can the runtime engine dynamically switch sliding window policies based on LLM evaluations of manifested explicit propositional memories?
+`Mechanism: Instead of executing a hardcoded, static sliding window, the runtime engine utilizes an LLM to continuous-profile the active explicit propositional memories. Based on the semantic weight, structural density, and logic dependencies of these propositions, the LLM dynamically re-calibrates the safety thresholds and shifts between different window orchestration policies (e.g., Pinning Policy for hard constraints, Compaction Policy for heavy tool payloads, or Aggressive-Sliding Policy for low-value chats).` e.g,
+Policy Routing Criteria:
+1. High-Density / Multi-Tool Policy (Policy A): Triggered when propositions manifest intensive raw instrumentation logs or RAG payloads. Action: Enforces aggressive structural compaction on tool messages to protect core conversational context.
+2. Long-Context / Rigorous Policy (Policy B): Triggered when high-value global constraints or long-chain inferential reasoning metrics are detected. Action: Prioritizes reasoning depth over cost by pinning vital proposition assets and dynamically expanding the safety threshold.
+3. Fast-Casual / Economical Policy (Policy C): Triggered when the proposition stack consists predominantly of ephemeral chatter or confirmation tokens. Action: Reverts to generic chunk-based sliding window to maximize upstream Prompt Cache utility and minimize operational costs.
+
+
+• Design Considerations:
+
+1. Attention Dilution ("Lost in the Middle" Effect): Large Language Models (LLMs) typically exhibit the highest information retrievability at the extreme boundaries (the beginning and the end) of the input context. If the window size is excessively large, crucial information located in the middle segments is prone to being overlooked or omitted by the model.
+2. Cost and Latency Trade-offs: An expanded window size increases the volume of input tokens per dialogue turn, causing API costs to scale linearly or quadratically. Furthermore, it inherently exacerbates the Time-to-First-Token (TTFT) latency due to the increased computational overhead.
+
 ## Runtime Instances
 
 ### Observing First
