@@ -163,27 +163,90 @@ e.g,
 | Remove directive wrapper | "Can you help me check X?" | "Query result for X is..." |
 | Resolve ambiguous anaphora | "He gave me a document" | Resolve "he" → specific referent from context |
 
+## Output Format
+Output a strict JSON array with no other content e.g,:
+
+```json
+[
+  {
+    "id": "ep_001",
+    "content": "User went to the supermarket and bought milk today",
+    "topic": "Daily Itinerary",
+    "source_rounds": [2],
+    "corrected": false
+  },
+  {
+    "id": "ep_002",
+    "content": "User encountered Old Li on the way and conversed",
+    "topic": "Daily Itinerary",
+    "source_rounds": [2, 3],
+    "corrected": true
+  }
+]
+
+Field Specification
+Field	Type	Description
+content	string	Rewritten pure proposition, free of dialogue traces
+topic	string	Topic the proposition belongs to
+source_rounds	int[]	Source turn numbers; corrected EPs include both pre- and post-correction turns
+corrected	bool	Whether the proposition was amended by a later turn
+```
+
 - Q6: "How should the window size and sliding step size of the message sliding window be designed?"
+
 @window size: 
-• Static Boundary Formula: W_size(Max Limit) = Token(Model_max) − Token(System_prompt) − Token(Model_output) − Token(Tool/Rag_context)
 
- Can the static window boundaries be optimized by letting an LLM analyze the accumulated explicit propositional memory within real scenarios and then solidify the configurations?
- `Context/Idea: Instead of guessing fixed constraints, we initialize the window with default values. As the Agent operates, it manifests and accumulates explicit propositions (facts, logic, and context) within the conversation. A meta-LLM then analyzes this memory structure to dynamically adjust and freeze the optimal static boundaries for production.`
+• Static Boundary Formula: $$W_\text{input\_safe} = (\text{Token}_\text{Mode\_max} \times \text{Safe\_Factor}) - \text{Token}_\text{System\_Prompt} - \text{Token}_\text{Mode\_output}$$
 
-• Run Time Formula: Total_Tokens = Token(System_prompt) + Token(Current_input) + ∑ Token(History_turns)
+• Run Time Formula: $$\text{Total\_Input\_Token} = Token_\text{Syetem\_prompt} + Token_\text{Current\_input} + Token_\text{Tool/Rag\_context} + ∑Token_\text{History\_turns}$$
 
-How can the runtime engine dynamically switch sliding window policies based on LLM evaluations of manifested explicit propositional memories?
-`Mechanism: Instead of executing a hardcoded, static sliding window, the runtime engine utilizes an LLM to continuous-profile the active explicit propositional memories. Based on the semantic weight, structural density, and logic dependencies of these propositions, the LLM dynamically re-calibrates the safety thresholds and shifts between different window orchestration policies (e.g., Pinning Policy for hard constraints, Compaction Policy for heavy tool payloads, or Aggressive-Sliding Policy for low-value chats).` e.g,
-Policy Routing Criteria:
-1. High-Density / Multi-Tool Policy (Policy A): Triggered when propositions manifest intensive raw instrumentation logs or RAG payloads. Action: Enforces aggressive structural compaction on tool messages to protect core conversational context.
-2. Long-Context / Rigorous Policy (Policy B): Triggered when high-value global constraints or long-chain inferential reasoning metrics are detected. Action: Prioritizes reasoning depth over cost by pinning vital proposition assets and dynamically expanding the safety threshold.
-3. Fast-Casual / Economical Policy (Policy C): Triggered when the proposition stack consists predominantly of ephemeral chatter or confirmation tokens. Action: Reverts to generic chunk-based sliding window to maximize upstream Prompt Cache utility and minimize operational costs.
+• Sliding Step Size Formula: $$S_\text{Token} = Max(Total\_Input\_Token - W_\text{input\_safe}, W_\text{input\_safe} \times α)$$
 
+(Note: Introducing a prompt cache penalty factor of α = 0.15 to prevent frequent invalidation of the Prompt Cache caused by single-item cropping.)
 
-• Design Considerations:
+• Trigger Condition: 
+$$\text{If Total\_Input\_Token} > W_\text{input\_safe}$$
 
-1. Attention Dilution ("Lost in the Middle" Effect): Large Language Models (LLMs) typically exhibit the highest information retrievability at the extreme boundaries (the beginning and the end) of the input context. If the window size is excessively large, crucial information located in the middle segments is prone to being overlooked or omitted by the model.
-2. Cost and Latency Trade-offs: An expanded window size increases the volume of input tokens per dialogue turn, causing API costs to scale linearly or quadratically. Furthermore, it inherently exacerbates the Time-to-First-Token (TTFT) latency due to the increased computational overhead.
+However, in real-world AI agent system. Key questions remain:
+
+**1. A single input completely overwhelms the security pool:**
+ For instance, if a user abruptly uploads a 100,000-word document—or if the Retrieval-Augmented Generation (RAG) retrieval volume is excessively large—the total token count will still exceed the maximum threshold, even after completely purging the entire dialogue history (\(\sum Token_\text{History\_turns} = 0\)). Under these conditions, the formula fails entirely.
+
+***Mitigating Extreme Overflows***
+
+Upon triggering the condition, the system executes a two-tier defense truncation strategy based on the bearing capacity of the message queue
+
+$$\text{Let\ }\Delta =\text{Total\_Input\_Token}- W_{\text{input\_safe}}$$
+
+***Level 1: History Eviction***
+$$If ∑Token_\text{History\_turns} ≥S_\text{Token}$$
+
+***The system executes a standard sliding window stride strategy, popping messages sequentially starting from the oldest dialogue turn until the total volume of released tokens satisfies \(\ge S_{\text{Token}}\).***
+
+***Level 2: Strict Truncation & RAG Pruning***
+
+$$If\sum Token_{\text{History\_turns}}<S_{\text{Token}}$$
+
+This implies that even if the entire dialogue history is cleared, the context window will still overflow. Consequently, the system will trigger a rigid circuit-breaker defense mechanism:
+***Ⅰ. Completely purge all History_turns.***
+
+***Ⅱ. Execute forced truncation (Pruning) on dynamic content: either proportionally trim long texts within Tool/Rag_context, or trigger a word-count circuit-breaker interception on Current_input. This forces the total traffic back under the safety threshold, establishing an absolute defense against 400 Context Length Exceeded exceptions.***
+
+**2. Dimensional singularity:**
+The system lacks critical safeguards essential for production-grade environments, specifically dead-loop prevention (hard limits on dialogue turns) and zombie session cleanup (Time-To-Live, or TTL, timeouts).
+
+**Multi-Dimensional Lifecycle Management**
+To ensure that the Agent does not become trapped in multi-turn dead loops and to minimize persistence costs, the sliding window must introduce two physical, rigid constraints beyond spatial dimensions.
+
+***1. Rigid Turn Boundary***
+• Rule:  \(\text{If Count(History\_turns)} > N_\text{max\_turns}\)
+
+• Action: Disregarding any remaining token headroom, the system enforces a strict First-In, First-Out (FIFO) policy to evict the oldest dialogue turn. This preempts the Agent from falling into infinite loops driven by multi-turn tool invocations, while effectively restricting the interaction depth within an operationally secure margin (typically configured to 12–20 messages).
+
+***2. Session Idle Timeout / TTL***
+• Rule: \(\text{If } (T_\text{current} - T_\text{last\_interaction}) > \text{TTL\_Threshold}\)
+
+• Action: The session is classified as either a zombie session or one where the contextual topic has shifted. The system subsequently triggers a physical flush of the entire historical queue. This forces the Agent to rebuild its prompt cache entirely upon the next request. This mechanism not only reduces storage overhead across distributed Redis/DB clusters but also provides a clean slate of context for the user's next intent (with the TTL threshold typically set to 1800 seconds / 30 minutes).
 
 ## Runtime Instances
 
