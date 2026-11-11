@@ -248,6 +248,45 @@ To ensure that the Agent does not become trapped in multi-turn dead loops and to
 
 • Action: The session is classified as either a zombie session or one where the contextual topic has shifted. The system subsequently triggers a physical flush of the entire historical queue. This forces the Agent to rebuild its prompt cache entirely upon the next request. This mechanism not only reduces storage overhead across distributed Redis/DB clusters but also provides a clean slate of context for the user's next intent (with the TTL threshold typically set to 1800 seconds / 30 minutes).
 
+**Q7: QPS and Latency Reduction**
+@QPS
+Under an ideal single-threaded or fixed concurrency model, the fundamental relationship between the two metrics is defined as follows:
+
+$$\text{QPS=} \frac{\text{Concurrency}} {\text{Average Response Time}}$$
+
+@Latency Reduction
+- ***Activate upstream prefix caching***
+Typically, upstream models inherently support prefix caching. By optimizing system prompts and session management to maximize cache hit rates, systems can successfully reap the benefits of reduced latency.
+
+- ***Compress tool definitions***
+Minimizing the payload size of the tools JSON schema injected into the large language model.
+
+***Optimal Subset Selection***
+$$T^{\prime} =f_\text{Protocol}\Big(f_\text{Schema} \big(\pi_\text{mcp} \big( T\big) \big) \Big)$$
+
+***Dynamically prune the MCP list based on runtime requirements, retaining only the indispensable components:$$\pi_\text{mcp} \big( T\big)$$***
+\(\pi _{\text{mcp}}(T)=\arg \max _{\mathcal{M}\subseteq \mathcal{M}_{\text{all}}}\sum _{m\in \mathcal{M}}S(m,T)\)
+
+***1. Expansion of the Scoring Function***
+
+\(S(m,T)=w_{1}\cdot \text{Sim}(E_{m},E_{T})+w_{2}\cdot \text{Freq}(m,H)+w_{3}\cdot \text{State}(m)-w_{4}\cdot \text{Cost}(m)\)
+
+***2. Explicit Expansion of Dependencies (Topological Closure)***
+Prior to inserting a component into the optimal set \(\mathcal{M}\), the integrity of its dependency chain must be strictly guaranteed. Formally, let \(\text{Dep}(m)\) denote the set of dependencies required for the execution of component \(m\). The selection set \(\mathcal{M}\) must then satisfy the topological closure constraint
+
+\(\forall m\in \mathcal{M},\quad \text{Dep}(m)\subseteq \mathcal{M}\)
+
+***Retain only the essential MCP attributes: name, a token-truncated description within the safe threshold, and input_schema: $$f_\text{Schema}$$***
+
+***Expansion of Constraints***
+The optimization problem must be solved within bounded resource limits, strictly satisfying the following two hard conditions:
+
+\(\text{Subject\ to:}\quad \sum _{m\in \mathcal{M}}\text{TokenSize}(m)\le \mathbf{B}_{\text{token}}\)
+
+\(\forall m\in \mathcal{M},\quad \text{Score}(m,T)\ge \tau _{\text{threshold}}\)
+
+***Filter out compliance-nonconforming MCPs in accordance with the protocol schema:$$f_\text{Protocol}$$***
+
 ## Runtime Instances
 
 ### Observing First
