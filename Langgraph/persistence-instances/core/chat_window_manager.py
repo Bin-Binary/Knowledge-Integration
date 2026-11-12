@@ -152,7 +152,7 @@ def execute_window_pipeline(
             """Decode the truncated tokens back into a string format to complete the hard pruning process."""
             safe_rag_context = static_cfg.encoder.decode(rag_encoded[:allowed_rag_tokens])
             logger.error(f"[Level 2 Edge Defense] WARNING: Enforced a hardware truncation on Tool/Rag_context from {len(rag_encoded)} to {allowed_rag_tokens} tokens!")
-        return messages
+        return safe_history, safe_rag_context
 
 class CacheFriendlyBlockStrategy:
     """
