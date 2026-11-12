@@ -1,193 +1,95 @@
 # components/mcp_pruner/rule_pruner.py
-"""Manage MCP tools payload size via dynamic heuristic rule pruning
-    Formulas:
-    • Run Time Scoring Formula: $$S(m, T) = w_1 \\cdot \\text{Sim}(E_m, E_T) + w_2 \\cdot \\text{Freq}(m, H) + w_3 \\cdot \\text{State}(m) - w_4 \\cdot \\text{Cost}(m)$$
-    • Subset Optimization Selection: $$\\pi_{\\text{mcp}}(T) = \\arg\\max_{\\mathcal{M} \\subseteq \\mathcal{M}_{\\text{all}}} \\sum_{m \\in \\mathcal{M}} S(m, T)$$
-    • End-to-End Context Pipeline: $$T^{\\prime} = f_{\\text{Protocol}}\\Big(f_{\\text{Schema}} \\big(\\pi_{\\text{mcp}} \\big( T\\big) \\big) \\Big)$$
-
-    Execution Pipeline：
-    [开始单轮工具裁剪请求]
-      │
-      ├──► 1. 运行评分函数 ──► 计算每个工具的 S(m, T) ──► 过滤 Score < τ_threshold (0.5) 的候选组件
-      │                                                      
-      ├──► 2. 拓扑依赖补全 ──► 展开依赖关系 ──► 满足拓扑闭包约束：∀ m ∈ M, Dep(m) ⊆ M
-      │
-      ├──► 3. 贪心背包决策 ──► 按得分降序排列 ──► 校验配额限制：∑ TokenSize(m) <= B_token
-      │                                                │
-      │                                                ├─── [超出预算] ──► 强行截断，拒绝加载低分组件
-      │                                                └─── [未超预算] ──► 允许装箱并计入总 Tokens 水位
-      │
-      └──► 4. 结构体裁剪与合规化 
-                │
-                ├─── [f_Schema 压缩] ──► 剔除 verbose 冗余 ──► 仅保留 name, truncated desc, input_schema
-                │
-                ├─── [f_Protocol 过滤] ──► 判定 compliance_flag ──► 拦截并清洗格式不合规的脏组件
-                │
-                └─── [确定性排序优化] ──► 按工具名称字母逆序/正序统一重排 (Deterministic Ordering)
-                          │
-                          └─► [100% 触发上游前缀缓存 (Prefix Cache) ──► 极低延时放行提交大模型]
-"""
 import re
 import logging
-from typing import List, Dict, Set, Any
-from core.interfaces import MCPPruningStrategy
+from typing import List, Dict, Any, Pattern
+from components.mcp_pruner.base_pruner import BaseMCPPruner
 
 logger = logging.getLogger(__name__)
 
-class RuleHeuristicMCPPruner(MCPPruningStrategy):
+# 模块级预编译中日韩 (CJK) 字符集正则，避免每次请求重复编译
+_CJK_RE = re.compile(r'[\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af]')
+
+
+class RuleHeuristicMCPPruner(BaseMCPPruner):
     """
-    Model Context Protocol (MCP) Pruning Optimization Component.
+    模型上下文协议 (MCP) 规则启发式裁剪优化组件。
     
-    This component implements the dynamic heuristic rule pruning strategy under the strict contract 
-    of MCPPruningStrategy, optimizing high-concurrency gateway QPS and minimizing Prefill Latency.
+    该组件在 MCPPruningStrategy 严格契约下实现动态启发式规则裁剪策略，
+    专用于优化高并发网关 QPS 并最小化大模型预填充延迟 (Prefill Latency)。
     
-    Transformation Pipeline Implemented:
+    已实现的转换流水线：
         T' = f_Protocol( f_Schema( pi_mcp(T) ) )
     """
 
     def __init__(self, mcp_registry: List[Dict[str, Any]], tau_threshold: float = 0.5) -> None:
         """
-        Args:
-            mcp_registry: Universal pool of all available registered MCP meta-definitions.
-            tau_threshold: Hard filtration limit for activation cutoff.
+        参数：
+            mcp_registry: 所有已注册的可用 MCP 元数据定义全局池。
+            tau_threshold: 激活截断的硬性过滤阈值。
         """
-        self._registry = mcp_registry
-        self._tau_threshold = tau_threshold
-
-    def _S_m_T(self, m: Dict[str, Any], T: str, active_history_names: Set[str]) -> float:
-        """
-        Scoring Function Operator Formula (Strict Alignment):
-        S(m, T) = w1 × Sim(Em, ET) + w2 × Freq(m, H) + w3 × State(m) - w4 × Cost(m)
-        """
-        # Define structural hyper-parameter weights explicitly for mathematical consistency
-        w1, w2, w3, w4 = 2.0, 1.0, 5.0, 0.001
-
-        # 1. Sim(Em, ET): Semantic relevance score via rule-based keyword mapping
-        keywords = m.get("keywords", [])
-        sim_score = 0.0
-        if keywords:
-            """Google-grade regex check: Utilize rigid word boundary assertions to eliminate partial-word semantic drift."""
-            _CJK_RE = re.compile(r'[\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af]')
-            hit = False
-            for kw in keywords:
-                if _CJK_RE.search(kw):
-                    if kw in T:
-                        hit = True
-                        break
-                else:
-                    if re.search(r'\b' + re.escape(kw) + r'\b', T, re.IGNORECASE):
-                        hit = True
-                        break
-            sim_score = 1.0 if hit else 0.0
-
-        # 2. Freq(m, H): Frequency/Recency score calibrated via secure O(1) hash evaluation
-        freq_score = 1.0 if m["name"] in active_history_names else 0.0
-
-        # 3. State(m): Hard environmental compliance check (e.g., cross-platform or dynamic feature state)
-        # Returns 1.0 if valid, or a massive negative penalty to enforce absolute pruning veto
-        is_active_state = m.get("is_enabled", True) 
-        state_score = 1.0 if is_active_state else -1000.0
-
-        # 4. Cost(m): Resource weight penalty mapped directly from tool token payload size
-        # Ensures smaller schemas are prioritized under tight context window bottlenecks
-        cost_score = float(m.get("token_size", 300))
-
-        """Linear Combination Pipeline: Mathematically execute the structural formula with precise penalization."""
-        final_score = (w1 * sim_score) + (w2 * freq_score) + (w3 * state_score) - (w4 * cost_score)
+        super().__init__(mcp_registry=mcp_registry, tau_threshold=tau_threshold)
         
-        return final_score
+        # 性能优化：在初始化阶段预编译所有工具的关键词匹配规则，避免运行时重复执行 re.compile
+        self._compiled_rules: Dict[str, List[Any]] = self._precompile_keyword_rules()
 
-
-    def _resolve_topological_closure(self, selected_names: Set[str]) -> Set[str]:
+    def _precompile_keyword_rules(self) -> Dict[str, List[Any]]:
         """
-        Explicit Expansion of Dependencies (Topological Closure) Constraint:
-        ∀ m ∈ M, Dep(m) ⊆ M
+        预编译关键词匹配器：
+        1. 自动过滤空字符串，防止 "" in T 恒为 True 导致的误召回。
+        2. 对包含中日韩字符的关键词保留原始字符串用于 O(N) 子串快速匹配。
+        3. 对纯英文/数字边界关键词预编译带单词边界断言 (\b) 的正则对象；对带特殊符号的词安全退化为忽略大小写匹配。
         """
-        closure_set = set(selected_names)
-        changed = True
-        
-        """Converge cascade structures inside finite-bound iterations to maximize performance under O(N) constraints."""
-        while changed:
-            changed = False
-            current_snapshot = list(closure_set)
-            for name in current_snapshot:
-                tool_meta = next((t for t in self._registry if t["name"] == name), None)
-                if tool_meta and "dependencies" in tool_meta:
-                    deps: Set[str] = tool_meta["dependencies"]
-                    for dep in deps:
-                        if dep not in closure_set:
-                            closure_set.add(dep)
-                            changed = True  
-        return closure_set
-
-    def prune_tools(
-        self,
-        current_context: str,
-        active_history_names: Set[str],
-        token_budget: int,
-        **kwargs: Any
-    ) -> List[Dict[str, Any]]:
-        """Google-grade linter defense: Explicitly declare that the parameter exists solely for protocol alignment and remains unconsumed by the current strategy."""
-        _ = kwargs
-        
-        # --- Step 1: Subset Optimization Selection via argmax S(m, T) ---
-        scores: Dict[str, float] = {}
-        candidate_names: Set[str] = set()
-
+        rules_map: Dict[str, List[Any]] = {}
         for m in self._registry:
             name = m["name"]
-            score = self._S_m_T(m, current_context, active_history_names)
-            scores[name] = score
-            if score >= self._tau_threshold:
-                candidate_names.add(name)
+            keywords = m.get("keywords", [])
+            compiled_list: List[Any] = []
+            
+            for kw in keywords:
+                if not isinstance(kw, str) or not kw.strip():
+                    continue
+                kw_clean = kw.strip()
+                
+                if _CJK_RE.search(kw_clean):
+                    compiled_list.append(kw_clean)
+                else:
+                    prefix = r'\b' if kw_clean[0].isalnum() else ''
+                    suffix = r'\b' if kw_clean[-1].isalnum() else ''
+                    pattern: Pattern[str] = re.compile(
+                        prefix + re.escape(kw_clean) + suffix,
+                        re.IGNORECASE
+                    )
+                    compiled_list.append(pattern)
+            rules_map[name] = compiled_list
+        return rules_map
 
-        # --- Step 2: Enforce Topological Dependency Resolution ---
-        closed_candidate_names = self._resolve_topological_closure(candidate_names)
-
-        # --- Step 3: Greedy Knapsack Packing under Token Upper Bound ---
-        sorted_names = sorted(
-            closed_candidate_names, 
-            key=lambda x: scores.get(x, 0.1), 
-            reverse=True
-        )
-
-        selected_mcp_list: List[Dict[str, Any]] = []
-        current_tokens = 0
-
-        for name in sorted_names:
-            tool_meta = next((t for t in self._registry if t["name"] == name), None)
-            if not tool_meta:
+    def _compute_similarities(self, T: str) -> Dict[str, float]:
+        """
+        计算 Sim(Em, ET)：通过基于规则的关键词映射获取相关性得分。
+        支持平滑置信度：命中单个关键词基础分为 0.85，命中多个关键词平滑递增至 1.0，
+        既能单独突破阈值，又能在与向量策略混合 (Hybrid) 时提供更细腻的排序区分度。
+        """
+        sim_scores: Dict[str, float] = {}
+        for name, matchers in self._compiled_rules.items():
+            total_rules = len(matchers)
+            if total_rules == 0:
+                sim_scores[name] = 0.0
                 continue
 
-            size_cost = tool_meta.get("token_size", 300)
-            """Knapsack Capacity Circuit Breaker: Block execution immediately when token allocations breach boundary limits."""
-            if current_tokens + size_cost > token_budget:
-                logger.warning(f"[MCP Pruner] Allocation limit reached. Dropping lower-priority component: {name}")
-                continue  
+            hit_count = 0
+            for matcher in matchers:
+                if isinstance(matcher, str):
+                    if matcher in T:
+                        hit_count += 1
+                else:
+                    if matcher.search(T):
+                        hit_count += 1
 
-            current_tokens += size_cost
-
-            # --- Step 4: f_Schema Structure Compaction Operator ---
-            raw_desc = tool_meta.get("description", "")
-            """Payload Optimization: Hard truncate the description block to satisfy payload minimisation profiles."""
-            truncated_desc = raw_desc[:60] + "..." if len(raw_desc) > 60 else raw_desc
-
-            compressed_schema = {
-                "name": tool_meta["name"],
-                "description": truncated_desc,
-                "input_schema": tool_meta.get("input_schema", {"type": "object", "properties": {}}),
-                "compliance_flag": tool_meta.get("compliance_flag", True)  
-            }
-
-            # --- Step 5: f_Protocol Compliance Filtering ---
-            if compressed_schema["compliance_flag"] is True:
-                compressed_schema.pop("compliance_flag", None)
-                selected_mcp_list.append(compressed_schema)
+            if hit_count == 0:
+                sim_scores[name] = 0.0
             else:
-                logger.error(f"[MCP Protocol Violation] Component validation failure. Drop component: {name}")
+                # 命中即赋予 0.85 高置信度基准分，多词命中最高奖励至 1.0
+                bonus = 0.15 * min(1.0, (hit_count - 1) / max(1, total_rules - 1)) if total_rules > 1 else 0.15
+                sim_scores[name] = round(0.85 + bonus, 4)
 
-        # --- Step 6: Upstream Prefix Caching Maximization via Deterministic Ordering ---
-        """Sort components deterministically by signature to enforce invariant token patterns, maximizing prefix caching hit rate up to 95%+."""
-        selected_mcp_list.sort(key=lambda x: x["name"])
-
-        return selected_mcp_list
+        return sim_scores
