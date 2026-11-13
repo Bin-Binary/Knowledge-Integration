@@ -1,0 +1,13 @@
+fastapi
+httpx
+langchain-core
+langchain-openai
+langgraph
+numpy
+pydantic
+pydantic-settings
+python-dotenv
+sentence-transformers
+tiktoken
+typing-extensions
+uvicorn
