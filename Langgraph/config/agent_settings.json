@@ -1,0 +1,56 @@
+{
+  "server": {
+    "host": "0.0.0.0",
+    "port": 8000,
+    "workers": 4,
+    "reload": true,
+    "log_level": "info",
+    "cors_origins": ["*"],
+    "request_timeout_seconds": 120.0
+  },
+  "llm_profiles": {
+    "intent": {
+      "provider": "openai",
+      "model_name": "GLM-V5.1",
+      "temperature": 0.0,
+      "max_tokens": 512,
+      "timeout_seconds": 30.0,
+      "max_retries": 1,
+      "bypass_proxy": true
+    },
+    "planner": {
+      "provider": "openai",
+      "model_name": "GLM-V5.1",
+      "temperature": 0.1,
+      "max_tokens": 4096,
+      "timeout_seconds": 60.0,
+      "max_retries": 2,
+      "bypass_proxy": true
+    },
+    "executor": {
+      "provider": "openai",
+      "model_name": "GLM-V5.1",
+      "temperature": 0.2,
+      "max_tokens": 2048,
+      "timeout_seconds": 30.0,
+      "max_retries": 2,
+      "bypass_proxy": true
+    }
+  },
+  "intent_recognition": {
+    "context_window_turns": 4,
+    "confidence_threshold": 0.75,
+    "command_map": {
+      "/reset": "SYSTEM_RESET",
+      "/plan": "COMPLEX_TASK"
+    }
+  },
+  "routing": {
+    "default_fallback_node": "clarification_agent",
+    "intent_to_node": {
+      "GENERAL_QA": "react_executor",
+      "ORDER_REFUND": "refund_workflow_agent",
+      "COMPLEX_TASK": "planner_pipeline"
+    }
+  }
+}
