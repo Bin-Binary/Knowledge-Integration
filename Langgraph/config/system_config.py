@@ -1,9 +1,9 @@
+# /config/system_config.py
 import json
 from pathlib import Path
-from typing import Optional, Dict, List, Literal
+from typing import Optional, Dict, List, Any, Literal
 from pydantic import BaseModel, Field, SecretStr, ConfigDict
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
 
 class ServerConfig(BaseModel):
     """HTTP 网关与 ASGI 服务器运行配置（不可变）"""
@@ -16,7 +16,10 @@ class ServerConfig(BaseModel):
     log_level: Literal["debug", "info", "warning", "error", "critical"] = Field(default="info")
     cors_origins: List[str] = Field(default_factory=lambda: ["*"])
     request_timeout_seconds: float = Field(default=60.0, gt=0.0)
-
+    enable_verbose_error_logs: bool = Field(
+        default=False,
+        description="是否开启详细错误堆栈及非密钥敏感载荷日志（生产环境保持 False）",
+    )
 
 class LLMProfileConfig(BaseModel):
     """单个大模型节点的纯静态运行参数（不可变）"""
@@ -30,13 +33,13 @@ class LLMProfileConfig(BaseModel):
     max_tokens: Optional[int] = Field(default=1024, gt=0)
     timeout_seconds: float = Field(default=15.0, gt=0.0)
     max_retries: int = Field(default=2, ge=0, le=5)
+    extra_body: Dict[str, Any] = Field(default_factory=dict)
     bypass_proxy: bool = Field(
         default=True,
         description="是否忽略系统 HTTP_PROXY/HTTPS_PROXY 环境变量直连大模型端点"
     )
     def get_plain_api_key(self) -> Optional[str]:
         return self.api_key.get_secret_value() if self.api_key else None
-
 
 class IntentComponentConfig(BaseModel):
     """意图识别组件配置块"""
@@ -54,7 +57,6 @@ class RoutingComponentConfig(BaseModel):
     default_fallback_node: str = Field(default="clarification_agent")
     intent_to_node: Dict[str, str] = Field(default_factory=dict)
 
-
 class ServerEnvOverrides(BaseSettings):
     """允许通过环境变量覆盖 JSON 中的服务器参数（前缀 SERVER_）"""
     model_config = SettingsConfigDict(env_prefix="SERVER_", env_file=".env", extra="ignore")
@@ -64,7 +66,7 @@ class ServerEnvOverrides(BaseSettings):
     workers: Optional[int] = None
     reload: Optional[bool] = None
     log_level: Optional[str] = None
-
+    enable_verbose_error_logs: Optional[bool] = None
 
 class EnvSecrets(BaseSettings):
     """专门从环境变量 / .env 读取敏感密钥与网关覆盖地址"""
@@ -72,7 +74,6 @@ class EnvSecrets(BaseSettings):
 
     openai_api_key: Optional[SecretStr] = Field(default=None, alias="OPENAI_API_KEY")
     openai_base_url: Optional[str] = Field(default=None, alias="OPENAI_BASE_URL")
-
 
 class AgentSystemConfig(BaseModel):
     """全系统根配置对象：由 JSON 文件加载并自动注入环境变量覆盖"""
