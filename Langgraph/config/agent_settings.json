@@ -6,17 +6,21 @@
     "reload": true,
     "log_level": "info",
     "cors_origins": ["*"],
-    "request_timeout_seconds": 120.0
+    "request_timeout_seconds": 120.0,
+    "enable_verbose_error_logs": true
   },
   "llm_profiles": {
     "intent": {
       "provider": "openai",
       "model_name": "GLM-V5.1",
       "temperature": 0.0,
-      "max_tokens": 512,
-      "timeout_seconds": 30.0,
-      "max_retries": 1,
-      "bypass_proxy": true
+      "max_tokens": 2048,
+      "timeout_seconds": 60.0,
+      "max_retries": 0,
+      "bypass_proxy": true,
+      "extra_body": {
+        "chat_template_kwargs": {"enable_thinking": false}
+      }
     },
     "planner": {
       "provider": "openai",
