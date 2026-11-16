@@ -1,4 +1,6 @@
+# /bootstrap.py
 import os
+import uuid
 from pathlib import Path
 import httpx
 from typing import Optional, Dict, Any, Iterator
@@ -12,6 +14,11 @@ from langgraph.graph.state import CompiledStateGraph
 from config.system_config import AgentSystemConfig, LLMProfileConfig
 
 from infra.adapters import LangChainStructuredAdapter
+from infra.observability import (
+    setup_global_observability_logging,
+    bind_observability_context,
+    reset_observability_context,
+)
 from components.intent.hybrid_recognizer import HybridIntentRecognizer
 from components.recovery.composite_recovery import CompositeRecoveryManager
 from components.recovery.json_heal_recovery import JsonHealRecoveryManager
@@ -42,6 +49,11 @@ class AgentApplication:
         checkpointer: Optional[Any] = None
     ) -> None:
         self.sys_cfg = sys_cfg
+        # 应用启动时，根据 ServerConfig 初始化全局日志级别与脱敏过滤器
+        setup_global_observability_logging(
+            log_level=self.sys_cfg.server.log_level,
+            enable_verbose=self.sys_cfg.server.enable_verbose_error_logs,
+        )
         self.checkpointer = checkpointer or MemorySaver()
         self.graph: CompiledStateGraph = self._initialize_graph()
 
@@ -84,7 +96,8 @@ class AgentApplication:
             api_key=profile.get_plain_api_key(),
             base_url=profile.base_url,
             http_client=sync_client,             
-            http_async_client=async_client              
+            http_async_client=async_client,
+            extra_body=profile.extra_body,              
         )
         return LangChainStructuredAdapter(chat_model=chat_model)
 
@@ -119,32 +132,91 @@ class AgentApplication:
             checkpointer=self.checkpointer
         )
 
+    def _build_initial_turn_state(
+        self,
+        session_id: str,
+        user_message: str,
+        user_profile: Optional[Dict[str, Any]] = None,
+        trace_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        构建单轮对话的初始状态载荷：
+        显式重置所有单轮临时状态，彻底隔离 Checkpointer 中的历史快照污染。
+        """
+        return {
+            # 1. 身份与链路追踪（每轮刷新 trace_id）
+            "session_id": session_id,
+            "trace_id": trace_id or f"tr_{uuid.uuid4().hex[:16]}",
+            "user_profile": user_profile or {},
+
+            # 2. 增量对话流（由 LangGraph add_messages 自动追加到历史消息列表）
+            "messages": [HumanMessage(content=user_message)],
+
+            # 3. 显式清零单轮决策产物（防止上一轮结果污染本轮）
+            "intent_result": None,
+            "route_decision": None,
+            "final_response": None,
+            "rag_context": None,
+            "window_metrics": None,
+
+            # 4. 显式清零异常与自愈状态（兜底防线）
+            "failure_context": None,
+            "recovery_outcome": None,
+            "is_terminal": False,
+        }
+
     def invoke_turn(
         self,
         session_id: str,
         user_message: str,
-        user_profile: Optional[Dict[str, Any]] = None
+        user_profile: Optional[Dict[str, Any]] = None,
+        trace_id: Optional[str] = None,
+        is_verbose: Optional[bool] = None,
     ) -> dict:
         """同步单轮调用接口"""
+        trace_id = trace_id or f"tr_{uuid.uuid4().hex[:16]}"
         config = {"configurable": {"thread_id": session_id}}
-        input_payload = {
-            "session_id": session_id,
-            "messages": [HumanMessage(content=user_message)],
-            "user_profile": user_profile or {}
-        }
-        return self.graph.invoke(input_payload, config=config)
+        input_payload = self._build_initial_turn_state(
+            session_id=session_id,
+            user_message=user_message,
+            user_profile=user_profile,
+            trace_id=trace_id,
+        )
+        # 绑定当前线程的日志上下文，并在结束时安全重置
+        reset = bind_observability_context(
+            trace_id=trace_id,
+            session_id=session_id,
+            is_verbose=is_verbose,
+        )
+        try:
+            return self.graph.invoke(input_payload, config=config)
+        finally:
+            reset_observability_context(reset)
 
     async def ainvoke_turn(
         self,
         session_id: str,
         user_message: str,
-        user_profile: Optional[Dict[str, Any]] = None
+        user_profile: Optional[Dict[str, Any]] = None,
+        trace_id: Optional[str] = None,
+        is_verbose: Optional[bool] = None,
     ) -> dict:
         """异步高并发单轮调用接口"""
+        trace_id = trace_id or f"tr_{uuid.uuid4().hex[:16]}"
         config = {"configurable": {"thread_id": session_id}}
-        input_payload = {
-            "session_id": session_id,
-            "messages": [HumanMessage(content=user_message)],
-            "user_profile": user_profile or {}
-        }
-        return await self.graph.ainvoke(input_payload, config=config)
+        input_payload = self._build_initial_turn_state(
+            session_id=session_id,
+            user_message=user_message,
+            user_profile=user_profile,
+            trace_id=trace_id,
+        )
+        # 绑定当前协程的日志上下文（高并发下各请求严格隔离）
+        reset = bind_observability_context(
+            trace_id=trace_id,
+            session_id=session_id,
+            is_verbose=is_verbose,
+        )
+        try:
+            return await self.graph.ainvoke(input_payload, config=config)
+        finally:
+            reset_observability_context(reset)
