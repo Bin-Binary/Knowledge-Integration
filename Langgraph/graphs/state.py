@@ -1,9 +1,11 @@
+# /graphs/state.py
 from typing import TypedDict, Annotated, Optional, List, Dict, Any
 from langchain_core.messages import AnyMessage, HumanMessage, AIMessage, ToolMessage
 from langgraph.graph.message import add_messages
 
 from schemas.context import Message, WindowMetrics
 from schemas.decision import IntentResult, RouteDecision
+from schemas.recovery import FailureContext, RecoveryOutcome
 
 class MasterAgentState(TypedDict, total=False):
     """
@@ -15,6 +17,7 @@ class MasterAgentState(TypedDict, total=False):
 
     # 会话与系统元数据
     session_id: str
+    trace_id: Optional[str]                   # 单次请求全链路追踪 ID
     session_state: Optional[str]              # 供后续状态机路由使用（如 "LOCKED:refund_flow"）
     user_profile: Dict[str, Any]
 
@@ -27,6 +30,10 @@ class MasterAgentState(TypedDict, total=False):
     route_decision: Optional[RouteDecision]   # 【下一阶段】路由调度输出
     final_response: Optional[str]             # 【终态输出】执行器生成的最终回复
 
+    # 异常捕获与自愈状态（供 recovery_node 与条件边流转使用）
+    failure_context: Optional[FailureContext]   # 替换为具体的 FailureContext 类型
+    recovery_outcome: Optional[RecoveryOutcome] # 替换为具体的 RecoveryOutcome 类型
+    is_terminal: bool                           # 标记是否进入兜底终止态
 
 def extract_domain_context_from_state(state: MasterAgentState) -> tuple[str, List[Message]]:
     """
