@@ -1,24 +1,28 @@
+# /graphs/intent_graph.py
 import logging
 from typing import Any, Optional, Literal
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.state import CompiledStateGraph
 
-from protocols.components import IntentRecognizerProtocol
-from protocols.components import ExceptionRecoveryProtocol
+from protocols.components import IntentRecognizerProtocol, ExceptionRecoveryProtocol
 from graphs.state import MasterAgentState
 from graphs.intent_graph import create_intent_node
 from graphs.recovery_graph import create_recovery_node
-
+from infra.observability import log_execution
 
 logger = logging.getLogger(__name__)
 
+@log_execution("route_after_intent", level=logging.DEBUG)
 def _route_after_intent(state: MasterAgentState) -> Literal["recovery_node", "next_stage"]:
     """意图识别出口条件边：捕获到 failure_context 时跳转 recovery_node"""
     if state.get("failure_context") is not None:
         return "recovery_node"
+    # 若输入为空导致未产生意图且无异常，直接安全结束本轮，防止空意图流入路由层
+    if state.get("intent_result") is None:
+        return "end_flow"        
     return "next_stage"
 
-
+@log_execution("route_after_recovery", level=logging.DEBUG)
 def _route_after_recovery(state: MasterAgentState) -> Literal["resume_flow", "end_flow"]:
     """
     异常恢复出口条件边：
@@ -30,6 +34,7 @@ def _route_after_recovery(state: MasterAgentState) -> Literal["resume_flow", "en
         return "resume_flow"
     return "end_flow"
 
+@log_execution("build_master_agent_graph")
 def build_master_agent_graph(
     intent_recognizer: IntentRecognizerProtocol,
     recovery_manager: ExceptionRecoveryProtocol,
@@ -58,7 +63,8 @@ def build_master_agent_graph(
         _route_after_intent,
         {
             "recovery_node": "recovery_node",
-            "next_stage": END,  # 下一步接入 ChainRouter 时，此处改为 "routing"
+            "next_stage": END,  
+            "end_flow": END,
         },
     )
 
