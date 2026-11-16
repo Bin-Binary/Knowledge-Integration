@@ -1,7 +1,7 @@
+# /components/recovery/composite_recovery.py
 from typing import List
 from components.recovery.base import BaseRecoveryManager
 from schemas.recovery import FailureContext, RecoveryOutcome
-
 
 class CompositeRecoveryManager(BaseRecoveryManager):
     """
