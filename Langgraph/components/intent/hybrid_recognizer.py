@@ -29,7 +29,7 @@ class HybridIntentRecognizer(IntentRecognizerProtocol):
         self._llm_client = llm_client
         self._context_window_turns = context_window_turns
         self._static_cache: Dict[str, IntentResult] = {}
-
+    
     def recognize(self, ctx: RouteContext) -> Optional[IntentResult]:
         stripped = ctx.current_input.strip()
         if not stripped:
@@ -97,9 +97,16 @@ class HybridIntentRecognizer(IntentRecognizerProtocol):
 
     def _system_prompt(self) -> str:
         return (
-            "You are an intent classifier. "
-            "Classify the user's latest message into one of the predefined intent categories. "
-            "Extract key slots if present."
+            "不要推理"
+            "你是一个意图分类器"
+            "将用户最新的消息分类为预定义的意图类别之一"
+            "如果存在，提取关键槽位"
+            "【输出格式要求】请以 JSON 格式输出合法的单行 JSON 对象，严禁输出任何分析步骤、编号列表、Markdown 标记或额外解释"
+            """示例输出：
+            {"intent": "chitchat", "confidence": 0.95, "slots": {}}
+            """
+            "约束：1.禁止直接将示例输出作为直接输出"
+            "/no_think"
         )
 
     def _truncate_history(self, history: List[Message]) -> List[Message]:
