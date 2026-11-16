@@ -1,13 +1,13 @@
+# /components/recovery/base.py
 import logging
 from abc import ABC, abstractmethod
 from typing import Optional
 
 from schemas.recovery import FailureContext, RecoveryOutcome
-from protocols.components import ExceptionRecoveryProtocol
 
 logger = logging.getLogger(__name__)
 
-class BaseRecoveryManager(ABC, ExceptionRecoveryProtocol):
+class BaseRecoveryManager(ABC):
     """
     异常恢复基类（实现 ExceptionRecoveryProtocol 契约）：
     采用模板方法模式，统一收敛日志记录、子类判断是否接管（can_handle）以及默认安全兜底。
@@ -29,7 +29,7 @@ class BaseRecoveryManager(ABC, ExceptionRecoveryProtocol):
             )
 
         logger.warning(
-            f"[{context.trace_id}] {self.__class__.__name__} handling failure | "
+            f"{self.__class__.__name__} handling failure | "
             f"stage={context.failed_stage} | category={context.category.value}"
         )
 
