@@ -15,7 +15,7 @@ from typing import Optional
 from pydantic import Field, ConfigDict
 from schemas.base import ImmutableSchema
 
-class InformationSchema(ImmutableSchema):
+class Information(ImmutableSchema):
     """知识内容的符号描述
     开启 extra='forbid'，防止调用方误传`gather_strategies`参数
     """
