@@ -1,6 +1,6 @@
 # /schemas/internal_knowledge_base_building/information.py
-"""Information数据模型。
-知识的符号表示，是知识库最细粒度的原始符号载体。
+"""Information(信息片段)数据模型
+知识的符号表示，是知识库最细粒度的原始符号载体
 对应FrameNet v17 Information的FE同构映射：
     Core FE:
         Information         -> `information`
