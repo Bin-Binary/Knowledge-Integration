@@ -1,7 +1,5 @@
 # /schemas/internal_knowledge/domain/code_relation_type.py
 """代码仓库专属关系"""
-from enum import Enum
-
 from schemas.base import DocumentedEnum
 
 class CodeRelationType(DocumentedEnum):
