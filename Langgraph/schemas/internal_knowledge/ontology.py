@@ -1,6 +1,7 @@
-# /schemas/internal_knowledge/set_of_interrelated_entities.py
-"""Set_of_interrelated_entities(子图/本体)数据模型
-知识组织环节产物，将多个相关 Labeling 及 RelatingConcepts 聚拢为一个高内聚的知识闭环体
+# /schemas/internal_knowledge/ontology.py
+"""ontology(子图/本体)数据模型。
+知识组织环节产物，将多个相关 Labeling 及 RelatingConcepts 聚拢为一个高内聚的知识闭环体。
+
 对应FrameNet v17 Set_of_interrelated_entities的FE同构映射：
     Core FE:
         Component_entities    -> `label_ids` + `relation_ids` (共同构成完整子图拓扑)
@@ -14,7 +15,7 @@ from typing import List, Optional
 from pydantic import Field, field_validator
 from schemas.base import ImmutableSchema
 
-class SetOfInterrelatedEntities(ImmutableSchema):
+class Ontology(ImmutableSchema):
     """内聚的知识形态：由若干概念节点及其相互关系边构成的完整子图"""
 
     complex_id: str = Field(..., min_length=1, description="知识闭环体ID")
