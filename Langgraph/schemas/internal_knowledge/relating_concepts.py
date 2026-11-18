@@ -15,21 +15,19 @@
         Specification       -> `relationship_type`        # 边的类型/进一步规约（如"因果链接"）
 
 """
-from enum import Enum
 from typing import Optional, Union
 from pydantic import Field
 
-from schemas.base import ImmutableSchema
+from schemas.base import ImmutableSchema, DocumentedEnum
 from schemas.internal_knowledge.domain.code_relation_type import CodeRelationType
 
-class GeneralRelationType(str, Enum):
-    """通用语义关系
-    """
-    CAUSAL = "causal"               # 因果关系（A 导致 B）
-    IS_A = "is_a"                   # 继承/分类关系（A 是一种 B）
-    PART_OF = "part_of"             # 组成/包含关系（A 是 B 的一部分）
-    PRECEDES = "precedes"           # 时序/前置关系（A 发生在 B 之前）
-    ASSOCIATED_WITH = "associated"  # 通用弱关联
+class GeneralRelationType(DocumentedEnum):
+    """通用语义关系"""
+    CAUSAL = ("causal", "通用语义", "因果关系（A 导致 B）")
+    IS_A = ("is_a", "通用语义", "继承/分类关系（A 是一种 B）")
+    PART_OF = ("part_of", "通用语义", "组成/包含关系（A 是 B 的一部分）")
+    PRECEDES = ("precedes", "通用语义", "时序/前置关系（A 发生在 B 之前）")
+    ASSOCIATED_WITH = ("associated", "通用语义", "通用弱关联")
 
 # 声明全局合法关系联合类型（方便统一引用与扩展）
 AnyRelationType = Union[GeneralRelationType, CodeRelationType]
