@@ -10,36 +10,36 @@
         Evidence            -> [设计忽略] 当前不额外引入复杂度,不在本模型中表示
         Concepts            -> [设计忽略] 当前不额外引入复杂度,不在本模型中表示
     Peripheral FE:
-        Point_of_view       -> `point_of_view`
+        Point_of_view       -> [设计忽略] 当前不额外引入复杂度,不在本模型中表示
         Degree              -> `degree`
         Specification       -> `relationship_type`        # 边的类型/进一步规约（如"因果链接"）
 
 """
 from enum import Enum
-from typing import List, Optional
-from pydantic import Field, field_validator
-from schemas.base import ImmutableSchema
+from typing import Optional, Union
+from pydantic import Field
 
-class RelationshipType(str, Enum):
-    """复用知识图谱的关系枚举，完备性和后续扩展同步增加"""
+from schemas.base import ImmutableSchema
+from schemas.internal_knowledge.domain.code_relation_type import CodeRelationType
+
+class GeneralRelationType(str, Enum):
+    """通用语义关系
+    """
     CAUSAL = "causal"               # 因果关系（A 导致 B）
     IS_A = "is_a"                   # 继承/分类关系（A 是一种 B）
     PART_OF = "part_of"             # 组成/包含关系（A 是 B 的一部分）
     PRECEDES = "precedes"           # 时序/前置关系（A 发生在 B 之前）
     ASSOCIATED_WITH = "associated"  # 通用弱关联
 
+# 声明全局合法关系联合类型（方便统一引用与扩展）
+AnyRelationType = Union[GeneralRelationType, CodeRelationType]
+
 class RelatingConcepts(ImmutableSchema):
     """基于标签（Labeling）构建概念间网络结构，形成可推理的关系边"""
 
     """缺失'relation_id'会导致这个边不能被找到"""
     relation_id: str = Field(..., min_length=1, description="语义边唯一标识")
-    label_1_id: Optional[str] = Field(..., min_length=1, description='被关联的label_1')
-    label_2_id: Optional[str] = Field(..., min_length=1, description='被关联的label_2')
-    specification: Optional[RelationshipType] = Field(..., description="关系")
+    label_1_id: str = Field(..., min_length=1, description='被关联的label_1')
+    label_2_id: str = Field(..., min_length=1, description='被关联的label_2')
+    relationship_type: AnyRelationType = Field(..., description="关系")
     degree: Optional[float] = Field(default=None, ge=0.0, le=1.0, description="关联强度 [0,1]")
-
-    @field_validator("concepts")
-    @classmethod
-    def coerce_none_concepts_to_list(cls, v: Optional[List[str]]) -> List[str]:
-        """容错：null 转为空列表。"""
-        return v if v is not None else []
