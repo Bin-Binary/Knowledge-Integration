@@ -21,7 +21,7 @@ class PipelineEnvelope(ImmutableSchema):
 
     # 1. 【运用】环节：问题求解与缺口驱动
     problem_resolution: Optional[ResolveProblem] = Field(
-        default=None, description="当前问题求解状态、已检索方案(means)及知识缺口(remaining_gap)"
+        default=None, description="当前问题求解状态、已检索方案(resolutions)及知识缺口(remaining_gap)"
     )
 
     # 2. 【采集】环节：数据源定位符
