@@ -3,7 +3,7 @@ from typing import Optional
 from pydantic import Field, field_serializer
 
 from schemas.base import ImmutableSchema
-from schemas.internal_knowledge.source import SourceScheme, SourceURI
+from schemas.internal_knowledge.source_uri import SourceScheme, SourceURI
 
 class Information(ImmutableSchema):
     """Information（信息片段）数据模型：知识库最细粒度的不可变原始符号载体。
