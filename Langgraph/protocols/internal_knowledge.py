@@ -53,38 +53,54 @@
                     ➔ 【存储.save: 持久化落盘并记录 storage_receipts】
                     ➔ 重新触发 【存储.retrieve ➔ 运用.resolve】 直至问题闭合。
 """
+from typing import Protocol, List
 
-from typing import Protocol
+from schemas.internal_knowledge.source_uri import SourceURI
 from schemas.internal_knowledge.pipeline_envelope import PipelineEnvelope
 
 class KnowledgeApplicationProtocol(Protocol):
     """1. 【运用】环节：读取 problem 与 resolutions，更新 problem_resolution（含 remaining_gap）"""
 
-    def resolve(self, envelope: PipelineEnvelope) -> PipelineEnvelope:
+    async def resolve(self, envelope: PipelineEnvelope) -> PipelineEnvelope:
         """执行问题求解与缺口诊断。"""
+        ...
+class GapRoutingProtocol(Protocol):
+    """2.1 【采集前置子协议】缺口路由算子：将自然语言知识缺口翻译为具体的目标 SourceURI 列表 默认【采集】基类的构造函数持有"""
+
+    async def route(self, gap_description: str, problem_context: str) -> List[SourceURI]:
+        """根据知识缺口描述与原始问题上下文，路由定位待采集的数据源定位符集合。"""
         ...
 
 class KnowledgeAcquisitionProtocol(Protocol):
-    """2. 【采集】环节：根据 source_locator 或 remaining_gap 截取切片，追加 raw_infos"""
+    """2. 【采集】环节：根据 source_locator 或 remaining_gap 截取切片，将异构数据洗成标准的Information切片, 追加 raw_infos"""
 
-    def acquire(self, envelope: PipelineEnvelope) -> PipelineEnvelope:
+    async def acquire(self, envelope: PipelineEnvelope) -> PipelineEnvelope:
         """按数据源协议路由切片策略，产出原子信息片段并写入信封。"""
         ...
 
 class KnowledgeOrganizationProtocol(Protocol):
     """3. 【组织】环节：读取 raw_infos，完成评估、特征抽取、建边与本体聚拢，填充 labels/relations/complexes"""
 
-    def organize(self, envelope: PipelineEnvelope) -> PipelineEnvelope:
+    async def organize(self, envelope: PipelineEnvelope) -> PipelineEnvelope:
         """端到端知识加工流水线：过滤噪声并构建结构化知识网络写入信封。"""
         ...
 
 class KnowledgeStorageProtocol(Protocol):
     """4. 【存储】环节：负责多后端知识持久化（save）与记忆召回（retrieve）"""
 
-    def save(self, envelope: PipelineEnvelope) -> PipelineEnvelope:
+    async def save(self, envelope: PipelineEnvelope) -> PipelineEnvelope:
         """将信封中的多形态知识结构持久化至底层存储引擎，并追加 StorageReceipt。"""
         ...
 
-    def retrieve(self, envelope: PipelineEnvelope) -> PipelineEnvelope:
+    async def retrieve(self, envelope: PipelineEnvelope) -> PipelineEnvelope:
         """根据信封中的问题意图检索已有知识，填充至 problem_resolution.resolutions 供运用环节使用。"""
+        ...
+
+class InternalKnowledgeEngineProtocol(Protocol):
+    """域内知识库聚合协议：
+    对外屏蔽 运用/采集/组织/存储 四阶闭环细节，仅通过纯领域载体 PipelineEnvelope 交互。
+    """
+
+    async def execute(self, envelope: PipelineEnvelope) -> PipelineEnvelope:
+        """执行完整的域内知识库闭合回路，返回最终状态的信封。"""
         ...
