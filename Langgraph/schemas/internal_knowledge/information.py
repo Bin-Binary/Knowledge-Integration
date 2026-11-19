@@ -55,7 +55,9 @@ class Information(ImmutableSchema):
             return None
         anchor = f"#{uri.anchor}" if uri.anchor else ""
         if uri.scheme == SourceScheme.REPO:
-            return f"repo:{uri.location}#{uri.revision}:{uri.subpath}{anchor}"
+            rev = f"#{uri.revision}" if uri.revision else ""
+            sub = f":{uri.subpath}" if uri.subpath else ""
+            return f"repo:{uri.location}{rev}{sub}{anchor}"
         if uri.scheme == SourceScheme.FILE and uri.location.startswith("."):
             return f"file:{uri.location}{anchor}"
         return f"{uri.scheme.value}://{uri.location}{anchor}"
