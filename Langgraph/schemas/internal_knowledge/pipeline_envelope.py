@@ -4,7 +4,7 @@ from pydantic import Field, field_validator
 
 from schemas.base import ImmutableSchema
 from schemas.internal_knowledge.resolve_problem import ResolveProblem
-from schemas.internal_knowledge.source import SourceURI
+from schemas.internal_knowledge.source_uri import SourceURI
 from schemas.internal_knowledge.information import Information
 from schemas.internal_knowledge.labeling import Labeling
 from schemas.internal_knowledge.relating_concepts import RelatingConcepts
