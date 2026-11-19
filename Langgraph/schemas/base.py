@@ -1,10 +1,14 @@
 # /schemas/base.py
+import json
 from pydantic import BaseModel, ConfigDict
-from typing import Any, List, Set, Type, Union, get_args, get_origin
+from typing import  ClassVar, Any, List, Optional, Set, Dict, Type, Union, Tuple, get_args, get_origin
 from enum import Enum
 
 class SelfIntrospectable:
     """数据模型自省混入类（Mixin）：支持递归展开嵌套子模型的 Prompt 导出器"""
+
+    # 子类可按需覆盖此元组，批量声明前置元数据字段
+    _frontmatter_fields: ClassVar[Tuple[str, ...]] = ()
 
     @classmethod
     def _format_type_name(cls, annotation: Any) -> str:
@@ -41,7 +45,7 @@ class SelfIntrospectable:
         return found
 
     @classmethod
-    def to_prompt_guide(cls, _visited: Set[Type[Any]] | None = None) -> str:
+    def to_prompt_guide(cls, _visited: "Optional[Set[Type[Any]]]" = None) -> str:
         """一键导出当前数据模型及其引用子模型的完整字段说明"""
         if not hasattr(cls, "model_fields"):
             raise TypeError(f"{cls.__name__} 必须与 Pydantic BaseModel 配合使用")
@@ -75,6 +79,77 @@ class SelfIntrospectable:
             sections.append(sub_cls.to_prompt_guide(_visited=visited))
 
         return "\n\n".join(sections)
+
+    @classmethod
+    def _get_frontmatter_field_names(cls) -> Set[str]:
+        """自动汇总当前模型中声明为前置元数据的所有字段名"""
+        if not hasattr(cls, "model_fields"):
+            return set()
+
+        # 1. 收集子类通过类属性 _frontmatter_fields 声明的字段
+        fm_names: Set[str] = set(cls._frontmatter_fields)
+
+        # 2. 收集在 Field(json_schema_extra={"frontmatter": True}) 中标记的字段
+        for name, field_info in cls.model_fields.items():
+            extra = field_info.json_schema_extra
+            if isinstance(extra, dict) and extra.get("frontmatter") is True:
+                fm_names.add(name)
+
+        return fm_names
+
+    def get_frontmatter_data(self) -> Dict[str, Any]:
+        """获取所有前置元数据键值对（保持模型字段定义顺序）"""
+        if not isinstance(self, BaseModel):
+            raise TypeError(f"{type(self).__name__} 必须与 Pydantic BaseModel 配合使用")
+
+        fm_names = type(self)._get_frontmatter_field_names()
+        data = self.model_dump(exclude_none=True)
+        return {k: v for k, v in data.items() if k in fm_names}
+
+    def get_body_data(self) -> Dict[str, Any]:
+        """获取排除前置元数据后的正文字段数据，供子类 _render_body 使用"""
+        if not isinstance(self, BaseModel):
+            raise TypeError(f"{type(self).__name__} 必须与 Pydantic BaseModel 配合使用")
+
+        fm_names = type(self)._get_frontmatter_field_names()
+        data = self.model_dump(exclude_none=True)
+        return {k: v for k, v in data.items() if k not in fm_names}
+
+    def _render_frontmatter(self) -> str:
+        """统一生成标准 YAML Frontmatter（若无元数据则返回空字符串）"""
+        fm_data = self.get_frontmatter_data()
+        if not fm_data:
+            return ""
+
+        fm_lines = ["---"]
+        for key, val in fm_data.items():
+            formatted_val = json.dumps(val, ensure_ascii=False) if isinstance(val, str) else val
+            fm_lines.append(f"{key}: {formatted_val}")
+        fm_lines.append("---")
+        return "\n".join(fm_lines)
+
+    def _render_body(self) -> str:
+        """正文渲染钩子：默认渲染所有非元数据字段，子类可按需重写"""
+        body_data = self.get_body_data()
+        lines = [f"# {type(self).__name__}", ""]
+
+        for name, field_info in type(self).model_fields.items():
+            if name not in body_data:
+                continue
+            val = body_data[name]
+            label = field_info.description.split("（") if field_info.description else name
+            lines.append(f"- **{label}** (`{name}`): `{val}`")
+
+        return "\n".join(lines)
+
+    def to_markdown(self) -> str:
+        """模板方法：自动拼接前置元数据与子类正文"""
+        frontmatter = self._render_frontmatter()
+        body = self._render_body().strip()
+
+        if frontmatter and body:
+            return f"{frontmatter}\n\n{body}\n"
+        return f"{frontmatter or body}\n"
 
 class ImmutableSchema(BaseModel, SelfIntrospectable):
     """全局不可变数据模型基类：开启严格类型校验与只读保护"""
