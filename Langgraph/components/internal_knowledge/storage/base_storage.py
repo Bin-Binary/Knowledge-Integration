@@ -133,3 +133,19 @@ class BaseKnowledgeStorage(ABC, KnowledgeStorageProtocol):
         遵循【检索加权设计】，按 `gold > release > debug` 优先级召回关联的知识 ID 列表。
         """
         ...
+
+    async def load_contents(self, artifact_ids: List[str]) -> str:
+        """统一异步内容加载入口：空列表拦截 -> 保序去重 -> 委托子类读取正文"""
+        if not artifact_ids:
+            return ""
+
+        deduped_ids = list(dict.fromkeys(aid.strip() for aid in artifact_ids if aid and aid.strip()))
+        if not deduped_ids:
+            return ""
+
+        return await self._fetch_contents_by_ids(deduped_ids)
+
+    @abstractmethod
+    async def _fetch_contents_by_ids(self, artifact_ids: List[str]) -> str:
+        """子类必须实现的异步内容读取逻辑：根据去重后的知识 ID 列表水合为可读上下文文本。"""
+        ...
