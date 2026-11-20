@@ -172,7 +172,9 @@ async def chat_turn_endpoint(payload: ChatTurnRequest, request: Request):
         last_msg = final_state["messages"][-1]
         if isinstance(last_msg, AIMessage):
             reply_text = str(last_msg.content)
-
+    # [联调期临时兜底] 若尚未接入下游回复生成节点，直接透出知识库召回的 rag_context 方便测试验收
+    if not reply_text:
+        reply_text = final_state.get("rag_context")
     return ChatTurnResponse(
         trace_id=trace_id,
         session_id=payload.session_id,
