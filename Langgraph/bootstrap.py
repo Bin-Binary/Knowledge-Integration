@@ -22,6 +22,7 @@ from infra.observability import (
 from components.intent.hybrid_recognizer import HybridIntentRecognizer
 from components.recovery.composite_recovery import CompositeRecoveryManager
 from components.recovery.json_heal_recovery import JsonHealRecoveryManager
+from components.internal_knowledge.factory import create_default_knowledge_engine
 from graphs.master_graph import build_master_agent_graph
 
 _PROXY_KEYS = ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy", "ALL_PROXY", "all_proxy", "OPENAI_PROXY")
@@ -102,7 +103,7 @@ class AgentApplication:
         return LangChainStructuredAdapter(chat_model=chat_model)
 
     def _initialize_graph(self) -> CompiledStateGraph:
-        # 1. 构建意图识别组件
+        # 构建意图识别组件
         intent_adapter = self._build_llm_adapter("intent")
         intent_cfg = self.sys_cfg.intent_recognition
 
@@ -111,7 +112,7 @@ class AgentApplication:
             llm_client=intent_adapter,
             context_window_turns=intent_cfg.context_window_turns
         )
-        # 2. 构建独立异常恢复组件（基类 + 子类扩展组合，后续新增异常类型只需向列表追加子类）
+        # 构建独立异常恢复组件（基类 + 子类扩展组合，后续新增异常类型只需向列表追加子类）        
         try:
             recovery_adapter = self._build_llm_adapter("recovery")
         except Exception:
@@ -123,12 +124,27 @@ class AgentApplication:
             ]
         )
 
-        # 2. [预留扩展位] 后续接入 Router / Planner / Executors 时在此组装
+        # [预留扩展位起点] 后续接入新组件时在此组装 --------
+        try:
+            knowledge_adapter = self._build_llm_adapter("knowledge")
+        except Exception:
+            knowledge_adapter = intent_adapter
 
-        # 3. 编译并返回主控状态图
+        knowledge_cfg = getattr(self.sys_cfg, "internal_knowledge", None)
+        knowledge_engine = create_default_knowledge_engine(
+            llm_client=knowledge_adapter,
+            vault_root=getattr(knowledge_cfg, "vault_root", "./data/llm_wiki"),
+            workspace_root=getattr(knowledge_cfg, "workspace_root", "."),
+            quality_threshold=getattr(knowledge_cfg, "quality_threshold", 0.5),
+            max_concurrency=getattr(knowledge_cfg, "max_concurrency", 5),
+        )
+        # [预留扩展位终点] 
+
+        # 编译并返回主控状态图
         return build_master_agent_graph(
             intent_recognizer=recognizer,
             recovery_manager=recovery_manager,
+            knowledge_engine=knowledge_engine,
             checkpointer=self.checkpointer
         )
 
