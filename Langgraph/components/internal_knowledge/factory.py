@@ -40,12 +40,14 @@ def create_default_knowledge_engine(
     )
 
     # 3. 实例化【采集】环节（内置策略路由表，支持静态定位符与缺口动态路由双模式）
-    # acquirer = ShellRepoAcquirer(  # 原因: ShellRepoAcquirer.__init__ 不接受 workspace_root 参数，传入会导致 TypeError
-    #     gap_router=gap_router,
-    #     workspace_root=workspace_root,
-    # )
+    effective_router = gap_router or WorkspaceFileGapRouter(
+        llm_client=llm_client,
+        workspace_root=workspace_root,
+    )
+
     acquirer = ShellRepoAcquirer(
-        gap_router=gap_router,
+        gap_router=effective_router,
+        workspace_root=workspace_root,
     )
 
     # 4. 自动发现并装配【组织】环节（3.1 评估 -> 3.2 提特征 -> 3.3 建边 -> 3.4 图聚类）
