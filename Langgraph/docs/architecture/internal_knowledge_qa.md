@@ -107,3 +107,71 @@ Q3：在这套全链路设计中，如何兼顾“生产环境高安全性（防
 	1. 全链路异常自愈网：无论是上游意图识别出错，还是知识库内部大模型超时/解析失败，均由 ExceptionMapper 标准化为 FailureContext，无缝路由至主图的 recovery_node 执行修复或安全降级兜底，绝不直接向用户抛出 500 堆栈。
 	2. 知识成熟度治理（debug -> release -> gold）：AI 自动生成的知识严格隔离在 debug/ 目录；检索时按 gold (1.0) > release (0.8) > debug (0.4) 权重遮蔽低层级副本；跨文件引用全采用全局唯一逻辑 ID（[[lbl_xxx]]），文件跨目录晋升零断链。
 	3. 插件化自动发现（OCP）：采集协议（@BaseKnowledgeAcquirer.register）与组织微算子（@OrganizationPluginRegistry.register + pkgutil 动态扫描）均支持装饰器自动注册，未来新增数据源或建边算法只需新增文件，主干代码零修改。
+
+## 开放问题：
+
+### LLM输出字段不合规致组织失败
+
+闭环测试中，LLM 频繁擅自修改或遗漏 JSON 字段名触发 ValidationError，加上部分算子误对同步接口使用 await 触发 TypeError，导致知识库最终只落盘了 information 切片，labeling、relating、ontology 三层全空。
+
+单点报错后，由于 asyncio.gather 没有做单条异常隔离，导致整批并发组织任务一起崩溃；异常一路穿透引擎冒泡到主图的 recovery_node，又因为外部恢复器未注册知识库内部 Schema 而无法修复，最终全链路被迫降级致歉。
+
+核心根因有四点：json_mode 仅保证 JSON 格式合法而不强制约束字段名，且提示词未注入明确字段说明；底层适配器缺少“校验失败后携带报错原地重试”的自愈机制；并发编排缺少单条切片的 try/except 舱壁隔离；以及直接 await 了同步的 generate_structured 方法。
+
+```
+1. engine.execute() 进入 iteration 0
+2. storage.retrieve() → 空（冷启动）
+3. application.resolve() → outcome=FAILURE, remaining_gap="了解 cmc.sh 脚本功能"
+4. acquisition.acquire() → GapRouter 路由到 cmc.sh → ShellRepoAcquirer 采集 7 条 Information 切片
+5. organization.organize() →
+   5.1  quality_evaluator.evaluate(info) →
+        LLM 被要求输出 {"reason": "...", "score": 0.0~1.0}
+        但实际返回 {"value_density": 0.3, "reason": "..."} 或 {"score": 0.3}（缺 reason）
+        → Pydantic ValidationError: Field required / Field missing
+        → 异常上抛
+6. knowledge_blackbox_node try/except 捕获 → ExceptionMapper.to_failure_context()
+   → failure_context 写入 MasterAgentState
+7. _route_after_knowledge → "recovery_node"
+8. recovery_node → JsonHealRecoveryManager.can_handle() 检查 target_schema_name
+   → SCHEMA_REGISTRY 只含 "IntentResult"，不含 "_InfoQualityOutput"
+   → can_handle=False → 兜底降级 → 输出 "抱歉，系统处理您的请求时遇到了一点小问题"
+9. 结果：rag_context=None, labels/relations/complexes 全空, 只有 information 层落盘
+```
+
+### 根因分析
+
+**根因 1：json_mode 不强制字段名**
+
+`LangChainStructuredAdapter.generate_structured()` 使用 `with_structured_output(schema, method="json_mode")`。`json_mode` 模式下，OpenAI 兼容网关只要求 LLM 输出合法 JSON，**不强制字段名必须与 JSON Schema 一致**。LLM（尤其国产推理模型如 GLM-V5.1）经常自行替换字段名为更"语义化"的名称：
+- 期望 `"score"` → 实际输出 `"value_density"` / `"quality_score"` / `"rating"`
+- 期望 `"reason"` → 完全省略（只输出了 `{"score": 0.3}`）
+- 期望 `"concept_tag"` → 可能输出 `"tag"` / `"concept"` / `"label"` 等
+- 期望 `"source_label_id"` → 可能输出 `"source"` / `"from_id"` 等
+
+**根因 2：必填字段无容错**
+
+`_InfoQualityOutput` 的 `reason: str = Field(...)` 为必填，LLM 遗漏时直接 `ValidationError`。
+`_ExtractedConceptItem` 的 `concept_tag: str = Field(...)` 为必填，LLM 换名时同上。
+
+**根因 3：组织环节无异常隔离**
+
+`organizer.organize()` 使用 `asyncio.gather(*(_eval_one(info) for info in envelope.raw_infos))` 并发调度所有评估。任何一条 info 的评估异常都会导致整个 gather 崩溃，全部评估结果丢失。同理，3.2 提特征和 3.3 建边的 LLM 调用也无 try/except 兜底。
+
+**根因 4：recovery 不覆盖知识库内部 Schema**
+
+`JsonHealRecoveryManager.SCHEMA_REGISTRY` 只注册了 `"IntentResult"`，知识库内部的所有 LLMOutputSchema（`_InfoQualityOutput`、`_LabelBatchOutput`、`_RelationBatchOutput`）均未被注册，导致 recovery 无法修复任何知识库环节的输出异常。
+
+**根因 5：generate_structured() 返回同步结果但调用方误用 await**
+
+`label_extractor.py:51` 和 `relation_builder.py:67` 直接 `await self.llm.generate_structured(...)`，但 `generate_structured` 是同步方法（`def` 非 `async def`），返回非 awaitable 对象。Python 中 `await` 一个非 awaitable 会抛 `TypeError: object X can't be used in 'await' expression`。`info_evaluator.py` 则正确使用了 `inspect.isawaitable` 判断。
+
+
+#### Q16：弱约束结构化输出（`json_mode`）的适配器层微闭环自愈与批量并发舱壁隔离
+> **核心疑惑**：端到端测试中，大模型在 `json_mode` 下频繁偏离 Pydantic 字段名约定，且 `asyncio.gather` 并发调用时单条报错会引爆整条组织流水线；如何在不靠穷举同义词“猜词”的前提下，从根本上解决字段漂移与并发雪崩？
+
+* **核心答案**：严禁在 Schema 中通过 `AliasChoices` 穷举同义词（无法随模型切换收敛），应采用 **“输入强引导 + 适配器内生自愈 + 算子舱壁隔离”** 三层架构治理：
+  1. **输入层显式契约注入**：针对 `json_mode` 不自动下发 Schema 结构的特性，在调用大模型前统一将 `response_schema.to_prompt_guide()`（及标准 JSON 示例）注入 System Prompt，消除信息不对称。
+  2. **适配器内生自愈微闭环（Self-Healing Adapter）**：在 `LangChainStructuredAdapter.generate_structured` 基础设施内部封装局部重试循环（1~2 次）。一旦触发 `ValidationError` 或 JSON 解析异常，立即将**原始错误输出 + Pydantic 精确缺失字段报错信息**追加进对话上下文要求模型原地纠偏，将格式波动消化在底层适配器内，无需惊动外层 LangGraph `recovery_node` 导致全图回退。
+  3. **调用规范与舱壁隔离（Bulkhead Pattern）**：
+     * 统一异步非阻塞调用包装器（兼容 `inspect.isawaitable` 并自动将同步方法卸载至 `asyncio.to_thread`），根除 `await` 同步方法引发的 `TypeError`。
+     * 在 `KnowledgeOrganizer` 的并发批处理中为单条切片加上局部 `try...except` 舱壁隔离，单条重试耗尽后仅降级跳过该条目，保障其余切片的 `labeling -> relating -> ontology` 链路完整落盘。
