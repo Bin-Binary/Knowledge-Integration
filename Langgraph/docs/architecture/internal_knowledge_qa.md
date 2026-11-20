@@ -84,3 +84,26 @@ Q14：无大模型图连通分量聚拢（Union-Find）与悬空边清洗
 
 核心技巧：在 3.3 关系建模后，先用合法节点 ID 集合过滤掉大模型幻觉产生的悬空边（label_1_id not in valid_ids）与自环边；在 3.4 本体聚拢中，直接采用纯内存并查集（Union-Find）将连通的节点与边聚拢为 Ontology，0 毫秒延迟且 100% 满足“多节点子图必填语义边”的模型约束。
 
+## 全链路核心架构亮点 QA 总结
+
+Q1：请求从 FastAPI 网关进入，经过 LangGraph 再到知识库引擎，各层是如何实现“职责隔离与零耦合”的？
+
+• 核心答案：通过 四层同心圆隔离（六边形架构） 确保每一层只认识自己相邻的抽象契约：
+	1. 网关层（FastAPI）：只负责 HTTP 协议解析、超时熔断与 trace_id 注入，只认识 AgentApplication。
+	2. 容器装配层（bootstrap.py）：作为全系统唯一的“组装厂”，负责实例化具体的大模型客户端和存储后端，并把它们塞进抽象协议中。
+	3. 编排层（graphs/）：LangGraph 主图只负责节点拓扑流转与异常分支跳转；knowledge_graph.py 充当防腐层（ACL），将外部 MasterAgentState 翻译为内部 PipelineEnvelope 局部变量，外部状态机零污染。
+	4. 核心领域层（InternalKnowledgeEngine）：只依赖 protocols/ 和 schemas/，彻底不知道外面有 FastAPI 或 LangGraph，随时可拆出独立运行或暴露为 MCP Server。
+
+Q2：当知识库遇到“未知问题（冷启动）”时，全链路是如何自动完成“现学现卖 + 自我验证”闭环的？
+
+• 核心答案：依赖 黑板模式（PipelineEnvelope） + 确定性状态机闭环：
+	1. 缺口驱动（Gap-Driven）：第 0 轮检索为空时，LLMKnowledgeApplicator 不会瞎编，而是输出 outcome=FAILURE 并生成具体的 remaining_gap 写入黑板信封。
+	2. 四阶信息提纯与隔离落盘：引擎检测到未解决且未超最大轮次（can_continue_loop），自动驱动【采集（按协议切片生成确定性 info_id） ➔ 组织（两级质量过滤 + LLM 抽点建边 + 并查集图聚类生成 Ontology） ➔ 存储（渲染为带 Obsidian 双链的 Markdown 写入 debug/ 隔离区）】。
+	3. 工作区清零与二次召回验证：落盘后调用 advance_to_next_iteration() 清空本轮暂存列表防止重复入库，随后 iteration + 1 重新回到【检索 ➔ 运用】验证新沉淀的知识是否足以回答原问题，直至收敛输出 rag_context。
+
+Q3：在这套全链路设计中，如何兼顾“生产环境高安全性（防异常崩溃、防脏数据）”与“未来高扩展性”？
+
+• 核心答案：依靠三大工程级防御与扩展机制：
+	1. 全链路异常自愈网：无论是上游意图识别出错，还是知识库内部大模型超时/解析失败，均由 ExceptionMapper 标准化为 FailureContext，无缝路由至主图的 recovery_node 执行修复或安全降级兜底，绝不直接向用户抛出 500 堆栈。
+	2. 知识成熟度治理（debug -> release -> gold）：AI 自动生成的知识严格隔离在 debug/ 目录；检索时按 gold (1.0) > release (0.8) > debug (0.4) 权重遮蔽低层级副本；跨文件引用全采用全局唯一逻辑 ID（[[lbl_xxx]]），文件跨目录晋升零断链。
+	3. 插件化自动发现（OCP）：采集协议（@BaseKnowledgeAcquirer.register）与组织微算子（@OrganizationPluginRegistry.register + pkgutil 动态扫描）均支持装饰器自动注册，未来新增数据源或建边算法只需新增文件，主干代码零修改。
