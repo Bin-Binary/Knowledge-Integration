@@ -2,6 +2,30 @@
 
 ## 1. 架构
 
+[用户请求 POST /v1/agent/chat]
+   │  (FastAPI 网关绑定 trace_id，零感知内部实现)
+   ▼
+[AgentApplication.ainvoke_turn] (单例容器，隔离历史快照与内网代理)
+   │
+   ▼
+[LangGraph 主控图 MasterAgentGraph]
+   ├── 1. intent_recognition (意图识别) ──(若异常)──▶ recovery_node (自愈闭环)
+   │
+   ▼ (携带改写后的标准 query)
+   └── 2. knowledge_retrieval (防腐层 Adapter 节点：创建局部 PipelineEnvelope)
+           │
+           ▼
+      [InternalKnowledgeEngine] (纯领域闭环引擎，脱离 LangGraph 亦可独立运行)
+           ├── ① Storage.retrieve    : 按 gold > release > debug 权重召回知识 ID
+           ├── ② Application.resolve : 调用 Storage.load_contents 读取卡片全文并推理
+           │       ├── (若已解决 SUCCESS) ──▶ 退出循环，通过 Adapter 写回 state["rag_context"]
+           │       └── (若存在缺口 gap)   ──▶ 触发增量自学习回路：
+           │               ├── ③ Acquisition.acquire   : 缺口路由 -> 切片并生成确定性 info_id
+           │               ├── ④ Organization.organize : 评估过滤 -> 抽标签 -> 建边 -> 并查集聚本体
+           │               └── ⑤ Storage.save          : 渲染 YAML+Markdown 隔离写入 debug/ 区
+           └── 轮次交接 (advance_to_next_iteration): 清空暂存缓冲区，iteration + 1，重返 ①
+
+
 本系统采用 **依赖倒置原则（DIP）** 与 **黑板模式（Blackboard Pattern）** 设计，确保核心知识引擎与外部编排框架（如 LangGraph）、大模型供应商及底层物理存储完全解耦。
 
 * **依赖方向单向无环**：`外部框架 (graphs/)` ➔ `接口契约 (protocols/)` + `数据契约 (schemas/)` 🡐 `具体算子 (components/)`。
