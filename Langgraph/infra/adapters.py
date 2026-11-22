@@ -1,59 +1,99 @@
-# /infra/adapters.py
-from typing import Type, TypeVar, List, Dict
+# infra/adapters.py
+from typing import Type, TypeVar, List, Dict, Any, Optional, Literal
 from pydantic import BaseModel, ValidationError
 from langchain_core.language_models import BaseChatModel
 
 from protocols.llm import StructuredLLMProtocol
+from infra.exceptions import StructuredOutputError
+from infra.observability import log_execution
+
 T = TypeVar("T", bound=BaseModel)
+
 
 class LangChainStructuredAdapter(StructuredLLMProtocol):
     """将任意 LangChain ChatModel 适配为 StructuredLLMProtocol"""
-    def __init__(self, chat_model: BaseChatModel) -> None:
+
+    def __init__(
+        self,
+        chat_model: BaseChatModel,
+        method: Optional[Literal["function_calling", "json_mode", "json_schema"]] = None,
+    ) -> None:
         self.chat_model = chat_model
+        # 允许实例化时按模型能力配置解析策略，默认 None 交由 LangChain 自动选择最优策略
+        self.method = method
 
-    def generate_structured(self, messages: List[Dict[str, str]], response_schema: Type[T]) -> T:
-        """LangChain 原生支持直接传入 Pydantic BaseModel 类
-            structured_llm = llm.with_structured_output(AnswerWithJustification, include_raw=True)
+    def _ensure_json_keyword(self, messages: List[Dict[str, str]]) -> List[Dict[str, str]]:
+        """当使用 json_mode 时，确保 messages 中包含 'json' 关键字，防止网关报 400 错误"""
+        if self.method != "json_mode":
+            return messages
 
-            structured_llm.invoke("What weighs more a pound of bricks or a pound of feathers")
-            # -> {
-            #     'raw': AIMessage(content='', additional_kwargs={'tool_calls': [{'id': 'call_Ao02pnFYXD6GN1yzc0uXPsvF', 'function': {'arguments': '{"answer":"They weigh the same.","justification":"Both a pound of bricks and a pound of feathers weigh one pound. The weight is the same, but the volume or density of the objects may differ."}', 'name': 'AnswerWithJustification'}, 'type': 'function'}]}),
-            #     'parsed': AnswerWithJustification(answer='They weigh the same.', justification='Both a pound of bricks and a pound of feathers weigh one pound. The weight is the same, but the volume or density of the objects may differ.'),
-            #     'parsing_error': None
-            # }
+        has_json_word = any("json" in msg.get("content", "").lower() for msg in messages)
+        if has_json_word:
+            return messages
 
-        """
-        structured_llm = self.chat_model.with_structured_output(response_schema, include_raw=True)
-        """对于本地开源推理模型，建议显式指定 method="json_mode" 或捕获 SDK 原生异常
-        但是！！！-> OpenAI 规范和绝大多数推理引擎规定：当使用 json_mode 时，传入的 messages（通常是 System Prompt）中必须明确包含 "JSON"（或 "json"）这个单词，
-        否则部分网关会直接返回 400 Bad Request: 'messages' must contain the word 'json' in some form。
-        确保你的 `System Prompt` 里有类似 "请以 JSON 格式输出..." 的字样
-        """
-        structured_llm = self.chat_model.with_structured_output(response_schema, include_raw=True, method="json_mode")
-        
+        # 复制列表避免污染上游传入的原始数据结构
+        safe_messages = [dict(m) for m in messages]
+        json_hint = "\n请严格以合法的 JSON 格式输出结果。"
+        if safe_messages and safe_messages[0].get("role") == "system":
+            safe_messages[0]["content"] += json_hint
+        else:
+            safe_messages.insert(0, {"role": "system", "content": json_hint.strip()})
+        return safe_messages
+    @log_execution("LLM.generate_structured")
+    async def generate_structured(
+        self,
+        messages: List[Dict[str, str]],
+        response_schema: Type[T],
+        **kwargs: Any,
+    ) -> T:
+        # 1. 按配置构建结构化输出 runnable（仅构建一次）
+        build_kwargs: Dict[str, Any] = {"include_raw": True}
+        if self.method is not None:
+            build_kwargs["method"] = self.method
+
+        structured_llm = self.chat_model.with_structured_output(
+            response_schema, **build_kwargs
+        )
+        prepared_messages = self._ensure_json_keyword(messages)
+
+        # 2. 异步调用并拦截异常1：SDK 底层在反序列化阶段直接抛出的 ValidationError
         try:
-            """异常1. 拦截 SDK 提前报错 
-            openai SDK 在 parse() 阶段直接抛出的 ValidationError，原始字符串就在 errors()[0]["input"] 中
-            使用 langchain_openai 且默认走 OpenAI 原生 json_schema 响应格式时，底层的 openai Python SDK 会在反序列化阶段直接调用 Pydantic 校验并抛出 ValidationError，
-            导致 invoke() 还没返回字典就直接中断
-            """
-            result = structured_llm.invoke(messages)
+            result = await structured_llm.ainvoke(prepared_messages, **kwargs)
         except ValidationError as sdk_val_err:
             errors = sdk_val_err.errors()
-            if errors and isinstance(errors[0].get("input"), str):
-                sdk_val_err.raw_output = errors[0]["input"]
-            raise sdk_val_err        
-        """异常2.拦截 LangChain 内部解析器吞掉的错误
-        切换到支持Tool Calling（函数调用）的模型（如 标准 GPT-4o 走 function_calling模式
-        或在 with_structured_output 中指定 method="function_calling" / method="json_mode"）时，
-        LangChain 内部的 PydanticToolsParser 或 JsonOutputParser 会捕获校验异常，把错误塞进 result["parsing_error"] 并正常返回字典
-        """
-        # 如果pydantic解析异常时保存AI返回的原始输出后抛出，交给上游处理
-        if result.get('parsing_error') is not None:
+            raw_str = (
+                errors[0]["input"]
+                if errors and isinstance(errors[0].get("input"), str)
+                else None
+            )
+            raise StructuredOutputError(
+                message=f"SDK structured output validation failed for {response_schema.__name__}: {sdk_val_err}",
+                raw_output=raw_str,
+                schema_name=response_schema.__name__,
+            ) from sdk_val_err
+
+        # 3. 拦截异常2：LangChain 内部 Parser 捕获并吞掉的解析/校验异常
+        if result.get("parsing_error") is not None:
             err = result["parsing_error"]
-            raw_msg = result.get('raw')
-            # 提取原始文本，动态挂载到异常对象上
-            err.raw_output = raw_msg.content if getattr(raw_msg, "content", None) else str(raw_msg)
-            raise err
-        # 正常情况解包返回 parsed，保持返回类型依然是response_schema 实例
-        return result["parsed"]            
+            raw_msg = result.get("raw")
+            raw_str = (
+                raw_msg.content
+                if getattr(raw_msg, "content", None)
+                else str(raw_msg)
+            )
+            raise StructuredOutputError(
+                message=f"LangChain parser failed for {response_schema.__name__}: {err}",
+                raw_output=raw_str,
+                schema_name=response_schema.__name__,
+            ) from err
+
+        # 4. 校验 parsed 兜底并返回强类型实例
+        parsed = result.get("parsed")
+        if parsed is None:
+            raise StructuredOutputError(
+                message=f"LLM returned empty parsed result for {response_schema.__name__}.",
+                raw_output=str(result.get("raw")),
+                schema_name=response_schema.__name__,
+            )
+
+        return parsed

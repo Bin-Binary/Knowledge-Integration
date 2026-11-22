@@ -16,24 +16,14 @@ class AgentProtocol(Protocol):
         """节点唯一标识，与 RouteDecision.target_node 严格对应"""
         ...
 
-    def run(self, context: RouteContext, decision: RouteDecision) -> AgentResponse:
-        """同步执行完整推理循环并返回最终结果"""
+    async def run(self, context: RouteContext, decision: RouteDecision) -> AgentResponse:
+        """异步执行完整推理循环并返回最终结果"""
         ...
 
-    async def stream(
+    def stream(
         self, 
         context: RouteContext, 
         decision: RouteDecision
     ) -> AsyncIterator[AgentStep | AgentResponse]:
         """流式吐出每一步的 Thought/Action/Observation，最后吐出 AgentResponse"""
-        ...
-
-
-@runtime_checkable
-class ToolCapableAgentProtocol(AgentProtocol, Protocol):
-    """
-    支持动态工具挂载的 Agent 协议（适用于 ReAct 等自主规划架构）。
-    允许在运行时根据用户权限或路由决策动态注入可用的工具集。
-    """
-    def bind_tools(self, tools: List[Any]) -> None:
         ...
