@@ -26,19 +26,34 @@ class BaseKnowledgeAcquirer(ABC, KnowledgeAcquisitionProtocol):
         return wrapper
 
     @staticmethod
-    def generate_info_id(uri: SourceURI, fallback_content: str = "") -> str:
-        """基于稳定逻辑位置生成确定性 info_id（格式：info_<12位hex>）"""
+    def generate_info_id(
+        uri: SourceURI,
+        slice_identity: Optional[str] = None,
+        fallback_content: str = "",
+    ) -> str:
+        """基于【稳定逻辑位置 + 切片局部身份指纹】生成确定性且全局唯一的 info_id（格式：info_<16位hex>）。
+
+        设计权衡：
+            1. 剔除易变的 revision 与纯行号，保障增量更新时原地覆盖、不产生僵尸切片。
+            2. 引入 slice_identity（如 AST 符号名 'func:login'、章节路径 'sec:1.2' 或滑窗序号 'chunk:0'），
+               彻底解决单个大文件切出多条 Information 时 info_id 撞车覆盖的问题。
+        """
+        # 1. 提取文档级稳定逻辑根路径
         if uri.scheme == SourceScheme.REPO:
             stable_base = f"repo:{uri.location}#{uri.subpath or ''}"
         else:
             stable_base = f"{uri.scheme.value}:{uri.location}"
-
+        # 2. 叠加非纯行号的语义锚点（如 uri 自带的 func:xxx 或 page=12）
         if uri.anchor and not uri.anchor.startswith("L"):
             stable_base = f"{stable_base}#{uri.anchor}"
-        elif not uri.anchor and fallback_content:
-            stable_base = f"{stable_base}#{fallback_content[:64]}"
-
-        digest = hashlib.sha256(stable_base.encode("utf-8")).hexdigest()[:12]
+        # 3. 叠加切片级局部身份指纹（解决一源多切片唯一性）
+        if slice_identity:
+            stable_base = f"{stable_base}@{slice_identity.strip()}"
+        elif fallback_content:
+            # 兜底策略：若子类既未提供语义锚点也未传 slice_identity，截取前 128 字符作为局部指纹防止撞车
+            stable_base = f"{stable_base}@fallback:{fallback_content[:128]}"
+        # 升级为 16 位 hex（64-bit 空间），降低在海量切片下碰撞概率
+        digest = hashlib.sha256(stable_base.encode("utf-8")).hexdigest()[:16]
         return f"info_{digest}"
 
     @staticmethod
@@ -73,10 +88,14 @@ class BaseKnowledgeAcquirer(ABC, KnowledgeAcquisitionProtocol):
             slices = await handlers_cache[uri.scheme]._fetch_and_slice(uri, envelope)
             collected_infos.extend(slices)
 
+        # 按 info_id合并（Upsert）：避免多源同内容重叠，保留原有顺序，本轮新采集的同ID切片自动覆盖旧切片
+        merged_infos_map: Dict[str, Information] = {
+            info.info_id: info for info in (*envelope.raw_infos, *collected_infos)
+        }
         return envelope.model_copy(
             update={
                 "source_locators": [],
-                "raw_infos": [*envelope.raw_infos, *collected_infos],
+                "raw_infos": list(merged_infos_map.values()),
             }
         )
 
