@@ -1,4 +1,5 @@
 # /graphs/master_graph.py
+import inspect
 import logging
 from typing import Any, Callable, Literal, Optional, Protocol
 from langgraph.graph import StateGraph, START, END
@@ -100,56 +101,87 @@ def _route_after_execution(
 
 
 def _wrap_recovery_node(
-    raw_node: Callable[[MasterAgentState], dict[str, Any]],
+    raw_node: Callable[[MasterAgentState], Any],
     max_attempts: int = DEFAULT_MAX_RECOVERY_ATTEMPTS,
-) -> Callable[[MasterAgentState], dict[str, Any]]:
+) -> Callable[[MasterAgentState], Any]:
     """
-    【风险修复 1】自愈节点状态防火墙：
+    【风险修复 1】自愈节点状态防火墙（兼容同步 / 异步节点）：
     1. 记录原故障节点快照 _last_failed_node 后强制清理 failure_context，防止下游重试死循环；
     2. 在编排层兜底熔断超过最大重试次数的自愈循环。
     """
-    def _guarded_recovery(state: MasterAgentState) -> dict[str, Any]:
-        attempts = int(state.get("_recovery_attempts", 0)) + 1
-        if attempts > max_attempts:
-            logger.error(
-                "Max recovery attempts (%d) exceeded; forcing terminal termination.",
-                max_attempts,
-            )
-            return {
-                "_recovery_attempts": attempts,
-                "is_terminal": True,
-            }
-
-        orig_failure = state.get("failure_context")
-        last_failed_node = (
-            getattr(orig_failure, "failed_node", None) if orig_failure else None
-        )
-
-        update = dict(raw_node(state) or {})
+    def _post_process(
+        state: MasterAgentState,
+        raw_result: Any,
+        attempts: int,
+        last_failed_node: Optional[str],
+    ) -> dict[str, Any]:
+        update = dict(raw_result or {})
         merged_state = {**state, **update}
         outcome = merged_state.get("recovery_outcome")
 
         if last_failed_node is not None:
             update["_last_failed_node"] = last_failed_node
 
-        # 只要判定为恢复成功，主图强制擦除残留的 failure_context
         if outcome is not None and getattr(outcome, "is_recovered", False):
             update["failure_context"] = None
 
         update["_recovery_attempts"] = attempts
         return update
 
-    return _guarded_recovery
+    if inspect.iscoroutinefunction(raw_node):
+        async def _async_guarded_recovery(state: MasterAgentState) -> dict[str, Any]:
+            attempts = int(state.get("_recovery_attempts", 0)) + 1
+            if attempts > max_attempts:
+                logger.error(
+                    "Max recovery attempts (%d) exceeded; forcing terminal termination.",
+                    max_attempts,
+                )
+                return {"_recovery_attempts": attempts, "is_terminal": True}
+
+            orig_failure = state.get("failure_context")
+            # 在 _wrap_recovery_node 中提取 failed_stage（兼容 failed_node）
+            last_failed_stage = (
+                getattr(orig_failure, "failed_stage", None)
+                or getattr(orig_failure, "failed_node", None)
+                if orig_failure
+                else None
+            )
+            raw_result = await raw_node(state)
+            return _post_process(state, raw_result, attempts, last_failed_stage)
+
+        return _async_guarded_recovery
+
+    def _sync_guarded_recovery(state: MasterAgentState) -> dict[str, Any]:
+        attempts = int(state.get("_recovery_attempts", 0)) + 1
+        if attempts > max_attempts:
+            logger.error(
+                "Max recovery attempts (%d) exceeded; forcing terminal termination.",
+                max_attempts,
+            )
+            return {"_recovery_attempts": attempts, "is_terminal": True}
+
+        orig_failure = state.get("failure_context")
+        last_failed_stage = (
+            getattr(orig_failure, "failed_stage", None)
+            or getattr(orig_failure, "failed_node", None)
+            if orig_failure
+            else None
+        )
+        raw_result = raw_node(state)
+        return _post_process(state, raw_result, attempts, last_failed_stage)
+
+
+    return _sync_guarded_recovery
 
 
 def _wrap_memory_commit_node(
-    raw_node: Callable[[MasterAgentState], dict[str, Any]],
-) -> Callable[[MasterAgentState], dict[str, Any]]:
+    raw_node: Callable[[MasterAgentState], Any],
+) -> Callable[[MasterAgentState], Any]:
     """
-    【风险修复 2】记忆提交幂等门禁：
+    【风险修复 2】记忆提交幂等门禁（兼容同步 / 异步节点）：
     当流程因未恢复异常、审批拒绝或参数缺失提前终止且无有效回复时，跳过记忆持久化，避免写入半成品脏数据。
     """
-    def _guarded_memory_commit(state: MasterAgentState) -> dict[str, Any]:
+    def _should_skip(state: MasterAgentState) -> bool:
         has_unresolved_error = state.get("failure_context") is not None
         is_aborted_without_response = (
             state.get("is_terminal", False) and not state.get("final_response")
@@ -158,11 +190,23 @@ def _wrap_memory_commit_node(
             logger.warning(
                 "Skipping memory_commit due to unresolved error or empty terminal state."
             )
+            return True
+        return False
+
+    if inspect.iscoroutinefunction(raw_node):
+        async def _async_guarded_memory_commit(state: MasterAgentState) -> dict[str, Any]:
+            if _should_skip(state):
+                return {}
+            return await raw_node(state)
+
+        return _async_guarded_memory_commit
+
+    def _sync_guarded_memory_commit(state: MasterAgentState) -> dict[str, Any]:
+        if _should_skip(state):
             return {}
         return raw_node(state)
 
-    return _guarded_memory_commit
-
+    return _sync_guarded_memory_commit
 
 @log_execution("build_master_agent_graph")
 def build_master_agent_graph(
@@ -256,7 +300,7 @@ def build_master_agent_graph(
 
     @log_execution("route_after_recovery", level=logging.DEBUG)
     def _route_after_recovery(state: MasterAgentState) -> str:
-        """异常自愈后的精准断点恢复路由（支持全链路任意阶段回跳）"""
+        """异常自愈后的精准续跑路由（产物已还原时直接推进到下一阶段，避免重复调用报错节点）"""
         outcome = state.get("recovery_outcome")
         failure_ctx = state.get("failure_context")
         if (
@@ -267,29 +311,48 @@ def build_master_agent_graph(
         ):
             return "finish_flow"
 
-        failed_node = (
+        failed_stage = (
             getattr(outcome, "target_node", None)
             or state.get("_last_failed_node")
-            or (getattr(failure_ctx, "failed_node", None) if failure_ctx else None)
+            or (
+                getattr(failure_ctx, "failed_stage", None)
+                or getattr(failure_ctx, "failed_node", None)
+                if failure_ctx
+                else None
+            )
         )
-        if failed_node == CONTEXT_GUARD_NODE and has_context_guard:
-            return CONTEXT_GUARD_NODE
-        if failed_node == INTENT_NODE:
-            return INTENT_NODE
-        if failed_node == ROUTING_NODE:
+
+        # 1. 若产物已由 recovery_node 修复填充，直接推进至下一阶段
+        if failed_stage == INTENT_NODE and state.get("intent_result") is not None:
             return ROUTING_NODE
-        if failed_node == KNOWLEDGE_NODE and has_knowledge:
+        if failed_stage == ROUTING_NODE and state.get("route_decision") is not None:
+            return _resolve_post_routing_stage(
+                state["route_decision"], has_knowledge, has_approval_gate
+            )
+
+        # 2. 若仅做了环境/上下文修复（未直接生成产物），则重入原故障节点
+        if failed_stage == CONTEXT_GUARD_NODE and has_context_guard:
+            return CONTEXT_GUARD_NODE
+        if failed_stage == INTENT_NODE:
+            return INTENT_NODE
+        if failed_stage == ROUTING_NODE:
+            return ROUTING_NODE
+        if failed_stage == KNOWLEDGE_NODE and has_knowledge:
             return KNOWLEDGE_NODE
-        if failed_node == APPROVAL_GATE_NODE and has_approval_gate:
+        if failed_stage == APPROVAL_GATE_NODE and has_approval_gate:
             return APPROVAL_GATE_NODE
-        if failed_node == EXECUTION_NODE:
+        if failed_stage == EXECUTION_NODE:
             return EXECUTION_NODE
-        # 兜底状态推断回跳
+
+        # 3. 兜底状态推断推进
         if state.get("route_decision") is not None:
-            return EXECUTION_NODE
+            return _resolve_post_routing_stage(
+                state["route_decision"], has_knowledge, has_approval_gate
+            )
         if state.get("intent_result") is not None:
             return ROUTING_NODE
         return INTENT_NODE
+
 
     # ------------------------------------------------------------------
     # 3. 编排主干与分支拓扑边
