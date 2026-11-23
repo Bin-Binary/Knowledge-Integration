@@ -2,8 +2,20 @@
 import json
 from pathlib import Path
 from typing import Optional, Dict, List, Any, Literal
-from pydantic import BaseModel, Field, SecretStr, ConfigDict
+from pydantic import BaseModel, Field, SecretStr, ConfigDict, field_validator, ValidationInfo
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+def detect_project_root(fallback_path: Optional[Path] = None) -> Path:
+    """
+    自动探测项目根目录：
+    从当前文件向上查找特征标记文件；若未找到（如打包后的独立脚本），则回退到指定目录或文件祖父目录。
+    """
+    current = Path(__file__).resolve().parent
+    markers = ("pyproject.toml", "requirements.txt", ".git", "main.py")
+    for parent in [current, *current.parents]:
+        if any((parent / marker).exists() for marker in markers):
+            return parent
+    return fallback_path.resolve() if fallback_path else current.parent
 
 class ServerConfig(BaseModel):
     """HTTP 网关与 ASGI 服务器运行配置（不可变）"""
@@ -21,6 +33,7 @@ class ServerConfig(BaseModel):
         description="是否开启详细错误堆栈及非密钥敏感载荷日志（生产环境保持 False）",
     )
 
+
 class LLMProfileConfig(BaseModel):
     """单个大模型节点的纯静态运行参数（不可变）"""
     model_config = ConfigDict(frozen=True, extra="forbid")
@@ -36,26 +49,20 @@ class LLMProfileConfig(BaseModel):
     extra_body: Dict[str, Any] = Field(default_factory=dict)
     bypass_proxy: bool = Field(
         default=True,
-        description="是否忽略系统 HTTP_PROXY/HTTPS_PROXY 环境变量直连大模型端点"
+        description="是否忽略系统 HTTP_PROXY/HTTPS_PROXY 环境变量直连大模型端点",
     )
+
     def get_plain_api_key(self) -> Optional[str]:
         return self.api_key.get_secret_value() if self.api_key else None
 
+
 class IntentComponentConfig(BaseModel):
-    """意图识别组件配置块"""
+    """意图识别组件纯技术运行参数（业务意图清单已剥离至 IntentCatalog）"""
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     context_window_turns: int = Field(default=4, ge=1, le=20)
     confidence_threshold: float = Field(default=0.75, ge=0.0, le=1.0)
-    command_map: Dict[str, str] = Field(default_factory=dict)
 
-
-class RoutingComponentConfig(BaseModel):
-    """路由调度组件配置块"""
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
-    default_fallback_node: str = Field(default="clarification_agent")
-    intent_to_node: Dict[str, str] = Field(default_factory=dict)
 
 class ServerEnvOverrides(BaseSettings):
     """允许通过环境变量覆盖 JSON 中的服务器参数（前缀 SERVER_）"""
@@ -68,6 +75,14 @@ class ServerEnvOverrides(BaseSettings):
     log_level: Optional[str] = None
     enable_verbose_error_logs: Optional[bool] = None
 
+class KnowledgeEnvOverrides(BaseSettings):
+    """允许通过环境变量覆盖知识库路径与开关（前缀 KNOWLEDGE_）"""
+    model_config = SettingsConfigDict(env_prefix="KNOWLEDGE_", env_file=".env", extra="ignore")
+
+    enabled: Optional[bool] = None
+    vault_root: Optional[str] = None
+    workspace_root: Optional[str] = None
+
 class EnvSecrets(BaseSettings):
     """专门从环境变量 / .env 读取敏感密钥与网关覆盖地址"""
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
@@ -75,14 +90,38 @@ class EnvSecrets(BaseSettings):
     openai_api_key: Optional[SecretStr] = Field(default=None, alias="OPENAI_API_KEY")
     openai_base_url: Optional[str] = Field(default=None, alias="OPENAI_BASE_URL")
 
+class InternalKnowledgeConfig(BaseModel):
+    """领域知识库引擎基础设施与开关配置（不可变，所有路径在加载期归一化为绝对路径）"""
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    enabled: bool = Field(default=True, description="是否启用领域知识库子图")
+    vault_root: str = Field(default="./data/llm_wiki", min_length=1, description="知识库 Markdown 仓库根目录（绝对路径）")
+    workspace_root: str = Field(default=".", min_length=1, description="工作区根目录（绝对路径）")
+    quality_threshold: float = Field(default=0.5, ge=0.0, le=1.0, description="知识检索/沉淀质量准入阈值")
+    max_concurrency: int = Field(default=5, ge=1, le=32, description="知识引擎并发任务上限")
+
+    @field_validator("vault_root", "workspace_root", mode="before")
+    @classmethod
+    def resolve_to_absolute_path(cls, v: Any, info: ValidationInfo) -> str:
+        if not isinstance(v, (str, Path)) or not str(v).strip():
+            raise ValueError("Path configuration must be a non-empty string or Path.")
+
+        p = Path(v).expanduser()
+        if p.is_absolute():
+            return str(p.resolve())
+
+        # 从校验上下文获取基准目录，若直接实例化未传 context 则自动探测项目根目录
+        base_dir: Path = (info.context or {}).get("base_dir") or detect_project_root()
+        return str((base_dir / p).resolve())
+
 class AgentSystemConfig(BaseModel):
-    """全系统根配置对象：由 JSON 文件加载并自动注入环境变量覆盖"""
+    """全系统根配置对象：仅管理基础设施、模型池与技术运行参数"""
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     server: ServerConfig = Field(default_factory=ServerConfig)
     llm_profiles: Dict[str, LLMProfileConfig]
     intent_recognition: IntentComponentConfig = Field(default_factory=IntentComponentConfig)
-    routing: RoutingComponentConfig = Field(default_factory=RoutingComponentConfig)
+    internal_knowledge: InternalKnowledgeConfig = Field(default_factory=InternalKnowledgeConfig)
 
     @classmethod
     def load_from_json(cls, json_path: str | Path) -> "AgentSystemConfig":
@@ -97,6 +136,15 @@ class AgentSystemConfig(BaseModel):
         srv_env = ServerEnvOverrides()
         for field_name, val in srv_env.model_dump(exclude_none=True).items():
             srv_section[field_name] = val
+
+        # 合并环境变量对 InternalKnowledge 参数的动态覆盖
+        kn_section = raw_data.setdefault("internal_knowledge", {})
+        kn_env = KnowledgeEnvOverrides()
+        for field_name, val in kn_env.model_dump(exclude_none=True).items():
+            # 若环境变量传入的是相对路径，基于当前进程 CWD 解析，符合运维直觉
+            if field_name in ("vault_root", "workspace_root") and not Path(val).expanduser().is_absolute():
+                val = str((Path.cwd() / Path(val).expanduser()).resolve())
+            kn_section[field_name] = val
 
         # 2. 合并环境变量对 LLM 密钥与地址的注入
         secrets = EnvSecrets()
