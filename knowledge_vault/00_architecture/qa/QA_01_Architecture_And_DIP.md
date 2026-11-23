@@ -50,8 +50,14 @@ stage: gold
 ### Q4：数据治理生命周期与开闭原则（OCP）演进
 * **核心疑惑**：如何防止 AI 自动生成的未审核知识污染生产环境？同时如何保证未来新增采集源、领域关系或组织算子时不修改核心调度器？
 * **核心答案**：
-  * **三层生命周期治理**：引入 `debug`（AI 自动生成隔离区）➔ `release`（人工审核/编写区）➔ `gold`（闭环验证有效区）矩阵，配合跨层引用使用全局唯一逻辑 ID（位置透明性），确保文件跨目录晋升时全图谱零断链。
-  * **开闭原则扩展点**：
+  1. **三层生命周期物理隔离（`debug -> release -> gold`）**：
+     * **写入隔离**：自动化自学习流水线（`Acquisition -> Organization -> Storage`）**仅拥有 `debug/` 目录的写权限**，严禁直接写入 `release/` 或 `gold/`。
+     * **权重遮蔽检索**：`Storage.retrieve` 召回时按可信度加权（`gold: 1.0 > release: 0.8 > debug: 0.4`），当同一逻辑 ID 存在高成熟度版本时自动遮蔽低层级副本。
+     * **跨层晋升零断链**：所有文件命名与跨文件引用（如 `[[lbl_101]]`）均基于内容指纹生成的全局唯一逻辑 ID，文件在目录间审核晋升时无需重写任何内部链接。
+  2. **双注册表插件化演进（OCP）**：
+     * **采集侧**：通过 `@BaseKnowledgeAcquirer.register(SourceScheme.XXX)` 装饰器注册协议解析器，新增数据源（如 Notion、Confluence、AST）只需新增实现类并注册。
+     * **组织侧**：通过 `@OrganizationPluginRegistry.register(stage=...)` + `pkgutil` 启动扫描自动装配微算子，新增质量过滤器或建边策略对 `KnowledgeOrganizer` 零侵入。       
+  3. **开闭原则扩展点**：
     * **开放域概念**：`Labeling.label` 保持 `str`（无法穷举，辅以泛化元分类枚举 `category: NodeCategory` 支持结构化过滤）。
     * **领域关系边**：核心层仅定义通用关系 `GeneralRelationType`，通过泛型 `Generic[RelTypeT]` 注入具体领域枚举（如 `CodeRelationType`），禁止核心文件反向导入业务代码，同时在模型内拦截 `label_1_id == label_2_id` 的无效自环边。
     * **零配置算子发现**：新算子通过装饰器注册表 + `pkgutil` 动态包扫描实现自动发现，主干代码零修改。
