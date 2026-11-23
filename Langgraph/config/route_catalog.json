@@ -1,0 +1,26 @@
+{
+  "default_fallback_node": "general_chat_agent",
+  "min_confidence_threshold": 0.7,
+  "routes": {
+    "chitchat": {
+      "target_domain": "execution",
+      "target_node": "general_chat_agent",
+      "skip_knowledge": true
+    },
+    "general_qa": {
+      "target_domain": "execution",
+      "target_node": "general_chat_agent",
+      "skip_knowledge": false
+    },
+    "knowledge_learn": {
+      "target_domain": "knowledge",
+      "target_node": "deep_learn",
+      "skip_knowledge": false
+    },
+    "complex_plan": {
+      "target_domain": "execution",
+      "target_node": "plan_solve_agent",
+      "skip_knowledge": false
+    }
+  }
+}
