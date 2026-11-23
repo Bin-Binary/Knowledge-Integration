@@ -30,9 +30,6 @@ def create_intent_node(
             session_id=session_id,
             current_input=current_input,
             safe_history=safe_history,
-            rag_context=state.get("rag_context"),
-            window_metrics=state.get("window_metrics"),
-            session_state=state.get("session_state"),
             user_profile=state.get("user_profile", {}),
         )
 
@@ -68,6 +65,7 @@ def create_intent_node(
             return {
                 "intent_result": None,
                 "failure_context": failure_ctx,
+                "recovery_outcome": None,                
             }
 
     return intent_recognition_node
