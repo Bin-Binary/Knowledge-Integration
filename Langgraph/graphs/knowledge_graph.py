@@ -1,254 +1,160 @@
 # /graphs/knowledge_graph.py
 import logging
-from typing import Any, Callable, Dict, Literal, Optional
+from typing import Any, Dict, Literal, Optional
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.state import CompiledStateGraph
+from langchain_core.messages import AIMessage
 
 from graphs.state import MasterAgentState, extract_domain_context_from_state
 from components.recovery.mapper import ExceptionMapper
 from infra.observability import log_execution
-
-# 仅依赖 protocols 与 schemas（严格遵守依赖倒置 DIP，不导入任何 concrete 算子实现）
-from protocols.internal_knowledge import (
-    InternalKnowledgeEngineProtocol,
-    KnowledgeApplicationProtocol,
-    KnowledgeAcquisitionProtocol,
-    KnowledgeOrganizationProtocol,
-    KnowledgeStorageProtocol,
-)
+from protocols.internal_knowledge import InternalKnowledgeEngineProtocol
 from schemas.internal_knowledge.pipeline_envelope import PipelineEnvelope
 from schemas.internal_knowledge.resolve_problem import ResolveProblem, ResolutionOutcome
+from schemas.intent_and_route_catalog import TargetDomain
 
 logger = logging.getLogger(__name__)
 
-# ==============================================================================
-# 通用出入站翻译器（Bridge / Adapter）：隔离 LangGraph 状态与领域黑板模型
-# ==============================================================================
 
-def _build_initial_envelope(state: MasterAgentState) -> PipelineEnvelope:
-    """【入站翻译】从 MasterAgentState 提取上下文，构造纯领域 PipelineEnvelope"""
-    # 若状态中已存在未完成的信封（例如断点恢复场景），直接复用
-    existing_env = state.get("knowledge_envelope")
-    if existing_env is not None:
-        return existing_env
-
+def _unpack_state_to_envelope(state: MasterAgentState, prefix: str) -> PipelineEnvelope:
+    """【统一入站拆包】MasterAgentState -> PipelineEnvelope"""
     trace_id = state.get("trace_id") or "unknown_trace"
     session_id = state.get("session_id") or "default_agent"
     current_input, _ = extract_domain_context_from_state(state)
 
-    # 优先使用上游意图识别阶段改写后的标准 query，否则降级使用原始用户输入
     intent_res = state.get("intent_result")
+    decision = state.get("route_decision")
+    # 优先复用 IntentResult.primary_query 屏蔽不同匹配器的槽位键名差异
+    slot_topic = (
+        (intent_res.primary_query if intent_res else None)
+        or (decision.params.get("topic") if decision else None)
+        or (decision.params.get("raw_arg") if decision else None)
+    )
+
     problem_text = (
-        getattr(intent_res, "rewritten_query", None) or current_input
+        slot_topic
+        or getattr(intent_res, "rewritten_query", None)
+        or current_input
     ).strip()
 
     return PipelineEnvelope(
         trace_id=trace_id,
         problem_resolution=ResolveProblem(
-            problem_id=f"prob_{trace_id}",
+            problem_id=f"{prefix}_{trace_id}",
             problem=problem_text or "未指定明确问题",
             agent_id=session_id,
         ),
     )
 
-def _map_envelope_to_state_update(envelope: PipelineEnvelope) -> Dict[str, Any]:
-    """【出站翻译】将领域黑板信封的最新状态映射回 MasterAgentState 增量字典"""
+
+def _pack_retrieval_to_state(envelope: PipelineEnvelope) -> Dict[str, Any]:
+    """【出站封包：快速检索】提取只读背景资料写入 rag_context"""
     resolution = envelope.problem_resolution
-    rag_answer = (
+    if not resolution:
+        return {"rag_context": None, "failure_context": None, "recovery_outcome": None}
+
+    if getattr(resolution, "resultant_situation", None):
+        rag_text = resolution.resultant_situation
+    else:
+        items = getattr(resolution, "resolutions", None) or []
+        snippets = [getattr(i, "content", None) or str(i) for i in items if i]
+        rag_text = "\n\n---\n\n".join(snippets) if snippets else None
+
+    return {"rag_context": rag_text, "failure_context": None, "recovery_outcome": None}
+
+
+def _pack_learning_to_state(envelope: PipelineEnvelope) -> Dict[str, Any]:
+    """【出站封包：持续学习】提取学习成果写入 rag_context 及终态回复"""
+    resolution = envelope.problem_resolution
+    is_success = resolution and resolution.outcome == ResolutionOutcome.SUCCESS
+    summary = (
         resolution.resultant_situation
-        if resolution and resolution.outcome == ResolutionOutcome.SUCCESS
-        else None
+        if is_success and resolution.resultant_situation
+        else "已完成知识学习与归档闭环。"
     )
     return {
-        "rag_context": rag_answer,
-        "knowledge_envelope": envelope,
-        "knowledge_iteration": envelope.iteration,
+        "rag_context": summary,
+        "final_response": summary,
+        "messages": [AIMessage(content=summary)],
         "failure_context": None,
+        "recovery_outcome": None,
     }
 
-# ==============================================================================
-# 模式一：黑盒单节点挂载（Black-Box Single Node）
-#
-# 【适用场景】：
-#   1. 线上实时对话主图（MasterAgentGraph）中的知识检索与动态补全。
-#   2. 追求低编排复杂度、希望保持主状态图拓扑简洁清爽的场景。
-# 【核心优势】：
-#   - 整个闭环由 InternalKnowledgeEngine 内部全权控制，主图只需注册 1 个节点。
-#   - 引擎代码脱离 LangGraph 也能在 FastAPI / 定时脚本中 100% 独立复用。
-# ==============================================================================
 
-def create_knowledge_blackbox_node(
+def _route_knowledge_mode(state: MasterAgentState) -> Literal["fast_retrieve", "deep_learn"]:
+    decision = state.get("route_decision")
+    if (
+        decision
+        and decision.params.get("target_domain") == TargetDomain.KNOWLEDGE
+        and decision.target_node == "deep_learn"
+    ):
+        return "deep_learn"
+    return "fast_retrieve"
+
+
+
+def build_knowledge_domain_subgraph(
     engine: InternalKnowledgeEngineProtocol,
-) -> Callable[[MasterAgentState], Any]:
-    """创建黑盒知识库节点：彻底隐藏内部 PipelineEnvelope，仅输出 rag_context"""
-
-    @log_execution("knowledge_blackbox_node")
-    async def knowledge_blackbox_node(state: MasterAgentState) -> Dict[str, Any]:
-        trace_id = state.get("trace_id") or "unknown_trace"
-        # 作为局部临时变量创建，绝不写入 MasterAgentState
-        envelope = _build_initial_envelope(state)
-
-        try:
-            final_envelope = await engine.execute(envelope)
-            resolution = final_envelope.problem_resolution
-            rag_answer = (
-                resolution.resultant_situation
-                if resolution and resolution.outcome == ResolutionOutcome.SUCCESS
-                else None
-            )
-            return {
-                "rag_context": rag_answer,
-                "failure_context": None,
-            }
-        except Exception as exc:
-            prev_failure = state.get("failure_context")
-            current_retry = prev_failure.retry_count if prev_failure else 0
-            failure_ctx = ExceptionMapper.to_failure_context(
-                exc,
-                trace_id=trace_id,
-                failed_stage="internal_knowledge_engine",
-                target_schema_name="PipelineEnvelope",
-                user_query=envelope.problem_resolution.problem if envelope.problem_resolution else "",
-                retry_count=current_retry,
-            )
-            logger.warning("[KnowledgeNode] 闭环执行异常 [%s]: %s", failure_ctx.category.value, failure_ctx.error_message)
-            return {"failure_context": failure_ctx}
-
-    return knowledge_blackbox_node
-
-
-# ==============================================================================
-# 模式二：白盒多节点子图编排（White-Box Multi-Node SubGraph）
-#
-# 【适用场景】：
-#   1. 后台离线重型知识构建流水线、或需要精细化监控每个环节耗时的场景。
-#   2. 需要 Human-in-the-loop（人工审核）：例如在 organize 组织完知识后暂停图执行，
-#      等待人工审核 debug/ 目录产物后再继续执行 save 或晋升。
-#   3. 需要利用 LangGraph Checkpointer 持久化每一轮迭代的中间状态快照。
-# 【核心优势】：
-#   - 复用完全相同的四大 Protocol，利用 LangGraph 原生条件边替代 while 循环。
-# ==============================================================================
-class KnowledgeSubGraphState(MasterAgentState, total=False):
-    """白盒知识子图私有状态：将内部黑板载体隔离在子图作用域内，不污染主图 MasterAgentState"""
-    knowledge_envelope: Optional[PipelineEnvelope]
-    knowledge_iteration: int
-
-
-def _route_after_resolve(state: KnowledgeSubGraphState) -> Literal["end_loop", "acquire_step"]:
-    """白盒条件边：判断异常、问题是否解决或达到迭代上限，决定终止还是进入采集补全"""
-    if state.get("failure_context") is not None:
-        return "end_loop"
-
-    envelope = state.get("knowledge_envelope")
-    if not envelope or not envelope.problem_resolution:
-        return "end_loop"
-
-    # 1. 问题已解决 -> 终止闭环
-    if envelope.problem_resolution.outcome == ResolutionOutcome.SUCCESS:
-        return "end_loop"
-
-    # 2. 已达最大迭代上限 -> 熔断退出，防止死循环
-    if not envelope.can_continue_loop:
-        logger.warning("[KnowledgeSubGraph] 达到最大迭代次数 (%d)，带缺口退出", envelope.max_iterations)
-        return "end_loop"
-
-    return "acquire_step"
-
-
-def build_knowledge_whitebox_subgraph(
-    storage: KnowledgeStorageProtocol,
-    application: KnowledgeApplicationProtocol,
-    acquisition: KnowledgeAcquisitionProtocol,
-    organization: KnowledgeOrganizationProtocol,
     checkpointer: Optional[Any] = None,
-    interrupt_before_save: bool = False,
 ) -> CompiledStateGraph:
-    """构建白盒知识库编译子图（可直接作为子图节点嵌入 MasterAgentGraph）"""
-    # [关键修正] 必须传入私有子图状态 KnowledgeSubGraphState，否则状态更新会被 LangGraph 静默丢弃
-    subgraph = StateGraph(KnowledgeSubGraphState)
+    """
+    知识领域防腐层子图：
+    仅依赖单一总控协议 InternalKnowledgeEngineProtocol，对主图暴露为单一黑盒节点。
+    """
+    subgraph = StateGraph(MasterAgentState)
 
-    # 通用异常包装辅助函数，确保白盒节点出错时能平滑转入主图 recovery_node
-    def _wrap_step(stage_name: str, fn: Callable[[KnowledgeSubGraphState], Any]):
-        async def wrapped(state: KnowledgeSubGraphState) -> Dict[str, Any]:
-            try:
-                return await fn(state)
-            except Exception as exc:
-                trace_id = state.get("trace_id") or "unknown_trace"
-                prev_failure = state.get("failure_context")
-                current_retry = prev_failure.retry_count if prev_failure else 0
-                env = state.get("knowledge_envelope")
-                query = env.problem_resolution.problem if (env and env.problem_resolution) else ""
-
-                failure_ctx = ExceptionMapper.to_failure_context(
+    @log_execution("knowledge.fast_retrieve_node")
+    async def fast_retrieve_node(state: MasterAgentState) -> Dict[str, Any]:
+        envelope = _unpack_state_to_envelope(state, prefix="read")
+        try:
+            updated_env = await engine.fast_retrieve(envelope)
+            return _pack_retrieval_to_state(updated_env)
+        except Exception as exc:
+            prev = state.get("failure_context")
+            return {
+                "failure_context": ExceptionMapper.to_failure_context(
                     exc,
-                    trace_id=trace_id,
-                    failed_stage=stage_name,
+                    trace_id=state.get("trace_id", "unknown"),
+                    failed_stage="knowledge_fast_retrieve",
                     target_schema_name="PipelineEnvelope",
-                    user_query=query,
-                    retry_count=current_retry,
-                )
-                logger.warning("[KnowledgeSubGraph:%s] 执行异常 [%s]: %s", stage_name, failure_ctx.category.value, failure_ctx.error_message)
-                return {"failure_context": failure_ctx}
-        return wrapped
+                    user_query=envelope.problem_resolution.problem if envelope.problem_resolution else "",
+                    retry_count=prev.retry_count if prev else 0,
+                ),
+                "recovery_outcome": None,
+            }
 
-    # 1. 定义五个原子节点（统一接收 KnowledgeSubGraphState）
-    async def retrieve_node(state: KnowledgeSubGraphState) -> Dict[str, Any]:
-        env = _build_initial_envelope(state)
-        updated_env = await storage.retrieve(env)
-        return {"knowledge_envelope": updated_env}
+    @log_execution("knowledge.deep_learn_node")
+    async def deep_learn_node(state: MasterAgentState) -> Dict[str, Any]:
+        envelope = _unpack_state_to_envelope(state, prefix="learn")
+        try:
+            final_env = await engine.execute(envelope)
+            return _pack_learning_to_state(final_env)
+        except Exception as exc:
+            prev = state.get("failure_context")
+            return {
+                "failure_context": ExceptionMapper.to_failure_context(
+                    exc,
+                    trace_id=state.get("trace_id", "unknown"),
+                    failed_stage="knowledge_deep_learn",
+                    target_schema_name="PipelineEnvelope",
+                    user_query=envelope.problem_resolution.problem if envelope.problem_resolution else "",
+                    retry_count=prev.retry_count if prev else 0,
+                ),
+                "recovery_outcome": None,
+            }
 
-    async def resolve_node(state: KnowledgeSubGraphState) -> Dict[str, Any]:
-        env = _build_initial_envelope(state)
-        updated_env = await application.resolve(env)
-        return _map_envelope_to_state_update(updated_env)
-
-    async def acquire_node(state: KnowledgeSubGraphState) -> Dict[str, Any]:
-        env = _build_initial_envelope(state)
-        updated_env = await acquisition.acquire(env)
-        return {"knowledge_envelope": updated_env}
-
-    async def organize_node(state: KnowledgeSubGraphState) -> Dict[str, Any]:
-        env = _build_initial_envelope(state)
-        updated_env = await organization.organize(env)
-        return {"knowledge_envelope": updated_env}
-
-    async def save_and_advance_node(state: KnowledgeSubGraphState) -> Dict[str, Any]:
-        env = _build_initial_envelope(state)
-        saved_env = await storage.save(env)
-        next_iter_env = saved_env.advance_to_next_iteration()
-        return {
-            "knowledge_envelope": next_iter_env,
-            "knowledge_iteration": next_iter_env.iteration,
-        }
-
-    # 2. 注册带异常保护的子图节点
-    subgraph.add_node("retrieve", _wrap_step("knowledge_retrieve", retrieve_node))
-    subgraph.add_node("resolve", _wrap_step("knowledge_resolve", resolve_node))
-    subgraph.add_node("acquire", _wrap_step("knowledge_acquire", acquire_node))
-    subgraph.add_node("organize", _wrap_step("knowledge_organize", organize_node))
-    subgraph.add_node("save_and_advance", _wrap_step("knowledge_save", save_and_advance_node))
-
-    # 3. 编排白盒闭环拓扑边（加入异常熔断检查：一旦任何一步捕获 failure_context 直接结束子图回交主图自愈）
-    def _route_or_abort(next_node: str):
-        def router(state: KnowledgeSubGraphState) -> str:
-            return END if state.get("failure_context") is not None else next_node
-        return router
-
-    subgraph.add_edge(START, "retrieve")
-    subgraph.add_conditional_edges("retrieve", _route_or_abort("resolve"), {END: END, "resolve": "resolve"})
+    subgraph.add_node("fast_retrieve", fast_retrieve_node)
+    subgraph.add_node("deep_learn", deep_learn_node)
 
     subgraph.add_conditional_edges(
-        "resolve",
-        _route_after_resolve,
+        START,
+        _route_knowledge_mode,
         {
-            "end_loop": END,
-            "acquire_step": "acquire",
+            "fast_retrieve": "fast_retrieve",
+            "deep_learn": "deep_learn",
         },
     )
+    subgraph.add_edge("fast_retrieve", END)
+    subgraph.add_edge("deep_learn", END)
 
-    subgraph.add_conditional_edges("acquire", _route_or_abort("organize"), {END: END, "organize": "organize"})
-    subgraph.add_conditional_edges("organize", _route_or_abort("save_and_advance"), {END: END, "save_and_advance": "save_and_advance"})
-    subgraph.add_conditional_edges("save_and_advance", _route_or_abort("retrieve"), {END: END, "retrieve": "retrieve"})
-
-    interrupt_nodes = ["save_and_advance"] if interrupt_before_save else None
-    return subgraph.compile(checkpointer=checkpointer, interrupt_before=interrupt_nodes)
+    return subgraph.compile(checkpointer=checkpointer)
