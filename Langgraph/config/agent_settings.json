@@ -2,7 +2,7 @@
   "server": {
     "host": "0.0.0.0",
     "port": 8000,
-    "workers": 4,
+    "workers": 1,
     "reload": true,
     "log_level": "info",
     "cors_origins": ["*"],
@@ -29,7 +29,10 @@
       "max_tokens": 4096,
       "timeout_seconds": 60.0,
       "max_retries": 2,
-      "bypass_proxy": true
+      "bypass_proxy": true,
+      "extra_body": {
+        "chat_template_kwargs": {"enable_thinking": false}
+      }
     },
     "executor": {
       "provider": "openai",
@@ -38,23 +41,21 @@
       "max_tokens": 2048,
       "timeout_seconds": 30.0,
       "max_retries": 2,
-      "bypass_proxy": true
+      "bypass_proxy": true,
+      "extra_body": {
+        "chat_template_kwargs": {"enable_thinking": false}
+      }
     }
   },
   "intent_recognition": {
     "context_window_turns": 4,
-    "confidence_threshold": 0.75,
-    "command_map": {
-      "/reset": "SYSTEM_RESET",
-      "/plan": "COMPLEX_TASK"
-    }
+    "confidence_threshold": 0.75
   },
-  "routing": {
-    "default_fallback_node": "clarification_agent",
-    "intent_to_node": {
-      "GENERAL_QA": "react_executor",
-      "ORDER_REFUND": "refund_workflow_agent",
-      "COMPLEX_TASK": "planner_pipeline"
-    }
+    "internal_knowledge": {
+    "enabled": true,
+    "vault_root": "./data/llm_wiki",
+    "workspace_root": ".",
+    "quality_threshold": 0.5,
+    "max_concurrency": 5
   }
 }
