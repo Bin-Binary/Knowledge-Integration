@@ -8,18 +8,27 @@
 3. 显式契约：严格通过 `__all__` 控制对外暴露的公共符号，隐藏内部泛型变量与辅助类型。
 """
 
-# 1. 执行器与工具挂载协议
+# 1. 执行器、工具挂载与实例注册解析协议
 from .agent import (
     AgentProtocol,
     ToolCapableAgentProtocol,
 )
+from .registry import (
+    AgentRegistrarProtocol,
+    AgentResolverProtocol,
+)
 
-# 2. 核心调度流水线组件协议
-from .components import (
-    ExceptionRecoveryProtocol,
+# 2. 核心调度流水线组件协议（已按子域拆分）
+from .routing import (
     IntentRecognizerProtocol,
-    PlannerProtocol,
     RouterProtocol,
+)
+from .planning import (
+    PlannerProtocol,
+)
+from .recovery import (
+    ExceptionMapperProtocol,
+    ExceptionRecoveryProtocol,
 )
 
 # 3. 通用评估与过滤协议
@@ -43,13 +52,16 @@ from .llm import (
 )
 
 __all__ = [
-    # Agent
+    # Agent & Registry
     "AgentProtocol",
     "ToolCapableAgentProtocol",
-    # Components
+    "AgentResolverProtocol",
+    "AgentRegistrarProtocol",
+    # Routing, Planning & Recovery
     "IntentRecognizerProtocol",
     "RouterProtocol",
     "PlannerProtocol",
+    "ExceptionMapperProtocol",
     "ExceptionRecoveryProtocol",
     # Evaluation
     "QualityEvaluatorProtocol",

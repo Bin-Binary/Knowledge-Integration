@@ -6,7 +6,7 @@ from typing import Dict, Optional, List, Any, Tuple, Pattern
 from schemas.context import RouteContext, Message
 from schemas.decision import IntentResult
 from schemas.intent_and_route_catalog import IntentCatalog
-from protocols.components import IntentRecognizerProtocol
+from protocols import IntentRecognizerProtocol
 from protocols.llm import StructuredLLMProtocol
 
 logger = logging.getLogger(__name__)

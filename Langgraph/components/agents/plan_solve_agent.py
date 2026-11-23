@@ -4,18 +4,19 @@ import logging
 from typing import AsyncIterator, Dict, List, Set
 
 from protocols.agent import AgentProtocol
-from protocols.components import PlannerProtocol
+from protocols.planning import PlannerProtocol
+from protocols.registry import AgentResolverProtocol  # 1. 依赖抽象协议
 from schemas.context import RouteContext
 from schemas.decision import RouteDecision
 from schemas.execution import AgentResponse, AgentStatus, AgentStep
-from schemas.plan import ExecutionPlan, PlanStep
+from schemas.plan import PlanStep
 from infra.observability import log_execution
-from components.agents.registry import AgentRegistry
+from components.agents.registry import AgentPluginCatalog
 
 logger = logging.getLogger(__name__)
 
 
-@AgentRegistry.register_plugin(
+@AgentPluginCatalog.register_plugin(
     agent_id="plan_solve_agent",
     description="复杂任务编排（内部调度器，不作为原子节点参与规划）",
     plannable=False,  # 语义自洽：编排器本身不可被再次规划
@@ -30,12 +31,12 @@ class PlanAndSolveAgent(AgentProtocol):
     def __init__(
         self,
         planner: PlannerProtocol,
-        registry: AgentRegistry,
+        resolver: AgentResolverProtocol,  # 3. 注入协议而非具体类
         synthesizer_node: str = "general_chat_agent",
         max_replans: int = 2,
     ) -> None:
         self._planner = planner
-        self._registry = registry
+        self._resolver = resolver
         self._synthesizer_node = synthesizer_node
         self._max_replans = max_replans
 
@@ -43,7 +44,14 @@ class PlanAndSolveAgent(AgentProtocol):
     def agent_id(self) -> str:
         return "plan_solve_agent"
 
-    # ... (_build_step_context, _execute_single_step, _synthesize_final_answer 保持不变) ...
+    # 示例：在子步骤执行前防止意外的自递归调用
+    def _resolve_worker(self, node_id: str) -> AgentProtocol:
+        if node_id == self.agent_id:
+            raise ValueError(f"Recursive dispatch forbidden: '{node_id}' cannot schedule itself.")
+        return self._resolver.get(node_id)
+
+    # ... (_build_step_context, _execute_single_step, _synthesize_final_answer 内部改用 self._resolve_worker(...) 即可) ...
+
 
     async def _execute_with_stream(
         self, context: RouteContext, decision: RouteDecision

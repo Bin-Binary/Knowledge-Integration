@@ -6,9 +6,8 @@ from langgraph.graph.state import CompiledStateGraph
 from langchain_core.messages import AIMessage
 
 from graphs.state import MasterAgentState, extract_domain_context_from_state
-from components.recovery.mapper import ExceptionMapper
 from infra.observability import log_execution
-from protocols.internal_knowledge import InternalKnowledgeEngineProtocol
+from protocols import ExceptionMapperProtocol, InternalKnowledgeEngineProtocol
 from schemas.internal_knowledge.pipeline_envelope import PipelineEnvelope
 from schemas.internal_knowledge.resolve_problem import ResolveProblem, ResolutionOutcome
 from schemas.intent_and_route_catalog import TargetDomain
@@ -24,7 +23,6 @@ def _unpack_state_to_envelope(state: MasterAgentState, prefix: str) -> PipelineE
 
     intent_res = state.get("intent_result")
     decision = state.get("route_decision")
-    # 优先复用 IntentResult.primary_query 屏蔽不同匹配器的槽位键名差异
     slot_topic = (
         (intent_res.primary_query if intent_res else None)
         or (decision.params.get("topic") if decision else None)
@@ -92,14 +90,14 @@ def _route_knowledge_mode(state: MasterAgentState) -> Literal["fast_retrieve", "
     return "fast_retrieve"
 
 
-
 def build_knowledge_domain_subgraph(
     engine: InternalKnowledgeEngineProtocol,
+    map_exception: ExceptionMapperProtocol,
     checkpointer: Optional[Any] = None,
 ) -> CompiledStateGraph:
     """
     知识领域防腐层子图：
-    仅依赖单一总控协议 InternalKnowledgeEngineProtocol，对主图暴露为单一黑盒节点。
+    仅依赖单一总控协议 InternalKnowledgeEngineProtocol 与异常映射协议，对主图暴露为单一黑盒节点。
     """
     subgraph = StateGraph(MasterAgentState)
 
@@ -112,7 +110,7 @@ def build_knowledge_domain_subgraph(
         except Exception as exc:
             prev = state.get("failure_context")
             return {
-                "failure_context": ExceptionMapper.to_failure_context(
+                "failure_context": map_exception(
                     exc,
                     trace_id=state.get("trace_id", "unknown"),
                     failed_stage="knowledge_fast_retrieve",
@@ -132,7 +130,7 @@ def build_knowledge_domain_subgraph(
         except Exception as exc:
             prev = state.get("failure_context")
             return {
-                "failure_context": ExceptionMapper.to_failure_context(
+                "failure_context": map_exception(
                     exc,
                     trace_id=state.get("trace_id", "unknown"),
                     failed_stage="knowledge_deep_learn",

@@ -4,10 +4,11 @@ from typing import Any, Callable, Dict
 from langchain_core.messages import AIMessage
 
 from graphs.state import MasterAgentState
-from protocols.components import ExceptionRecoveryProtocol
+from protocols import ExceptionRecoveryProtocol  # 更新为统一协议门面路径
 from schemas.decision import IntentResult, RouteDecision
 from schemas.recovery import FailureContext, RecoveryOutcome
 from infra.observability import log_execution
+
 logger = logging.getLogger(__name__)
 
 
@@ -17,11 +18,10 @@ def create_recovery_node(
     """
     独立异常恢复节点工厂（严格依赖 ExceptionRecoveryProtocol，对具体恢复子类零感知）。
     职责：
-    - is_recovered=True : 按故障阶段回填自愈后的业务对象并清空 failure_context，使流程重返 Happy Path；
+    - is_recovered=True : 按故障阶段回填自愈后的业务对象（或允许原节点重放）并清空 failure_context；
     - is_recovered=False: 写入兜底 AIMessage 与 final_response 并标记 is_terminal=True，安全终止本轮对话。
     """
 
-    # 定义内部纯函数构建兜底状态，替代错误的 self._build_fallback_state
     def _build_fallback_updates(
         outcome: RecoveryOutcome, fallback_text: str
     ) -> Dict[str, Any]:
@@ -43,36 +43,42 @@ def create_recovery_node(
 
         outcome: RecoveryOutcome = await recovery_manager.handle_failure(failure_ctx)
 
-        if outcome.is_recovered and outcome.recovered_data is not None:
+        if outcome.is_recovered:
             updates: Dict[str, Any] = {
                 "recovery_outcome": outcome,
                 "failure_context": None,
                 "is_terminal": False,
             }
-            if failure_ctx.failed_stage == "intent_recognition" and isinstance(
-                outcome.recovered_data, IntentResult
-            ):
-                updates["intent_result"] = outcome.recovered_data
-            elif failure_ctx.failed_stage == "routing" and isinstance(
-                outcome.recovered_data, RouteDecision
-            ):
-                updates["route_decision"] = outcome.recovered_data
-            else:
-                logger.error(
-                    f"[RecoveryNode] Recovered data type mismatch "
-                    f"for stage={failure_ctx.failed_stage}, actual={type(outcome.recovered_data).__name__}"
-                )
-                return _build_fallback_updates(
-                    outcome, "抱歉，系统内部状态还原异常，请稍后再试。"
-                )
+            # 1. 数据修复型自愈：回填修复后的结构化对象
+            if outcome.recovered_data is not None:
+                if failure_ctx.failed_stage == "intent_recognition" and isinstance(
+                    outcome.recovered_data, IntentResult
+                ):
+                    updates["intent_result"] = outcome.recovered_data
+                elif failure_ctx.failed_stage == "routing" and isinstance(
+                    outcome.recovered_data, RouteDecision
+                ):
+                    updates["route_decision"] = outcome.recovered_data
+                else:
+                    logger.error(
+                        "[RecoveryNode] Recovered data type mismatch for stage=%s, actual=%s",
+                        failure_ctx.failed_stage,
+                        type(outcome.recovered_data).__name__,
+                    )
+                    return _build_fallback_updates(
+                        outcome, "抱歉，系统内部状态还原异常，请稍后再试。"
+                    )
 
+            # 2. 若 recovered_data is None，视为无状态重试（Retry），直接清空错误并交由主图边重放原节点
             logger.info(
-                f"[RecoveryNode] Self-healed ({outcome.action_taken}), resuming pipeline."
+                "[RecoveryNode] Self-healed (%s), resuming pipeline.",
+                outcome.action_taken,
             )
             return updates
 
         logger.warning(
-            f"[RecoveryNode] Degraded ({outcome.action_taken}), aborting turn safely."
+            "[RecoveryNode] Degraded (%s), aborting turn safely.",
+            outcome.action_taken,
         )
         fallback_text = (
             outcome.fallback_message

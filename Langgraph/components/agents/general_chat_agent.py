@@ -10,7 +10,7 @@ from schemas.context import RouteContext
 from schemas.decision import RouteDecision
 from schemas.execution import AgentResponse, AgentStatus, AgentStep
 from infra.observability import log_execution
-from components.agents.registry import AgentRegistry
+from components.agents.registry import AgentPluginCatalog
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ class _DirectReplySchema(LLMOutputSchema):
     reply: str = Field(..., description="面向用户的最终自然语言回复内容")
 
 
-@AgentRegistry.register_plugin(
+@AgentPluginCatalog.register_plugin(
     agent_id="general_chat_agent",
     description="擅长常规问答、信息总结、文本改写、概念解释与逻辑推理",
     plannable=True,

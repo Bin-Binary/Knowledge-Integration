@@ -2,7 +2,7 @@
 import logging
 from typing import Optional
 
-from protocols.components import RouterProtocol
+from protocols import RouterProtocol
 from schemas.context import RouteContext
 from schemas.decision import (
     IntentResult,
