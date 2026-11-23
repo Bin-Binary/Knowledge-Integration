@@ -4,8 +4,7 @@ from typing import Any, Awaitable, Callable, Dict, Optional
 from langgraph.types import interrupt
 
 from graphs.state import MasterAgentState, extract_domain_context_from_state
-from protocols import ExceptionMapperProtocol
-from protocols.governance import HumanApprovalGateProtocol
+from protocols import ExceptionMapperProtocol, HumanApprovalGateProtocol
 from infra.observability import log_execution
 
 logger = logging.getLogger(__name__)

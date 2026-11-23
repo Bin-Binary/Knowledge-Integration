@@ -3,13 +3,17 @@ import logging
 from pydantic import Field
 from typing import AsyncIterator, List, Dict
 
-from protocols.agent import AgentProtocol
-from protocols.llm import StructuredLLMProtocol
-from schemas.base import LLMOutputSchema
-from schemas.context import RouteContext
-from schemas.decision import RouteDecision
-from schemas.execution import AgentResponse, AgentStatus, AgentStep
-from infra.observability import log_execution
+from protocols import AgentProtocol, StructuredLLMProtocol
+from schemas import (
+    LLMOutputSchema,
+    RouteContext,
+    RouteDecision,
+    AgentResponse,
+    AgentStatus,
+    AgentStep,
+)
+from infra import log_execution
+# 推荐写法（包内部直接导入，防止日后有人误改 components/agents/__init__.py 引发循环导入）
 from components.agents.registry import AgentPluginCatalog
 
 logger = logging.getLogger(__name__)

@@ -3,12 +3,10 @@ import inspect
 from typing import Callable, List, Optional
 from pydantic import Field
 
-from schemas.base import LLMOutputSchema
-from schemas.internal_knowledge.pipeline_envelope import PipelineEnvelope
-from schemas.internal_knowledge.resolve_problem import ResolutionOutcome, ResolveProblem
-from protocols.llm import StructuredLLMProtocol
+from schemas import LLMOutputSchema
+from schemas.internal_knowledge import PipelineEnvelope, ResolutionOutcome, ResolveProblem
 from components.internal_knowledge.application.base_application import BaseKnowledgeApplicator
-from protocols.internal_knowledge import KnowledgeStorageProtocol
+from protocols import StructuredLLMProtocol, KnowledgeStorageProtocol
 
 class _SolveEvaluationOutput(LLMOutputSchema):
     """大模型求解与缺口诊断结构化输出"""

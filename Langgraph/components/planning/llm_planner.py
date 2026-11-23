@@ -3,7 +3,7 @@ import json
 import logging
 from typing import Dict, List
 
-from protocols.components import PlannerProtocol
+from protocols import PlannerProtocol
 from protocols.llm import StructuredLLMProtocol
 from schemas.context import RouteContext
 from schemas.decision import RouteDecision

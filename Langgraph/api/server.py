@@ -14,9 +14,9 @@ from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from langchain_core.messages import AIMessage
 
-from schemas.api import ChatTurnRequest, ChatTurnResponse
-from protocols.sanitization import RawPayloadRepairerProtocol
-from app.application import AgentApplication
+from schemas import ChatTurnRequest, ChatTurnResponse
+from protocols import RawPayloadRepairerProtocol
+from app import AgentApplication
 from api.middlewares import register_middlewares_and_handlers
 
 logger = logging.getLogger("agent_app")

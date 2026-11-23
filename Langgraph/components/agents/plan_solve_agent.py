@@ -3,14 +3,16 @@ import asyncio
 import logging
 from typing import AsyncIterator, Dict, List, Set
 
-from protocols.agent import AgentProtocol
-from protocols.planning import PlannerProtocol
-from protocols.registry import AgentResolverProtocol  # 1. 依赖抽象协议
-from schemas.context import RouteContext
-from schemas.decision import RouteDecision
-from schemas.execution import AgentResponse, AgentStatus, AgentStep
-from schemas.plan import PlanStep
-from infra.observability import log_execution
+from protocols import AgentProtocol, PlannerProtocol, AgentResolverProtocol
+from schemas import (
+    RouteContext,
+    RouteDecision,
+    AgentResponse,
+    AgentStatus,
+    AgentStep,
+    PlanStep,
+)
+from infra import log_execution
 from components.agents.registry import AgentPluginCatalog
 
 logger = logging.getLogger(__name__)

@@ -1,8 +1,8 @@
 # /components/internal_knowledge/acquisition/base_gap_router.py
 from abc import ABC, abstractmethod
 from typing import List
-from schemas.internal_knowledge.source_uri import SourceURI
-from protocols.internal_knowledge import GapRoutingProtocol
+from schemas.internal_knowledge import SourceURI
+from protocols import GapRoutingProtocol
 
 class BaseGapRouter(ABC, GapRoutingProtocol):
     """2.1 【采集前置子协议】缺口路由算子抽象基类（实现 GapRoutingProtocol）。

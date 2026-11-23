@@ -51,6 +51,11 @@ from .llm import (
     StructuredLLMProtocol,
 )
 
+# 6.数据清洗协议
+from .sanitization import (
+    InputSanitizerProtocol,
+    RawPayloadRepairerProtocol
+)
 __all__ = [
     # Agent & Registry
     "AgentProtocol",
@@ -74,4 +79,7 @@ __all__ = [
     "InternalKnowledgeEngineProtocol",
     # LLM
     "StructuredLLMProtocol",
+    # Sanitization
+    "InputSanitizerProtocol",
+    "RawPayloadRepairerProtocol"
 ]

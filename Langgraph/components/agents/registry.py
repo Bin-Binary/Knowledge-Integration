@@ -4,8 +4,8 @@ import logging
 import pkgutil
 from dataclasses import dataclass
 from typing import Callable, Dict, Iterable, Optional, Type
-from protocols.agent import AgentProtocol
-from protocols import AgentRegistrarProtocol, AgentResolverProtocol
+from protocols import AgentProtocol, AgentRegistrarProtocol, AgentResolverProtocol
+
 logger = logging.getLogger(__name__)
 
 

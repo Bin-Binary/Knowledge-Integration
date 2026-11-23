@@ -12,12 +12,10 @@ from protocols import (
     IntentRecognizerProtocol,
     InternalKnowledgeEngineProtocol,
     RouterProtocol,
-)
-from protocols.persistence import (
     ContextWindowGuardProtocol,
-    MemoryCommitterProtocol,
+    MemoryCommitterProtocol,  
+    HumanApprovalGateProtocol,  
 )
-from protocols.governance import HumanApprovalGateProtocol
 from schemas.intent_and_route_catalog import TargetDomain
 from schemas.decision import RouteDecision
 from graphs.state import MasterAgentState

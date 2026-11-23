@@ -2,9 +2,7 @@
 import asyncio
 from typing import Any, Dict, List, Optional
 
-from schemas.internal_knowledge.information import Information
-from schemas.internal_knowledge.labeling import Labeling
-from schemas.internal_knowledge.relating_concepts import RelatingConcepts
+from schemas.internal_knowledge.information import Information, Labeling, RelatingConcepts
 from protocols.internal_knowledge import LabelExtractorProtocol, RelationBuilderProtocol
 from components.internal_knowledge.organization.registry import OrganizationPluginRegistry, OrgStage
 from components.internal_knowledge.organization.organizer import KnowledgeOrganizer

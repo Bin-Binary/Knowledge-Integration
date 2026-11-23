@@ -5,9 +5,9 @@ from pathlib import Path
 from typing import List, Set
 from pydantic import Field
 
-from schemas.base import LLMOutputSchema
-from schemas.internal_knowledge.source_uri import SourceScheme, SourceURI
-from protocols.llm import StructuredLLMProtocol
+from schemas import LLMOutputSchema
+from schemas.internal_knowledge import SourceScheme, SourceURI
+from protocols import StructuredLLMProtocol
 from components.internal_knowledge.acquisition.base_gap_router import BaseGapRouter
 
 

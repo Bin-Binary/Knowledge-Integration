@@ -3,11 +3,8 @@ import re
 import logging
 from typing import Dict, Optional, List, Any, Tuple, Pattern
 
-from schemas.context import RouteContext, Message
-from schemas.decision import IntentResult
-from schemas.intent_and_route_catalog import IntentCatalog
-from protocols import IntentRecognizerProtocol
-from protocols.llm import StructuredLLMProtocol
+from schemas import RouteContext, Message, IntentResult, IntentCatalog
+from protocols import IntentRecognizerProtocol, StructuredLLMProtocol
 
 logger = logging.getLogger(__name__)
 

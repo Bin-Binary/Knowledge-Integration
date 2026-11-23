@@ -8,8 +8,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-from protocols.sanitization import RawPayloadRepairerProtocol
-from infra.observability import bind_observability_context, reset_observability_context
+from protocols import RawPayloadRepairerProtocol
+from infra import bind_observability_context, reset_observability_context
 
 logger = logging.getLogger("agent_app")
 

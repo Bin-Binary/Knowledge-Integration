@@ -3,13 +3,13 @@
 import asyncio
 import json
 import re
-from typing import Any, Callable, Dict, Optional, Tuple, Type
+from typing import Any, Dict, Optional, Tuple, Type
 
 import httpx
 from langchain_core.exceptions import OutputParserException
 from pydantic import ValidationError
 
-from schemas.recovery import FailureCategory, FailureContext
+from schemas import FailureCategory, FailureContext
 from protocols import ExceptionMapperProtocol
 
 # 基础敏感词脱敏正则（覆盖常见的 API Key、Bearer Token）

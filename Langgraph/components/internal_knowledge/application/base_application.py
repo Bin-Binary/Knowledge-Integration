@@ -1,9 +1,8 @@
 # /components/internal_knowledge/application/base_application.py
 from abc import ABC, abstractmethod
 
-from schemas.internal_knowledge.pipeline_envelope import PipelineEnvelope
-from schemas.internal_knowledge.resolve_problem import ResolveProblem
-from protocols.internal_knowledge import KnowledgeApplicationProtocol
+from schemas.internal_knowledge import PipelineEnvelope, ResolveProblem
+from protocols import KnowledgeApplicationProtocol
 
 class BaseKnowledgeApplicator(ABC, KnowledgeApplicationProtocol):
     """1. 【运用】环节抽象基类（实现 KnowledgeApplicationProtocol）。

@@ -1,9 +1,9 @@
-# /components/evaluation/base_evaluator.py
+# /components/_shared/base_evaluator.py
 import logging
 from abc import ABC, abstractmethod
 from typing import Callable, ClassVar, Dict, Generic, Hashable, Optional, TypeVar
 
-from protocols.evaluation import QualityEvaluatorProtocol
+from protocols import QualityEvaluatorProtocol
 
 logger = logging.getLogger(__name__)
 

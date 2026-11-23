@@ -4,7 +4,7 @@ import json
 from typing import List, Callable, Optional
 from langchain_core.runnables import RunnableLambda, RunnableSerializable
 
-from protocols.sanitization import InputSanitizerProtocol, RawPayloadRepairerProtocol
+from protocols import InputSanitizerProtocol, RawPayloadRepairerProtocol
 
 _WIN_PATH_RE = re.compile(r'(?:[a-zA-Z]:|\.\.?)(?:\\[^\s"\'<>|?*]+)+')
 _CTRL_CHARS_RE = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f\u200b-\u200d\ufeff]')

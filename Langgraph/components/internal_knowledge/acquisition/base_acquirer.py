@@ -3,10 +3,8 @@ import hashlib
 from abc import ABC, abstractmethod
 from typing import ClassVar, Dict, List, Optional, Tuple, Type
 
-from schemas.internal_knowledge.source_uri import SourceScheme, SourceURI
-from schemas.internal_knowledge.information import Information
-from schemas.internal_knowledge.pipeline_envelope import PipelineEnvelope
-from protocols.internal_knowledge import KnowledgeAcquisitionProtocol, GapRoutingProtocol
+from schemas.internal_knowledge import SourceScheme, SourceURI, Information, PipelineEnvelope
+from protocols import KnowledgeAcquisitionProtocol, GapRoutingProtocol
 
 class BaseKnowledgeAcquirer(ABC, KnowledgeAcquisitionProtocol):
     """2. 【采集】环节抽象基类（实现 KnowledgeAcquisitionProtocol）。"""

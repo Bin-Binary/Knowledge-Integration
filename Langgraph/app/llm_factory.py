@@ -6,8 +6,8 @@ from typing import Dict, Iterator
 import httpx
 from langchain_openai import ChatOpenAI
 
-from config.system_config import AgentSystemConfig, LLMProfileConfig
-from infra.adapters import LangChainStructuredAdapter
+from config import AgentSystemConfig, LLMProfileConfig
+from infra import LangChainStructuredAdapter
 
 _PROXY_KEYS = (
     "HTTP_PROXY",

@@ -3,8 +3,8 @@ import logging
 from typing import Any, Awaitable, Callable, Dict, Optional
 
 from graphs.state import MasterAgentState, extract_domain_context_from_state
-from protocols import ExceptionMapperProtocol
-from protocols.persistence import (
+from protocols import (
+    ExceptionMapperProtocol,
     ContextWindowGuardProtocol,
     MemoryCommitterProtocol,
 )

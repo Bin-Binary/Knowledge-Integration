@@ -8,21 +8,21 @@ from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph.state import CompiledStateGraph
 
-from config.business_config import load_business_config
-from config.system_config import AgentSystemConfig
-from schemas.intent_and_route_catalog import AgentBusinessConfig
-from protocols.governance import HumanApprovalGateProtocol
-from protocols.persistence import (
+from config import load_business_config, AgentSystemConfig
+from schemas import AgentBusinessConfig
+from protocols import (
     ContextWindowGuardProtocol,
     MemoryCommitterProtocol,
+    HumanApprovalGateProtocol,
+    InputSanitizerProtocol,
+    RawPayloadRepairerProtocol,
 )
-from protocols.sanitization import InputSanitizerProtocol, RawPayloadRepairerProtocol
-from infra.observability import (
+from infra import (
     bind_observability_context,
     reset_observability_context,
     setup_global_observability_logging,
 )
-from components._shared.sanitization_pipeline import (
+from components import (
     InputSanitizationPipeline,
     LenientJsonPayloadRepairer,
 )

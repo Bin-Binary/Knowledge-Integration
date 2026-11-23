@@ -2,25 +2,27 @@
 from typing import Any, Dict, Optional
 from langgraph.graph.state import CompiledStateGraph
 
-from config.system_config import AgentSystemConfig
+from config import AgentSystemConfig
 from schemas.intent_and_route_catalog import AgentBusinessConfig, TargetDomain
-from protocols.persistence import (
+from protocols import (
     ContextWindowGuardProtocol,
     MemoryCommitterProtocol,
+    HumanApprovalGateProtocol
 )
-from protocols.governance import HumanApprovalGateProtocol
 
-from infra.adapters import LangChainStructuredAdapter
-from components._shared.mapper import DefaultExceptionMapper
-from components.intent.hybrid_recognizer import HybridIntentRecognizer
-from components.routing.router import CatalogRouter
-from components.recovery.composite_recovery import CompositeRecoveryManager
-from components.recovery.json_heal_recovery import JsonHealRecoveryManager
-from components.internal_knowledge.factory import create_default_knowledge_engine
-from components.planning.llm_planner import LLMPlanner
-from components.agents.plan_solve_agent import PlanAndSolveAgent
-from components.agents.registry import AgentPluginCatalog, AgentRegistry
-from graphs.master_graph import build_master_agent_graph
+from infra import LangChainStructuredAdapter
+from components import DefaultExceptionMapper
+from components.intent import HybridIntentRecognizer
+from components.routing import CatalogRouter
+from components.recovery import CompositeRecoveryManager, JsonHealRecoveryManager
+from components.internal_knowledge import create_default_knowledge_engine
+from components.planning import LLMPlanner
+from components.agents import (
+    PlanAndSolveAgent,
+    AgentPluginCatalog,
+    AgentRegistry
+)
+from graphs import build_master_agent_graph
 from app.llm_factory import build_adapter_pool
 
 
