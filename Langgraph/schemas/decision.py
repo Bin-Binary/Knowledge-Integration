@@ -17,7 +17,7 @@ class IntentResult(LLMOutputSchema):
     intent: str = Field(..., description="识别出的标准化意图标签")
     confidence: float = Field(..., ge=0.0, le=1.0, description="置信度区间 [0.0, 1.0]")
     slots: Dict[str, Any] = Field(default_factory=dict, description="提取的关键槽位参数")
-    reasoning: Optional[str] = Field(default=None, description="模型分类推理依据，提升准确率")
+    # reasoning: Optional[str] = Field(default=None, description="模型分类推理依据，提升准确率")
 
     @field_validator("slots", mode="before")
     @classmethod
@@ -25,6 +25,10 @@ class IntentResult(LLMOutputSchema):
         """容错处理：当模型输出 "slots": null 时自动转为空字典"""
         return v if v is not None else {}
 
+    @property
+    def primary_query(self) -> Optional[str]:
+        """统一提取指令参数或正则捕获的核心课题，屏蔽不同匹配器的槽位键名差异"""
+        return self.slots.get("topic") or self.slots.get("raw_arg")
 
 class FallbackPlan(ImmutableSchema):
     """回退执行计划"""
@@ -41,3 +45,7 @@ class RouteDecision(ImmutableSchema):
     confidence: float = Field(default=1.0, ge=0.0, le=1.0)
     reason: str = Field(default="")
     fallback_plan: Optional[FallbackPlan] = None
+    
+    @property
+    def should_skip_knowledge(self) -> bool:
+        return bool(self.params.get("skip_knowledge", False))
