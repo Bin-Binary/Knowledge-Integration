@@ -1,36 +1,63 @@
-# components/intent/hybrid_recognizer.py
+# /components/intent/hybrid_recognizer.py
+import re
 import logging
-from typing import Dict, Optional, List, Any, Type, TypeVar, Set
-from pydantic import BaseModel
+from typing import Dict, Optional, List, Any, Tuple, Pattern
 
 from schemas.context import RouteContext, Message
 from schemas.decision import IntentResult
+from schemas.intent_and_route_catalog import IntentCatalog
 from protocols.components import IntentRecognizerProtocol
+from protocols.llm import StructuredLLMProtocol
 
-T = TypeVar("T", bound=BaseModel)
 logger = logging.getLogger(__name__)
 
 
 class HybridIntentRecognizer(IntentRecognizerProtocol):
-    """Hybrid intent recognizer combining static command matching with LLM semantic classification.
-
-    Two-tier strategy:
-    1. Fast path: Exact command-map lookup (O(1), zero LLM cost, singleton cache).
-    2. Slow path: LLM structured generation with history truncation & tool-message filtering.
+    """混合意图识别器：
+    1. 快路径（Tier 1）：O(1) 静态前缀指令精确匹配，零大模型开销。
+    2. 慢路径（Tier 2）：基于 IntentCatalog 动态生成的自省 Schema Prompt 进行语义分类。
     """
 
     def __init__(
         self,
-        command_map: Dict[str, str],
-        llm_client: Optional[Any] = None,
+        catalog: IntentCatalog,
+        llm_client: Optional[StructuredLLMProtocol] = None,
         context_window_turns: int = 5,
     ) -> None:
-        self._command_map = command_map
+        self._catalog = catalog
+        self._command_map = catalog.command_map
         self._llm_client = llm_client
         self._context_window_turns = context_window_turns
         self._static_cache: Dict[str, IntentResult] = {}
-    
-    def recognize(self, ctx: RouteContext) -> Optional[IntentResult]:
+        # 启动期预编译动态 System Prompt，复用 IntentResult.to_prompt_guide()
+        self._compiled_system_prompt = self._build_system_prompt(catalog)
+        # 启动时预编译所有正则规则，避免运行期重复编译开销
+        self._compiled_rules: List[Tuple[str, float, List[Pattern[str]]]] = [
+            (
+                rule.intent,
+                rule.confidence,
+                [re.compile(p, re.IGNORECASE) for p in rule.patterns],
+            )
+            for rule in catalog.fast_rules
+        ]        
+
+    @staticmethod
+    def _build_system_prompt(catalog: IntentCatalog) -> str:
+        catalog_block = catalog.format_catalog_block()
+        output_schema_guide = IntentResult.to_prompt_guide()
+
+        return (
+            "不要推理\n"
+            "你是一个精准的意图分类器。请根据【可选意图列表】，将用户最新消息归类为最匹配的一项，并提取关键槽位。\n\n"
+            f"【输出数据结构要求】\n{output_schema_guide}\n\n"
+            "【约束条件】\n"
+            "1. 严格以合法的单行 JSON 对象输出，严禁输出任何分析步骤、Markdown 标记或额外解释。\n"
+            "2. `intent` 必须严格命中上述列表中的标识之一。\n\n"
+            f"【可选意图列表】\n{catalog_block}\n"
+            "/no_think"
+        )
+
+    async def recognize(self, ctx: RouteContext) -> Optional[IntentResult]:
         stripped = ctx.current_input.strip()
         if not stripped:
             return None
@@ -40,11 +67,16 @@ class HybridIntentRecognizer(IntentRecognizerProtocol):
         if static_result is not None:
             return static_result
 
+        # Tier 1.5: 非LLM快速正则/关键词匹配（如 "你好"、"把...存入知识库"）
+        fast_rule_result = self._try_fast_rules(stripped)
+        if fast_rule_result is not None:
+            return fast_rule_result
+
         # --- Tier 2: LLM semantic classification ---
         if self._llm_client is None:
             return None
 
-        return self._llm_classify(ctx)
+        return await self._llm_classify(ctx)
 
     # ------------------------------------------------------------------
     # Tier 1: Static command matching
@@ -71,21 +103,36 @@ class HybridIntentRecognizer(IntentRecognizerProtocol):
         return self._static_cache[key]
 
     # ------------------------------------------------------------------
+    # Tier 1.5: fast_rules
+    # ------------------------------------------------------------------
+    def _try_fast_rules(self, text: str) -> Optional[IntentResult]:
+        for intent_label, conf, patterns in self._compiled_rules:
+            for pat in patterns:
+                match = pat.search(text)
+                if match:
+                    # 如果正则中使用了命名捕获组 (?P<topic>...)，自动提取为 slots！
+                    extracted_slots = {k: v for k, v in match.groupdict().items() if v}
+                    return IntentResult(
+                        intent=intent_label,
+                        confidence=conf,
+                        slots=extracted_slots,
+                    )
+        return None
+
+    # ------------------------------------------------------------------
     # Tier 2: LLM semantic classification
     # ------------------------------------------------------------------
 
-    def _llm_classify(self, ctx: RouteContext) -> Optional[IntentResult]:
+    async def _llm_classify(self, ctx: RouteContext) -> Optional[IntentResult]:
         messages = self._build_llm_messages(ctx)
-        # 严格遵循快乐路径（Happy Path）：
-        # 不在此处吞掉 LLMOutputParseError 或 TimeoutError，直接向上抛出交由外层 Recovery 体系接管
-        result = self._llm_client.generate_structured(messages, IntentResult)
+        result = await self._llm_client.generate_structured(messages, IntentResult)
         if isinstance(result, IntentResult):
             return result
         logger.warning("[HybridRecognizer] LLM returned non-IntentResult; discarding.")
         return None
-
+    
     def _build_llm_messages(self, ctx: RouteContext) -> List[Dict[str, str]]:
-        system_msg = {"role": "system", "content": self._system_prompt()}
+        system_msg = {"role": "system", "content": self._compiled_system_prompt}
         payload: List[Dict[str, str]] = [system_msg]
 
         recent = self._truncate_history(ctx.safe_history)
@@ -94,20 +141,6 @@ class HybridIntentRecognizer(IntentRecognizerProtocol):
 
         payload.append({"role": "user", "content": ctx.current_input})
         return payload
-
-    def _system_prompt(self) -> str:
-        return (
-            "不要推理"
-            "你是一个意图分类器"
-            "将用户最新的消息分类为预定义的意图类别之一"
-            "如果存在，提取关键槽位"
-            "【输出格式要求】请以 JSON 格式输出合法的单行 JSON 对象，严禁输出任何分析步骤、编号列表、Markdown 标记或额外解释"
-            """示例输出：
-            {"intent": "chitchat", "confidence": 0.95, "slots": {}}
-            """
-            "约束：1.禁止直接将示例输出作为直接输出"
-            "/no_think"
-        )
 
     def _truncate_history(self, history: List[Message]) -> List[Message]:
         non_tool = [m for m in history if m.role != "tool"]
