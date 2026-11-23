@@ -62,3 +62,13 @@ stage: gold
 * **进阶技巧**：用注册表驱动约束解码。把注册表的 key 集合注入 LLM 输出 schema（如 `Literal[(*registry.keys(), "UNKNOWN")]`），使模型在结构层面不可能输出未注册标签，从源头消灭“路由键幻觉”，比“事后校验 + 重试”更可靠。
 * **Agent 场景必须补的三道保险**：① 循环保护（`max_depth` / `visited` 集合，防止路径震荡）；② 成本分层（确定性热路径优先，记录 `fallback_rate` 作为“下一个该补哪个处理器”的数据依据）；③ 白名单即安全边界（定位动作常涉及查库 / 跑脚本 / 调接口，绝不允许 LLM 自行拼接命令）。
 * **一句话总结**：`register` = 给「路由键」和「实现类」牵线的注册表；`_registry` = 导入期自动填充的登记簿；分发入口 = 拿数据里的键去查表。**有数据键则用注册表，无数据键则用模板方法 + 依赖注入，二者正交、不可互换。**
+
+### Q8：如何判定新功能应该放入 `components/agents/`，还是新建独立 `components/<domain>/`？面对异构扩展如何避免 `bootstrap.py` 膨胀？
+* **核心疑惑**：后续新增持久化、人工审核或新业务能力时，放在哪里？多租户或多后端异构时怎么装配？
+* **核心答案**：
+  1. **Worker vs Middleware 判别铁律**：
+     * **放入 `components/agents/`**：由 `CatalogRouter` 根据意图**互斥挑选**、直接产出业务答案（`AgentResponse`）且可被 `PlanAndSolveAgent` 规划调用的业务执行单元。
+     * **新建独立 `components/<domain>/`**：每次请求必经的**横切治理流水线**（如 `context_guard`、`approval_gate`、`memory_commit`、`recovery`），必须在 `protocols/` 建协议、在 `graphs/` 建独立节点，严禁混入 `agents/`。
+  2. **异构系统组合根（`bootstrap.py`）三策**：
+     * **按域拆分“子装配工厂（Sub-Factories）”**：各复杂子系统在内部提供 `factory.py`（如 `components/internal_knowledge/factory.py`），由配置文件的 `provider` 字段驱动多态实例化，`bootstrap.py` 仅做顶层总装。
+     * **多图实例池解决拓扑异构**：面对不同租户或安全等级需要不同节点组合时，启动期调用同一个 `build_master_agent_graph(...)` 编译并缓存多张图实例，请求入口按上下文路由至对应图实例，不在主图内部写业务 `if/else`。
