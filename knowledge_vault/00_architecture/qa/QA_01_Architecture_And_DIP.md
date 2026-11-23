@@ -61,3 +61,12 @@ stage: gold
     * **开放域概念**：`Labeling.label` 保持 `str`（无法穷举，辅以泛化元分类枚举 `category: NodeCategory` 支持结构化过滤）。
     * **领域关系边**：核心层仅定义通用关系 `GeneralRelationType`，通过泛型 `Generic[RelTypeT]` 注入具体领域枚举（如 `CodeRelationType`），禁止核心文件反向导入业务代码，同时在模型内拦截 `label_1_id == label_2_id` 的无效自环边。
     * **零配置算子发现**：新算子通过装饰器注册表 + `pkgutil` 动态包扫描实现自动发现，主干代码零修改。
+
+### Q5：组件层（`components/`）与编排适配层（`graphs/`、`api/`）的依赖红线是什么？
+* **核心疑惑**：组件之间能否互相导入？图编排层能否直接引用注册表或异常映射器等组件工具？
+* **核心答案**：严格遵守**单向依赖铁律（零例外）**，防止网状耦合与循环导入：
+  1. **适配层（`graphs/`、`api/`）禁入具体组件**：编排层与网关层只能导入 `protocols/`、`schemas/` 与 `infra/`，全局搜索 `from components` 必须为 0 条。若某个映射器（如 `ExceptionMapper`）同时被图编排层和组件层需要，必须下沉至 `infra/`；注册表则抽象为 `AgentRegistryProtocol` 放入 `protocols/`。
+  2. **一级业务组件之间禁止横向互导**：例如 `IntentRecognizer` 严禁直接 `import CatalogRouter`。组件间的协作必须通过 `protocols/` 声明依赖，由组合根（`bootstrap.py`）在启动时统一注入。
+  3. **二级共享基类收拢原则（`components/_shared/`）**：仅当某个抽象模板或无状态算子**跨 2 个及以上一级业务域复用**时（如 `BaseQualityEvaluator` 同时服务于知识库切片打分与持久化记忆价值评估），才收入 `components/_shared/`；域内私有基类（如 `BaseRecoveryManager`）保留在各自领域目录内以维持高内聚。
+
+
