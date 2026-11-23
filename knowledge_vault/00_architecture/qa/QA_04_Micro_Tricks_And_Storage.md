@@ -37,3 +37,12 @@ stage: gold
   * **`SourceURI` 内嵌序列化**：作为溯源值对象直接嵌入 `Information` 的 YAML Frontmatter 中，通过 `@field_serializer` 自动扁平化为紧凑 URI 字符串，保障增量更新的原子性。
   * **语义边独立卡片 + 本体星型聚合**：每条边按 `<vault_root>/<stage>/relating/<relation_id>.md` 独立落盘，正文中渲染标准 Obsidian 双向链接（`[[lbl_101]] ➔ causal ➔ [[lbl_205]]`）；上层 `Ontology` 卡片通过引用节点与边 ID 成为知识图谱的星型枢纽节点。
   * **跨生命周期零断链**：所有跨文件引用严格使用全局唯一逻辑 ID（如 `[[lbl_101]]`），严禁硬编码物理路径，确保文件在 `debug -> release -> gold` 之间人工审核迁移或自动晋升时全图谱零断链。
+
+ ### Q19：LangGraph 主控图自愈闭环与多轮 Checkpointer 状态防坑技巧
+* **核心疑惑**：在 LangGraph 中编排异常自愈节点和多轮持久化时，为什么容易出现协程未等待报错、无限死循环、状态字段丢失或第二轮对话误熔断？
+* **核心答案**（四大微观防坑铁律）：
+  1. **同步/异步节点包装器自适应**：图节点工厂普遍为 `async def`，在编排层为节点添加状态防火墙（Decorator/Wrapper）时，必须通过 `inspect.iscoroutinefunction(raw_node)` 动态分派 `async def` 或同步 `def` 包装器，严禁在同步闭包中直接调用协程节点。
+  2. **自愈路由区分“产物续跑（Resume）”与“节点重跑（Retry）”**：若 `recovery_node` 已通过修复还原出阶段产物（如 `intent_result` 已填充），条件边应直接推进至下游节点（`routing`），避免重入原报错节点造成重复 LLM 调用及产物覆盖；同时需在擦除 `failure_context` 前保存 `_last_failed_node` 快照。
+  3. **TypedDict 显式声明防静默过滤**：LangGraph 在合并节点增量字典时会严格校验 `MasterAgentState` 的键集合。任何编排层内部状态（如 `_recovery_attempts`、`_last_failed_node`）若未在 `TypedDict` 中声明，会被静默丢弃导致熔断器失效。
+  4. **Checkpointer 跨轮次状态归零**：接入 `MemorySaver` 等持久化检查点后，系统控制字段（如重试计数、终止标记）会随 `thread_id` 跨轮保留。必须在每轮请求的入口初始化载荷（`_build_initial_turn_state`）中显式重置为初始值。
+
