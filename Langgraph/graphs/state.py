@@ -7,6 +7,7 @@ from schemas.context import Message, WindowMetrics
 from schemas.decision import IntentResult, RouteDecision
 from schemas.recovery import FailureContext, RecoveryOutcome
 
+
 class MasterAgentState(TypedDict, total=False):
     """
     生产级全局图状态（TypedDict + Pydantic 混合模式）。
@@ -31,9 +32,12 @@ class MasterAgentState(TypedDict, total=False):
     final_response: Optional[str]             # 【终态输出】执行器生成的最终回复
 
     # 异常捕获与自愈状态（供 recovery_node 与条件边流转使用）
-    failure_context: Optional[FailureContext]   # 替换为具体的 FailureContext 类型
-    recovery_outcome: Optional[RecoveryOutcome] # 替换为具体的 RecoveryOutcome 类型
-    is_terminal: bool                           # 标记是否进入兜底终止态
+    failure_context: Optional[FailureContext]     # 替换为具体的 FailureContext 类型
+    recovery_outcome: Optional[RecoveryOutcome]   # 替换为具体的 RecoveryOutcome 类型
+    is_terminal: bool                             # 标记是否进入兜底终止态
+    _recovery_attempts: int                       # 主图自愈循环熔断计数器
+    _last_failed_node: Optional[str]              # 擦除 failure_context 前保留的断点节点快照
+
 
 def extract_domain_context_from_state(state: MasterAgentState) -> tuple[str, List[Message]]:
     """
