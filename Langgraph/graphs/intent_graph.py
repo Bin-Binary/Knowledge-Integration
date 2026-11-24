@@ -6,7 +6,7 @@ from typing import Any, Callable, Dict
 from schemas.context import RouteContext
 from protocols import ExceptionMapperProtocol, IntentRecognizerProtocol
 from graphs.state import MasterAgentState, extract_domain_context_from_state
-from infra.observability import log_execution
+from infra import log_execution
 
 logger = logging.getLogger(__name__)
 
