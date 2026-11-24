@@ -11,7 +11,6 @@
 # 1. 执行器、工具挂载与实例注册解析协议
 from .agent import (
     AgentProtocol,
-    ToolCapableAgentProtocol,
 )
 from .registry import (
     AgentRegistrarProtocol,
@@ -54,7 +53,20 @@ from .llm import (
 # 6.数据清洗协议
 from .sanitization import (
     InputSanitizerProtocol,
-    RawPayloadRepairerProtocol
+    RawPayloadRepairerProtocol,
+)
+
+# 7.持久化协议
+from .persistence import(
+    ContextWindowGuardProtocol,
+    ToolPrunerProtocol,
+    MemoryCommitterProtocol,
+)
+
+# 8.人机协同协议
+from .governance import(
+    HumanApprovalGateProtocol,
+
 )
 __all__ = [
     # Agent & Registry
@@ -81,5 +93,12 @@ __all__ = [
     "StructuredLLMProtocol",
     # Sanitization
     "InputSanitizerProtocol",
-    "RawPayloadRepairerProtocol"
+    "RawPayloadRepairerProtocol",
+    # persistance
+    "ContextWindowGuardProtocol",
+    "ToolPrunerProtocol",
+    "MemoryCommitterProtocol",
+    # governance
+    "HumanApprovalGateProtocol",
+
 ]
