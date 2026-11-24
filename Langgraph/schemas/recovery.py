@@ -9,6 +9,7 @@ class FailureCategory(str, Enum):
     """标准化故障分类枚举"""
     OUTPUT_FORMAT_ERROR = "output_format_error"  # 模型输出污染（如思维链/Markdown导致JSON解析失败）
     VALIDATION_ERROR = "validation_error"        # Pydantic Schema 业务字段校验不通过
+    LLM_CALL_TIMEOUT_ERROR = "llm_call_timeout_error"  # 模型调用超时异常
     UNKNOWN_ERROR = "unknown_error"              # 未知运行时异常
 
 class FailureContext(ImmutableSchema):
