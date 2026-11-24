@@ -3,13 +3,18 @@ from typing import Any, Dict, Optional
 from langgraph.graph.state import CompiledStateGraph
 
 from config import AgentSystemConfig
-from schemas.intent_and_route_catalog import AgentBusinessConfig, TargetDomain
+from schemas import(
+    AgentBusinessConfig, 
+    TargetDomain,
+    FailureCategory,
+    
+)
 from protocols import (
     ContextWindowGuardProtocol,
     MemoryCommitterProtocol,
     HumanApprovalGateProtocol
 )
-
+from infra.exceptions import StructuredOutputError
 from infra import LangChainStructuredAdapter
 from components import DefaultExceptionMapper
 from components.intent import HybridIntentRecognizer
@@ -86,7 +91,12 @@ def assemble_master_graph(
 ) -> CompiledStateGraph:
     """组装全部具体组件并注入主控状态图（全系统唯一的依赖接线中心）"""
     adapters = build_adapter_pool(sys_cfg)
-    exception_mapper = DefaultExceptionMapper(enable_sanitization=True)
+    exception_mapper = DefaultExceptionMapper(
+        enable_sanitization=True,
+        custom_rules=(
+            (StructuredOutputError, FailureCategory.OUTPUT_FORMAT_ERROR),
+        ),
+    )
 
     recognizer = HybridIntentRecognizer(
         catalog=biz_cfg.intent_catalog,
