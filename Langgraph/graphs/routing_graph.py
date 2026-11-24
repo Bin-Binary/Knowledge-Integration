@@ -4,8 +4,7 @@ import logging
 from typing import Any, Callable, Dict
 
 from schemas import RouteContext
-from protocols import RouterProtocol
-from components import DefaultExceptionMapper
+from protocols import RouterProtocol, ExceptionMapperProtocol
 from graphs.state import MasterAgentState, extract_domain_context_from_state
 from infra import log_execution
 
@@ -14,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 def create_routing_node(
     router: RouterProtocol,
+    map_exception: ExceptionMapperProtocol,
 ) -> Callable[[MasterAgentState], Any]:
     """路由调度节点：调用 RouterProtocol.dispatch 产出 RouteDecision，异常交由 recovery_node 自愈"""
 
@@ -48,7 +48,7 @@ def create_routing_node(
         except Exception as exc:
             prev_failure = state.get("failure_context")
             current_retry = prev_failure.retry_count if prev_failure else 0
-            failure_ctx = DefaultExceptionMapper.to_failure_context(
+            failure_ctx = map_exception(
                 exc,
                 trace_id=trace_id,
                 failed_stage="routing",
