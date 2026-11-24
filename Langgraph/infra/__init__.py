@@ -3,6 +3,7 @@ from .observability import (
     bind_observability_context, 
     reset_observability_context, 
     setup_global_observability_logging,
+    log_execution,
 
 )
 
@@ -15,6 +16,7 @@ __all__ = [
     "bind_observability_context", 
     "reset_observability_context", 
     "setup_global_observability_logging",
+    "log_execution",
     # 模型适配
     "LangChainStructuredAdapter",
 ]
