@@ -16,8 +16,12 @@ from protocols import (
     MemoryCommitterProtocol,  
     HumanApprovalGateProtocol,  
 )
-from schemas.intent_and_route_catalog import TargetDomain
-from schemas.decision import RouteDecision
+from schemas import(
+    TargetDomain,
+    RouteDecision,
+
+) 
+from infra import log_execution
 from graphs.state import MasterAgentState
 from graphs.intent_graph import create_intent_node
 from graphs.routing_graph import create_routing_node
@@ -29,7 +33,6 @@ from graphs.persistence_graph import (
     create_memory_commit_node,
 )
 from graphs.governance_graph import create_approval_gate_node
-from infra.observability import log_execution
 
 logger = logging.getLogger(__name__)
 
