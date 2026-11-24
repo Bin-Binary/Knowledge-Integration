@@ -8,7 +8,7 @@ from protocols import (
     ContextWindowGuardProtocol,
     MemoryCommitterProtocol,
 )
-from infra.observability import log_execution
+from infra import log_execution
 
 logger = logging.getLogger(__name__)
 
