@@ -34,6 +34,7 @@ from graphs.persistence_graph import (
 )
 from graphs.governance_graph import create_approval_gate_node
 
+
 logger = logging.getLogger(__name__)
 
 # 核心与扩展节点常量标识
@@ -228,80 +229,6 @@ def build_master_agent_graph(
     """
     workflow = StateGraph(MasterAgentState)
 
-    has_knowledge = knowledge_engine is not None
-    has_context_guard = context_guard is not None
-    has_approval_gate = approval_gate is not None
-    has_memory_committer = memory_committer is not None
-
-    # 1. 注册核心与扩展节点（全协议依赖注入）
-    if has_context_guard:
-        workflow.add_node(
-            CONTEXT_GUARD_NODE,
-            create_context_guard_node(context_guard, map_exception=map_exception),
-        )
-
-    workflow.add_node(
-        INTENT_NODE,
-        create_intent_node(intent_recognizer, map_exception=map_exception),
-    )
-    workflow.add_node(
-        ROUTING_NODE,
-        create_routing_node(router, map_exception=map_exception),
-    )
-
-    if has_knowledge:
-        workflow.add_node(
-            KNOWLEDGE_NODE,
-            build_knowledge_domain_subgraph(
-                engine=knowledge_engine,
-                map_exception=map_exception,
-            ),
-        )
-
-    if has_approval_gate:
-        workflow.add_node(
-            APPROVAL_GATE_NODE,
-            create_approval_gate_node(approval_gate, map_exception=map_exception),
-        )
-
-    workflow.add_node(
-        EXECUTION_NODE,
-        create_execution_node(agent_resolver, map_exception=map_exception),
-    )
-    workflow.add_node(
-        RECOVERY_NODE,
-        _wrap_recovery_node(
-            create_recovery_node(recovery_manager),
-            max_attempts=max_recovery_attempts,
-        ),
-    )
-
-    if has_memory_committer:
-        workflow.add_node(
-            MEMORY_COMMIT_NODE,
-            _wrap_memory_commit_node(
-                create_memory_commit_node(memory_committer, map_exception=map_exception)
-            ),
-        )
-
-    # 2. 拓扑连边：入口与上下文守卫
-    finish_target = MEMORY_COMMIT_NODE if has_memory_committer else END
-
-    if has_context_guard:
-        workflow.add_edge(START, CONTEXT_GUARD_NODE)
-        workflow.add_conditional_edges(
-            CONTEXT_GUARD_NODE,
-            _route_after_context_guard,
-            {
-                RECOVERY_NODE: RECOVERY_NODE,
-                INTENT_NODE: INTENT_NODE,
-                "finish_flow": finish_target,
-            },
-        )
-    else:
-        workflow.add_edge(START, INTENT_NODE)
-
-    # 3. 意图识别 -> 路由调度
     has_knowledge = knowledge_engine is not None
     has_context_guard = context_guard is not None
     has_approval_gate = approval_gate is not None
