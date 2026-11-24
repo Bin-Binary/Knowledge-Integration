@@ -3,15 +3,15 @@ import logging
 from typing import Optional
 
 from protocols import RouterProtocol
-from schemas.context import RouteContext
-from schemas.decision import (
+from schemas import (
     IntentResult,
     RouteDecision,
     FallbackPlan,
     FallbackTrigger,
+    RouteContext,
+    RouteCatalog,
 )
-from schemas.intent_and_route_catalog import RouteCatalog
-from infra.observability import log_execution
+from infra import log_execution
 
 logger = logging.getLogger(__name__)
 
