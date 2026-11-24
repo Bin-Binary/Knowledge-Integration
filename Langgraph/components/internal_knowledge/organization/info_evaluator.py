@@ -4,9 +4,9 @@ import re
 from typing import Hashable, Optional
 from pydantic import Field
 
-from components.evaluation.base_evaluator import BaseQualityEvaluator
+from components import BaseQualityEvaluator
 from components.internal_knowledge.organization.registry import OrganizationPluginRegistry, OrgStage
-from protocols.llm import StructuredLLMProtocol
+from protocols import StructuredLLMProtocol
 from schemas.base import LLMOutputSchema
 from schemas.internal_knowledge.information import Information
 from schemas.internal_knowledge.source_uri import SourceScheme
