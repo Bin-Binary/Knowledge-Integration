@@ -66,51 +66,40 @@ class DefaultExceptionMapper(ExceptionMapperProtocol):
         )
 
     def _classify_exception(self, exc: Exception) -> FailureCategory:
-        """将具体异常映射到标准 FailureCategory"""
-        # 0. 优先匹配外部注入的自定义业务异常规则（符合 OCP 开闭原则）
-        for exc_type, category in self._custom_rules:
-            if isinstance(exc, exc_type):
-                return category
+        """遍历完整异常链，将具体异常映射到标准 FailureCategory"""
+        for curr in self._iter_exception_chain(exc):
+            # 0. 优先匹配外部注入的自定义业务异常规则（符合 OCP 开闭原则）
+            for exc_type, category in self._custom_rules:
+                if isinstance(curr, exc_type):
+                    return category
 
-        # 1. 模型调用超时（涵盖 httpx、标准库超时及常见 SDK 超时命名）
-        if isinstance(exc, (httpx.TimeoutException, asyncio.TimeoutError, TimeoutError)):
-            return FailureCategory.LLM_CALL_TIMEOUT_ERROR
-        if "timeout" in type(exc).__name__.lower():
-            return FailureCategory.LLM_CALL_TIMEOUT_ERROR
+            # 1. 模型调用超时（涵盖 httpx、标准库超时及常见 SDK 超时命名）
+            if isinstance(curr, (httpx.TimeoutException, asyncio.TimeoutError, TimeoutError)):
+                return FailureCategory.LLM_CALL_TIMEOUT_ERROR
+            if "timeout" in type(curr).__name__.lower():
+                return FailureCategory.LLM_CALL_TIMEOUT_ERROR
 
-        # 2. Pydantic 业务字段校验不通过
-        if isinstance(exc, ValidationError):
-            return FailureCategory.VALIDATION_ERROR
+            # 2. Pydantic 业务字段校验不通过
+            if isinstance(curr, ValidationError):
+                return FailureCategory.VALIDATION_ERROR
 
-        # 3. 输出格式污染（JSON 解析失败或 LangChain 解析异常）
-        if isinstance(exc, (OutputParserException, json.JSONDecodeError)):
-            return FailureCategory.OUTPUT_FORMAT_ERROR
+            # 3. 输出格式污染（JSON 解析失败或 LangChain 解析异常）
+            if isinstance(curr, (OutputParserException, json.JSONDecodeError)):
+                return FailureCategory.OUTPUT_FORMAT_ERROR
 
         # 4. 兜底为未知运行时异常
         return FailureCategory.UNKNOWN_ERROR
 
-    @staticmethod
-    def _extract_raw_output(exc: Exception) -> Optional[str]:
-        """遍历完整异常链（__cause__ 与 __context__）提取大模型原始响应文本，防止循环引用"""
-        visited: set[int] = set()
-        curr: Optional[BaseException] = exc
-
-        while curr is not None and id(curr) not in visited:
-            visited.add(id(curr))
-            for attr in ("raw_output", "llm_output"):
-                val = getattr(curr, attr, None)
-                if val is not None:
-                    return str(val)
-            curr = curr.__cause__ or curr.__context__
-
-        return None
-
     def _format_error_message(self, exc: Exception, category: FailureCategory) -> str:
         """生成清晰、脱敏且长度受控的错误摘要"""
-        if category == FailureCategory.VALIDATION_ERROR and isinstance(exc, ValidationError):
+        val_err = next(
+            (e for e in self._iter_exception_chain(exc) if isinstance(e, ValidationError)),
+            None,
+        )
+        if category == FailureCategory.VALIDATION_ERROR and val_err is not None:
             details = [
                 f"{'.'.join(str(loc) for loc in err['loc'])}: {err['msg']}"
-                for err in exc.errors()
+                for err in val_err.errors()
             ]
             msg = f"Schema 字段校验失败 ({len(details)}处): " + "; ".join(details)
         elif category == FailureCategory.LLM_CALL_TIMEOUT_ERROR:
@@ -122,21 +111,46 @@ class DefaultExceptionMapper(ExceptionMapperProtocol):
             msg = _SENSITIVE_PATTERN.sub("[REDACTED]", msg)
 
         if len(msg) > self._max_error_length:
-            msg = msg[: self._max_error_length] + "... [truncated]"
+            msg = msg[: self._max_error_length] + "... [log_truncated]"
 
         return msg
+
+    @staticmethod
+    def _iter_exception_chain(exc: BaseException):
+        """安全遍历完整异常链（防止循环引用）"""
+        visited: set[int] = set()
+        curr: Optional[BaseException] = exc
+        while curr is not None and id(curr) not in visited:
+            visited.add(id(curr))
+            yield curr
+            curr = curr.__cause__ or curr.__context__
+
+    @staticmethod
+    def _extract_raw_output(exc: Exception) -> Optional[str]:
+        """遍历完整异常链提取大模型原始响应文本"""
+        for curr in DefaultExceptionMapper._iter_exception_chain(exc):
+            for attr in ("raw_output", "llm_output"):
+                val = getattr(curr, attr, None)
+                if val is not None:
+                    return str(val)
+        return None
 
     @staticmethod
     def _build_metadata(
         exc: Exception, extra_metadata: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
-        """收集异常类型、HTTP状态码等诊断信息存入 metadata"""
+        """收集异常类型、HTTP状态码、Token截断标记等诊断信息存入 metadata"""
         meta: Dict[str, Any] = {
             "exception_class": f"{type(exc).__module__}.{type(exc).__name__}",
         }
-        if isinstance(exc, httpx.HTTPStatusError):
-            meta["http_status_code"] = exc.response.status_code
+        for curr in DefaultExceptionMapper._iter_exception_chain(exc):
+            if isinstance(curr, httpx.HTTPStatusError):
+                meta["http_status_code"] = curr.response.status_code
+            finish_reason = getattr(curr, "finish_reason", None)
+            if finish_reason is not None:
+                meta["finish_reason"] = finish_reason
 
         if extra_metadata:
             meta.update(extra_metadata)
         return meta
+
