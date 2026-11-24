@@ -1,6 +1,8 @@
 # infra/adapters.py
 from typing import Type, TypeVar, List, Dict, Any, Optional, Literal
 from pydantic import BaseModel, ValidationError
+
+from openai import LengthFinishReasonError
 from langchain_core.language_models import BaseChatModel
 
 from protocols.llm import StructuredLLMProtocol
@@ -71,7 +73,19 @@ class LangChainStructuredAdapter(StructuredLLMProtocol):
                 raw_output=raw_str,
                 schema_name=response_schema.__name__,
             ) from sdk_val_err
+        # 拦截完成整个输出之前，就已经达到了max_tokens，导致返回内容被截断引发的异常    
+        except LengthFinishReasonError as len_err:
+            raw_content = None
+            if getattr(len_err, "completion", None) and len_err.completion.choices:
+                raw_content = len_err.completion.choices[0].message.content
 
+            err = StructuredOutputError(
+                message=f"LLM output truncated (max_tokens reached) for {response_schema.__name__}",
+                raw_output=raw_content,
+                schema_name=response_schema.__name__,
+            )
+            err.finish_reason = "length"  # 供 Mapper 提取存入 metadata
+            raise err from len_err
         # 3. 拦截异常2：LangChain 内部 Parser 捕获并吞掉的解析/校验异常
         if result.get("parsing_error") is not None:
             err = result["parsing_error"]
