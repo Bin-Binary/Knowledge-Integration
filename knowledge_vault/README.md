@@ -87,9 +87,10 @@ architecture_ref: Internal_Knowledge_Architecture
 ---
 artifact_layer: labeling
 label_id: lbl_backpressure
+label_type: mechanism
 stage: debug
 confidence: 0.95
-tags: [layer/labeling, domain/engineering, topic/backpressure]
+tags: [layer/labeling, type/mechanism, domain/engineering, topic/backpressure]
 source_infos: [info_organization_design_flaws]
 outgoing_relations: [rel_backpressure_enables_partial_persistence]
 parent_ontologies: [ont_organization_scalability]
@@ -225,6 +226,44 @@ graph TD
 • L3 (relating/)：## 关系语义 ➔ ## 传导路径 ➔ ## 置信度依据
 • L4 (ontology/)：## 闭环总结 ➔ ## 逻辑拓扑 ➔ ## 演进与约束
 
+### 1.4.2 20-wiki Callout 语义使用速查表
+引擎生成规则（防滥用约束）
+
+1. 首节单行原则：凡是作为各层首节（## 核心摘要 / ## 核心定义 / ## 关系语义 / ## 闭环总结）的 Callout，正文严禁换行或包含列表，确保 line: 算子原子级共现命中。
+2. 禁止自定义别名：统一使用表内标准的 7 个标识符，禁止输出 [!tldr]、[!warning]、[!danger] 等同义别名，保证全库 CSS 渲染与正则校验 100% 一致。
+
+所有落盘产物禁止随意使用花哨的 Callout 类型，必须严格按以下“层级 + 场景”映射表渲染（首节摘要块强制单行，正文细节块允许列表）：
+
+| 适用层级 / 场景 | 强制标识符 | Obsidian 视觉效果 | 语义定位与内容约束 | 标准写法示例 |
+| :--- | :--- | :--- | :--- | :--- |
+| L1 核心摘要<br>L4 闭环总结 | `[!abstract]` | 浅蓝色框 + 剪贴板图标 | **全局结论 / 摘要**：放在首节 `##` 下方，内容必须压缩在单行内（适配 `line:` 检索算子）。 | `> [!abstract] 一句话摘要`<br>`> 组织流水线存在 6 个设计缺陷，核心问题是无背压。` |
+| L2 核心定义 | `[!quote]` | 灰色框 + 双引号图标 | **权威概念定义**：放在 L2 首节 `## 核心定义` 下方，给出该概念的一句话判据（单行）。 | `> [!quote] 一句话判据`<br>`> 背压控制是在阶段间设置规模门控，防止下游超时。` |
+| L3 关系语义 | `[!note]` | 蓝色框 + 铅笔图标 | **语义断言与置信度**：放在 L3 首节 `## 关系语义` 下方，明确阐述 `A ➔ B` 的作用机制。 | `> [!note] 关系断言（enables / 0.9）`<br>`> 背压与部分持久化构成正常与异常路径的互补闭环。` |
+| 正文：故障/缺陷 | `[!bug]` | 红色框 + 虫子图标 | **历史故障与根因**：仅用于 L1 原始切片或复盘记录中，标记已发现的系统缺陷。 | `> [!bug] 原问题`<br>`> knowledge 角色无独立 profile，fallback 导致超时。` |
+| 正文：风险/遗漏 | `[!caution]` | 橙黄色框 + 三角警告图标 | **边界隐患与待办**：标记尚未修复的遗漏点、配置陷阱或系统约束红线。 | `> [!caution] 遗漏点`<br>`> assemble_master_graph() 尚未传递 max_iterations。` |
+| 正文：阻塞/强约束 | `[!important]` | 紫红色框 + 感叹号图标 | **P0 级阻塞项 / 铁律**：标记最高优先级的阻塞问题，或不可违背的架构红线。 | `> [!important] 当前阻塞项`<br>`> L3 关系建模超时需设计层面修复后方可上线。` |
+| 正文：经验/结论 | `[!tip]` | 青绿色框 + 火焰图标 | **最佳实践与提炼**：从实验或调优中总结出的通用工程准则。 | `> [!tip] 核心结论`<br>`> 意图识别看推理能力，组织阶段需输出紧凑、结构化可靠。` |
+
+### 1.5 工程级运行与质量约束（防图谱腐化）
+
+**全局门控矩阵**
+| 约束维度 | 核心痛点（不加约束的后果） | 强制工程规则 | 校验 / 拦截机制 |
+| :--- | :--- | :--- | :--- |
+| **1. ID 命名与实体对齐** | 同一概念分裂成 `lbl_backpressure`、`lbl_back_pressure`、`lbl_backpressure_control`，导致图谱碎片化。 | • **正则铁律**：全局 ID 严格匹配 `^(info\|lbl\|rel\|ont)_[a-z0-9_]{3,60}$（全小写蛇形，禁连字符与中文）。<br>• **命名防冗余**：L2 禁止带 `_concept` / `_node` 后缀；L3 强制三段式 `rel_<label1>_<verb>_<label2>`。<br>• **存量优先复用**：抽取 L2 时注入存量高频 `label_id` 清单，语义相似度 `≥ 0.85` 强制归一化复用。 | 落盘前查全库（`gold ➔ release ➔ debug`）做实体对齐；命中存量则合并追加 `source_infos`，禁止新建文件。 |
+| **2. L2 概念元类型受控** | LLM 把单次报错堆栈、代码行号或临时统计数字抽成概念节点，污染图谱。 | • **半开放受控**：概念名称开放增长，但每个 `lbl_` 必须归入 6 大标准概念元类型（写入 YAML `label_type` 与 `#type/` 标签），且必须具备跨文档复用价值。 | 不属于 6 大元类型或属于单次偶发事件（如具体行号/单次耗时）的候选词直接丢弃，仅保留在 L1 正文中。 |
+| **3. L3 关系动词受控** | LLM 随意发明 `helps`、`assists`、`supports` 等同义动词，导致语义边无法聚合查询。 | • **封闭枚举词表**：`relationship_type` 仅允许从 8 个标准动词中选择：<br>`enables`（使能）、`requires`（依赖）、`blocks`（阻塞）、`conflicts`（冲突）、`mitigates`（缓解）、`refines`（细化）、`composed_of`（组成）、`analogous_to`（类比）。 | Pydantic / JSON Schema 强校验：不在枚举列表内的关系边直接拦截丢弃或通过同义映射表自动归并。 |
+| **4. 规模基数与背压门控** | 单篇长文档抽出 30 个碎片概念，导致后续 L3 关系两两组合爆炸（$C_{30}^2 = 435$ 次调用）打爆超时。 | • **L1 ➔ L2 基数上限**：单次切片最多提取 `N ≤ 6` 个核心概念（宁缺毋滥）。<br>• **L2 ➔ L3 窗口上限**：单次关系构建窗口内，仅对关联度 Top-K 的节点对生成 L3 边（单批次新增 `rel_ ≤ 8` 条）。 | 超过阈值直接截断（保留置信度最高的 Top-N）并记录 Warning 日志，禁止无上限循环调用。 |
+| **5. 晋升期防覆写与主键唯一** | 人类刚把 `lbl_xxx.md` 拖入 `release/` 并修订了定义，重跑同一份语料时引擎又在 `debug/` 生成同名旧版文件。 | • **全局唯一主键**：整个 `20_wiki/` 跨三个生命周期目录，同一个 `artifact_id` 只能存在一份物理文件。<br>• **只读高水位线**：只要某个 ID 已存在于 `release/` 或 `gold/`，引擎在 `debug/` 中严禁再次创建同名文件。 | 落盘前执行跨目录存在性检查：若已在 `release/` 或 `gold/` 存在，跳过创建，仅将增量双链变更写入异步待审队列（`.patch_queue.jsonl`）。 |
+
+**L2 概念元类型受控词表（label_type 6 选 1 判据）**
+| 元类型 (`label_type`) | 语义边界（什么算合法概念） | 正例（允许落盘为 L2） | 反例（严禁抽取，留在 L1 即可） |
+| :--- | :--- | :--- | :--- |
+| `mechanism` | 架构机制、控制策略、设计模式 | `lbl_backpressure`（背压控制） | `lbl_retry_3_times`（具体参数配置值） |
+| `component` | 核心模块、角色、服务边界 | `lbl_knowledge_profile`（知识角色配置） | `lbl_llm_factory_line_86`（具体代码行号） |
+| `principle` | 架构原则、设计红线、系统不变量 | `lbl_dip_purity`（依赖倒置纯净度） | `lbl_code_should_be_clean`（空泛口号） |
+| `failure_mode` | 系统性缺陷、典型故障模式 | `lbl_output_truncation`（输出截断） | `lbl_deepseek_timeout_nov24`（单次偶发报错） |
+| `metric` | 关键度量指标、阈值判据 | `lbl_schema_cardinality`（基数约束） | `lbl_77_llm_calls`（单次运行统计数字） |
+| `workflow` | 标准化流程、状态机、交互协议 | `lbl_staged_commit`（分批提交策略） | `lbl_yesterday_meeting`（临时会议动作） |
 
 ## 2. 持续知识集成与扩展规则（知识生命周期管理）
 
