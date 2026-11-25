@@ -69,4 +69,57 @@ stage: gold
   2. **一级业务组件之间禁止横向互导**：例如 `IntentRecognizer` 严禁直接 `import CatalogRouter`。组件间的协作必须通过 `protocols/` 声明依赖，由组合根（`bootstrap.py`）在启动时统一注入。
   3. **二级共享基类收拢原则（`components/_shared/`）**：仅当某个抽象模板或无状态算子**跨 2 个及以上一级业务域复用**时（如 `BaseQualityEvaluator` 同时服务于知识库切片打分与持久化记忆价值评估），才收入 `components/_shared/`；域内私有基类（如 `BaseRecoveryManager`）保留在各自领域目录内以维持高内聚。
 
+### Q6：混合向量检索（Hybrid GraphRAG）在六边形架构中的职责切分
+* **核心疑惑**：向量检索与存储横跨底层驱动（Qdrant/Embedding）与领域知识图谱（`20_wiki` 分层索引与 `[[双链]]` 扩展），在 `infra/` 与 `components/internal_knowledge/` 之间如何划清边界？
+* **核心释义**：
+  1. **基础设施层（`infra/vector/`）**：只负责“数字与通用载体”的存取算（文本转向量、向量相似度计算、通用键值对过滤），**严禁感知任何业务语义**。
+  2. **能力层（`components/internal_knowledge/storage/`）**：负责“领域知识规则”的翻译与图谱游走（L1~L4 差异化摘要提取、生命周期权重过滤、解析 `[[双链]]` 执行 1-Hop/多跳上下文水合）。
+* **核心答案**（遵循 DIP 双向隔离，通过 `protocols/vector_store.py` 桥接）：
+  ```text
+  [ components/internal_knowledge/storage/HybridVectorMarkdownStorage ]
+      │  ① 解析 20_wiki 抽取单行判据 + 组装过滤条件 (stage/layer/degree)
+      │  ② 拿到锚点 ID 后解析底部 [[双链]] 执行确定性图谱扩展
+      ▼ (依赖通用契约：EmbeddingProviderProtocol / VectorStoreProtocol)
+  [ protocols/vector_store.py ]
+      ▲ (底层驱动实现，零业务语义)
+  [ infra/vector/LocalSentenceEmbedder + QdrantVectorStore ]
+  ```
+  * **演进收益**：Qdrant 在架构中仅作为轻量级“语义锚点指针库”（只存摘要向量、YAML 元数据与逻辑 ID），完整正文与拓扑关系依然保留在 Markdown Vault 中。未来将本地 Qdrant 切换为远程集群、pgvector 或更换云端 Embedding API 时，只需在 `infra/vector/` 替换适配器并在 `app/container.py` 改一行接线，知识库检索与双链扩展逻辑**零修改**。
+* **代码正反例对比**：
+  * **❌ 反例（业务语义污染基础设施层）**：
+    ```python
+    # 错误示范：infra/vector/qdrant_store.py 中出现领域概念与双链解析
+    class QdrantVectorStore:
+        def search_wiki(self, query_vec: list[float], stage: str):
+            # 违反边界：底层存储驱动不应知道 "20_wiki"、"gold" 或 "[[双链]]" 是什么
+            hits = self._client.query_points(..., query_filter={"stage": stage})
+            for hit in hits:
+                md_text = Path(f"20_wiki/{stage}/labeling/{hit.id}.md").read_text()
+                links = re.findall(r"\[\[(.*?)\]\]", md_text)  # 图谱扩展逻辑泄漏到 infra
+    ```
+  * **✅ 正例（通用契约隔离，领域规则收口于能力层）**：
+    ```python
+    # 1. infra/vector/qdrant_store.py（纯技术驱动，只认通用字典过滤）
+    class QdrantVectorStore(VectorStoreProtocol):
+        def search(self, collection: str, query_vector: list[float], filters: dict, top_k: int):
+            return self._client.query_points(
+                collection_name=collection,
+                query=query_vector,
+                query_filter=self._build_filter(filters),
+                limit=top_k,
+            )
+
+    # 2. components/internal_knowledge/storage/hybrid_storage.py（领域规则 + 双链游走）
+    class HybridVectorMarkdownStorage(LocalMarkdownStorage):
+        def __init__(self, embedder: EmbeddingProviderProtocol, vector_store: VectorStoreProtocol, **kwargs):
+            super().__init__(**kwargs)
+            self._embedder = embedder
+            self._vector_store = vector_store
+
+        def _sync_search_vault(self, problem: str) -> list[str]:
+            vec = self._embedder.embed_text(problem)
+            hits = self._vector_store.search("ci_20_wiki", vec, filters={"stage": ["gold", "release"]}, top_k=3)
+            return [h.payload["artifact_id"] for h in hits]  # 拿到锚点后再由能力层执行双链水合
+    ```
+
 

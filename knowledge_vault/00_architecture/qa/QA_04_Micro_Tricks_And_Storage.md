@@ -46,3 +46,39 @@ stage: gold
   3. **TypedDict 显式声明防静默过滤**：LangGraph 在合并节点增量字典时会严格校验 `MasterAgentState` 的键集合。任何编排层内部状态（如 `_recovery_attempts`、`_last_failed_node`）若未在 `TypedDict` 中声明，会被静默丢弃导致熔断器失效。
   4. **Checkpointer 跨轮次状态归零**：接入 `MemorySaver` 等持久化检查点后，系统控制字段（如重试计数、终止标记）会随 `thread_id` 跨轮保留。必须在每轮请求的入口初始化载荷（`_build_initial_turn_state`）中显式重置为初始值。
 
+### Q21：本地向量引擎（Qdrant 文件模式 + 开源 Embedding）工程落地防坑技巧
+* **核心技巧**：
+  1. **轻量指针存储 + `uuid5` 幂等覆盖更新**：向量库中仅存储单行高密度摘要向量、YAML 前置过滤元数据（`stage`、`layer`、`domain`、`degree`）及 `artifact_id`（不存大段正文）。利用 `uuid.uuid5(uuid.NAMESPACE_DNS, f"{artifact_id}#{chunk_id}")` 生成确定性主键，知识文档修订或生命周期晋升时直接执行 `upsert` 幂等覆盖，无需“先查后删”。
+  2. **装饰器工厂带括号调用规范**：`infra/observability.py` 中的 `log_execution(operation_name=...)` 为带参装饰器工厂，在基础设施方法（如 `embed_text`、`search`）上挂载时必须显式带括号 `@log_execution("vector.search")`，避免误将目标函数作为 `operation_name` 参数传入。
+  3. **开源模型离线本地化与 Xet 协议防阻塞**：国内环境首次加载 `sentence-transformers` 开源模型（如 `BAAI/bge-small-zh-v1.5`）时，需配置 `HF_ENDPOINT=https://hf-mirror.com` 并设置 `HF_HUB_DISABLE_XET=1` 禁用新版 Xet 分片握手协议（防止 HTTP 请求无限期阻塞）；下载至项目本地 `./models/` 目录后（记得加入 `.gitignore`），运行期直接指向本地目录路径实现零网络依赖秒级启动。
+  4. **本地文件锁释放**：使用 `QdrantClient(path=...)` 嵌入式本地持久化模式时，多进程重载或测试脚本退出前需显式调用 `client.close()` 释放文件锁，防止 Windows 下出现目录占用异常。
+* **代码正反例对比**：
+  * **❌ 反例（随机 UUID 重复写入 + 无参装饰器调用 + 硬编码联网模型）**：
+    ```python
+    # 1. 错误：每次文档更新都生成新 uuid4，导致 Qdrant 里堆积大量旧版本僵尸向量
+    point_id = str(uuid.uuid4())
+
+    # 2. 错误：漏写括号，把 embed_text 函数对象当成了 operation_name 字符串传给装饰器工厂
+    @log_execution
+    def embed_text(self, text: str): ...
+
+    # 3. 错误：每次重启直接拉取在线仓库，断网或 Xet 握手卡死时服务无法启动
+    model = SentenceTransformer("BAAI/bge-small-zh-v1.5")
+    ```
+  * **✅ 正例（`uuid5` 幂等覆盖 + 带参装饰器规范 + 本地路径兜底与资源释放）**：
+    ```python
+    # 1. 正确：基于逻辑 ID 生成确定性 uuid5，文档修改或从 debug 晋升到 gold 时直接 upsert 原地覆盖
+    point_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, f"{artifact_id}#{chunk_id}"))
+
+    # 2. 正确：显式调用装饰器工厂并传入语义化操作名
+    @log_execution("vector.embed_text")
+    def embed_text(self, text: str) -> list[float]: ...
+
+    # 3. 正确：优先加载本地离线模型目录，退出时显式关闭嵌入式 Qdrant 释放 Windows 文件锁
+    model_path = "./models/bge-small-zh-v1.5" if Path("./models/bge-small-zh-v1.5").exists() else "BAAI/bge-small-zh-v1.5"
+    model = SentenceTransformer(model_path, device="cpu")
+    try:
+        ...
+    finally:
+        qdrant_client.close()
+    ```

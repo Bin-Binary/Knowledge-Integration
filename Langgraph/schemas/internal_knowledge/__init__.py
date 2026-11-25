@@ -1,7 +1,7 @@
 # schemas/internal_knowledge/__init__.py
 from .domain.code_relation_type import CodeRelationType
 from .information import Information
-from .labeling import Labeling
+from .labeling import RelatingConcepts
 from .ontology import Ontology
 from .pipeline_envelope import (
     PipelineEnvelope,
@@ -33,7 +33,6 @@ __all__ = [
     "WikiMaturityStage",
     # 4-layer knowledge artifacts
     "Information",
-    "Labeling",
     "CodeRelationType",
     "GeneralRelationType",
     "AnyRelationType",

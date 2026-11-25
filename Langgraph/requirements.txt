@@ -11,3 +11,5 @@ sentence-transformers
 tiktoken
 typing-extensions
 uvicorn
+qdrant-client 
+pyyaml
