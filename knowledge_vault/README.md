@@ -41,28 +41,37 @@
 
 
 ### 1.3 20-wiki 四层知识形态Markdown落盘规范
-为解决流水线分阶段异步执行时“下游节点尚未生成，导致上游双链无法填充”的问题，所有 Markdown 产物均采用 “YAML 强契约 + 尾部锚点条件渲染 + 渐进式增量回填” 机制落盘。
-所有模板在正文结束的分割线 --- 下方，统一使用 <!-- GRAPH_LINKS_START --> 与 <!-- GRAPH_LINKS_END --> 包裹图谱双链区。
-渲染规则：若某组双链数组为空，直接隐藏该行标题（禁止输出空 [[]] 或 无）
 
-模板 A：L1 原始符号切片
+• 落盘边界说明：引擎对 10_inbox/ 仅有只读权限，扫描切片与知识抽取均在引擎内存中完成；
+所有结构化 Markdown 产物均直接按照本规范落盘至 20_wiki/debug/<layer>/ 目录，严禁在 10_inbox/ 中生成中间文件。
+
+• 锚点条件渲染：为解决流水线分阶段异步执行时“下游节点尚未生成，导致上游双链无法填充”的问题，所有产物均采用 “YAML 强契约 + 尾部锚点条件渲染 + 渐进式增量回填” 机制。
+正文分割线 --- 下方统一使用 <!-- GRAPH_LINKS_START --> 与 <!-- GRAPH_LINKS_END --> 包裹图谱双链区；若某组双链数组为空，直接隐藏该行标题（禁止输出空 [[]] 或 无）。
+
+
+模板 A：L1 原始符号切片 (information/)
 ```markdown
 ---
 artifact_layer: information
 info_id: info_organization_design_flaws
 stage: debug
 trace_id: tr_session_20261124
-tags: [information, backpressure, label-extraction]
+tags: [layer/information, domain/architecture, topic/backpressure]
 derived_labels: [lbl_schema_cardinality_constraint, lbl_windowed_relation_building, lbl_backpressure, lbl_partial_persistence]
 architecture_ref: Internal_Knowledge_Architecture
 ---
 
 # 组织流水线设计逻辑缺陷分析
 
-> [!abstract] 摘要
-> 6 个设计缺陷（P0×2 / P1×2 / P2×2），核心问题是“无背压、无部分持久化”。
+## 核心摘要
+> [!abstract] 一句话摘要
+> 组织流水线存在 6 个设计缺陷（P0×2 / P1×2 / P2×2），核心问题是缺乏背压控制与部分持久化机制。
 
+## 原始切片明细
 （...具体诊断正文...）
+
+## 遗留问题
+- 需补充各阶段背压阈值的具体量化指标。
 
 ---
 <!-- GRAPH_LINKS_START -->
@@ -72,13 +81,15 @@ architecture_ref: Internal_Knowledge_Architecture
 
 ```
 
-模板 B：L2 概念节点
+
+模板 B：L2 概念节点 (labeling/)
 ```markdown
 ---
 artifact_layer: labeling
 label_id: lbl_backpressure
 stage: debug
-tags: [labeling, engineering, backpressure]
+confidence: 0.95
+tags: [layer/labeling, domain/engineering, topic/backpressure]
 source_infos: [info_organization_design_flaws]
 outgoing_relations: [rel_backpressure_enables_partial_persistence]
 parent_ontologies: [ont_organization_scalability]
@@ -86,10 +97,15 @@ parent_ontologies: [ont_organization_scalability]
 
 # 背压控制（Backpressure）
 
-> [!quote] 核心定义
-> 在流水线阶段之间设置规模门控，防止上游产物爆炸导致下游 LLM 调用超时。
+## 核心定义
+> [!quote] 一句话判据
+> 背压控制是在流水线阶段之间设置规模门控，防止上游产物爆炸导致下游 LLM 调用超时。
 
-（...判据与细节...）
+## 触发判据
+- 当上游单批次输出节点数超过阈值 $N > 50$ 时，强制挂起分发并触发流控。
+
+## 边界与反例
+- 仅适用于异步多阶段流水线，同步单步脚本无需引入背压状态机。
 
 ---
 <!-- GRAPH_LINKS_START -->
@@ -99,7 +115,7 @@ parent_ontologies: [ont_organization_scalability]
 
 ```
 
-模板 C：L3 有向语义边
+模板 C：L3 有向语义边 (relating/)
 ```markdown
 ---
 artifact_layer: relating
@@ -109,14 +125,21 @@ relationship_type: enables
 label_1_id: lbl_backpressure
 label_2_id: lbl_partial_persistence
 degree: 0.9
-tags: [relating, enables, backpressure, partial-persistence]
+tags: [layer/relating, rel/enables, domain/engineering]
 parent_ontologies: [ont_organization_scalability]
 ---
 
 # 背压 → 使能 → 部分持久化
 
-> [!note] 关系语义（`enables` / 置信度 0.9）
-> **背压**（正常路径预防规模爆炸）与 **部分持久化**（异常路径保证中间产物不丢失）构成互补闭环。
+## 关系语义
+> [!note] 关系断言（`enables` / 置信度 0.9）
+> 背压控制（正常路径预防规模爆炸）与部分持久化（异常路径保证中间产物不丢失）构成互补闭环。
+
+## 传导路径
+- `lbl_backpressure` 在上游拦截超限批次 ➔ 降低单次事务负载 ➔ 使能 `lbl_partial_persistence` 稳定落盘。
+
+## 置信度依据
+- 源自 `info_organization_design_flaws` 中的 P0 级故障复盘记录。
 
 ---
 <!-- GRAPH_LINKS_START -->
@@ -126,13 +149,13 @@ parent_ontologies: [ont_organization_scalability]
 
 ```
 
-模板 D：L4 知识闭环体
+模板 D：L4 知识闭环体 (ontology/)
 ```markdown
 ---
 artifact_layer: ontology
 complex_id: ont_stability_and_commit_strategy
 stage: debug
-tags: [ontology, stability, commit-strategy, dip]
+tags: [layer/ontology, domain/architecture, topic/stability]
 aggregated_labels: [lbl_stability_partitioning, lbl_config_transparency_chain]
 evidence_infos: [info_stability_zones_analysis, info_llm_config_isolation]
 architecture_ref: Internal_Knowledge_Architecture
@@ -140,17 +163,20 @@ architecture_ref: Internal_Knowledge_Architecture
 
 # 稳定性分区与提交策略
 
+## 闭环总结
 > [!abstract] 一句话总结
 > 单仓 repo 混合稳定接口与不稳定业务逻辑，按 DIP 纯净度分三批提交，不稳定模块 feature 隔离。
 
-## 逻辑拓扑（纯文本渲染，避免干扰图谱箭头）
-
+## 逻辑拓扑
 graph TD
     A["稳定性分区提交 (lbl_stability_partitioning)"] --> B{DIP 纯净度}
     B -->|高| C[Batch 1: schemas/protocols/infra ➔ main]
     B -->|中| D[Batch 2: 有测试的组件 ➔ main + v0.1]
     B -->|低| E[Batch 3: 不稳定模块 ➔ feature branch]
     F["配置透传链 (lbl_config_transparency_chain)"] -->|supports| A
+
+## 演进与约束
+- 核心 Schema 变更必须经过 `release/` 人工审核后方可合入主干。
 
 ---
 <!-- GRAPH_LINKS_START -->
@@ -176,6 +202,29 @@ graph TD
 1. 只读正文原则：回填程序严禁修改 # 标题 至 --- 分割线之间的任何正文内容。
 2. 双写一致性：任何双链变更必须同时更新 YAML Frontmatter 对应数组（供程序结构化查询）与 <!-- GRAPH_LINKS_START/END --> 锚点区 Markdown 文本（供图谱引擎渲染）。
 3. 跨目录检索优先顺序：当引擎需要回填某个 artifact_id 时，按 debug/ ➔ release/ ➔ gold/ 顺序定位文件；若目标文件已处于 release/ 或 gold/（引擎只读区），则将回填指令写入待审队列，由人工或晋升脚本合并，严禁引擎直接覆写已审核资产。
+
+### 1.4 面向 Obsidian 原生检索算子的产物组织规范
+为使人类排查与 Agent 检索均能直接利用 Obsidian 原生搜索引擎实现毫秒级精准过滤，所有落盘产物必须严格遵循以下六大算子映射规则
+
+
+| Obsidian 筛选项 | 对应产物组织机制 | 规划与落盘规范 | 实战检索示例（人类 / Agent 均可直接用） |
+| :--- | :--- | :--- | :--- |
+| `path:` | 物理目录树 | 严格锁定 `<stage>/<layer>/` 路径隔离生命周期与抽象层级。 | `path:20_wiki/gold/ontology/`（只搜已验证的黄金闭环体） |
+| `file:` | 强前缀文件命名 | 文件名强制携带层前缀 + 蛇形英文 ID（`info_` / `lbl_` / `rel_` / `ont_`），禁止使用中文或空格。 | `file:lbl_backpressure` 或 `file:rel_ -path:debug`（查所有非调试期的关系边） |
+| `tag:` | 三段式层级标签 | 废弃扁平标签，改用嵌套命名空间：`#layer/<层级>`、`#domain/<业务域>`、`#rel/<关系类型>`、`#topic/<主题>`。 | `tag:#layer/labeling tag:#domain/engineering`（按域过滤概念节点） |
+| `property:` | YAML 强类型属性 | 规范 YAML 键名与数据类型（数组、布尔、数值），供 Obsidian Dataview 和属性面板直接做范围过滤。 | `[degree:>=0.8]`（筛选高置信度语义边）<br>`[stage:release]`（筛选准生产资产） |
+| `section:` | 标准 H2 标题骨架 | 固定每层产物的 `##` 章节名称，确保同一段落（Section）内的关键词共现才能命中。 | `section:("核心定义" "背压")`（只在“核心定义”段落里搜背压，排除正文噪音） |
+| `line:` | Callout 单行高密摘要 | 每个首节 `##` 下方放置 Callout 块，把核心结论压缩在单行内（禁止内部换行），保证原子级共现命中。 | `line:("P0" "背压")`（要求“P0”和“背压”必须出现在同一行摘要中，极高精度） |
+
+
+### 1.4.1 各层级固定 ## 章节骨架校验表
+
+引擎在生成正文时禁止自由发挥二级标题，必须严格按以下清单输出（供 section: 算子与 Schema 校验器使用）：
+• L1 (information/)：## 核心摘要 ➔ ## 原始切片明细 ➔ ## 遗留问题
+• L2 (labeling/)：## 核心定义 ➔ ## 触发判据 ➔ ## 边界与反例
+• L3 (relating/)：## 关系语义 ➔ ## 传导路径 ➔ ## 置信度依据
+• L4 (ontology/)：## 闭环总结 ➔ ## 逻辑拓扑 ➔ ## 演进与约束
+
 
 ## 2. 持续知识集成与扩展规则（知识生命周期管理）
 
@@ -212,8 +261,8 @@ graph TD
 | **5** | `path:"00_architecture"` | 人类权威架构总纲 | **深紫色** | `#8B5CF6` | 沉稳权威，锁定全库核心骨架 |
 | **6** | `path:"10_inbox"` | 待消化原始缓冲区 | **中性灰** | `#9CA3AF` | 低调降噪，未结构化原始素材 |
 
-### 4.2 图谱降噪与巡检筛选语法
+### 4.2 图谱显示与过滤参数（防视觉噪音）
 
-* **日常默认视角（已预置）**：`-file:README -path:"information/"`，自动隐藏索引文件与海量 L1 原始切片噪音，聚焦 L2~L4 知识网络。
-* **全局骨架鸟瞰**：`-file:README (path:"ontology/" OR path:"00_architecture/")`，仅展示顶层架构与洋红色 L4 闭环体。
-* **专项审核 AI 关系边**：`path:"debug/relating/"`，配合有向箭头集中排查引擎刚生成的 L3 语义边方向与合理性。
+1. 开启有向箭头（关键）：在图谱设置 ➔ 显示（Display） 中，必须开启 箭头（Arrows），直观验证 L1 ➔ L2 ➔ L3 ➔ L2 ➔ L4 ➔ Architecture 的单向金字塔流向（若出现双向箭头，说明违反了 1.2 引用规则）。
+2. 默认隐藏孤立原始文件：在图谱设置 ➔ 过滤器（Filters） 中，建议勾选 孤立文件（Orphans）关闭，或添加 -path:"10_inbox"，避免未消化的原始文档占据画布中心。
+3. 层级标签辅助着色（可选）：在日常排查特定语义边时，可临时添加分组规则 tag:#rel/enables 或 tag:#rel/conflicts 高亮特定因果链路。
