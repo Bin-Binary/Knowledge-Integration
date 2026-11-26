@@ -1,4 +1,3 @@
-# /api/middlewares.py
 import uuid
 import asyncio
 import logging
@@ -6,7 +5,7 @@ from typing import Optional
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from starlette.types import ASGIApp, Receive, Scope, Send
+from starlette.types import ASGIApp, Receive, Scope, Send, Message
 
 from protocols import RawPayloadRepairerProtocol
 from infra import bind_observability_context, reset_observability_context
@@ -53,9 +52,51 @@ class LenientJsonEscapeMiddleware:
             if not sent:
                 sent = True
                 return {"type": "http.request", "body": fixed_body, "more_body": False}
-            return {"type": "http.disconnect"}
+            # 必须委托给真实的底层 receive() 监听断连事件，绝不能直接返回 http.disconnect！
+            return await receive()
 
         await self.app(scope, new_receive, send)
+
+
+
+class ObservabilityMiddleware:
+    """纯 ASGI 全链路可观测性中间件（完美兼容 StreamingResponse / SSE，彻底避免 BaseHTTPMiddleware 断流报错）"""
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        raw_headers = dict(scope.get("headers", []))
+        trace_id = (
+            raw_headers.get(b"x-trace-id", b"").decode("utf-8", errors="ignore")
+            or f"tr_{uuid.uuid4().hex[:16]}"
+        )
+        session_id = (
+            raw_headers.get(b"x-session-id", b"").decode("utf-8", errors="ignore")
+            or "sess_gateway"
+        )
+
+        # 挂载到 scope["state"]，保证后续 FastAPI 的 request.state.trace_id 与异常处理器照常可用
+        scope.setdefault("state", {})["trace_id"] = trace_id
+
+        async def send_with_trace_id(message: Message) -> None:
+            if message["type"] == "http.response.start":
+                headers = list(message.get("headers", []))
+                # 避免重复添加 X-Trace-Id（例如 StreamingResponse 手动传了该 header 时）
+                if not any(k.lower() == b"x-trace-id" for k, _ in headers):
+                    headers.append((b"x-trace-id", trace_id.encode("utf-8")))
+                message["headers"] = headers
+            await send(message)
+
+        tokens = bind_observability_context(trace_id=trace_id, session_id=session_id)
+        try:
+            await self.app(scope, receive, send_with_trace_id)
+        finally:
+            reset_observability_context(tokens)
 
 
 def register_middlewares_and_handlers(
@@ -63,22 +104,12 @@ def register_middlewares_and_handlers(
     payload_repairer: Optional[RawPayloadRepairerProtocol] = None,
 ) -> None:
     """统一注册网关中间件与全局异常处理器"""
+    # 1. 注册字节流容错中间件
     if payload_repairer is not None:
         app.add_middleware(LenientJsonEscapeMiddleware, payload_repairer=payload_repairer)
 
-    @app.middleware("http")
-    async def observability_middleware(request: Request, call_next):
-        trace_id = request.headers.get("X-Trace-Id") or f"tr_{uuid.uuid4().hex[:16]}"
-        session_id = request.headers.get("X-Session-Id", "sess_gateway")
-        request.state.trace_id = trace_id
-
-        tokens = bind_observability_context(trace_id=trace_id, session_id=session_id)
-        try:
-            response = await call_next(request)
-            response.headers["X-Trace-Id"] = trace_id
-            return response
-        finally:
-            reset_observability_context(tokens)
+    # 2. 后注册的可观测性中间件会包裹在更外层，确保全链路上下文与 trace_id 优先绑定
+    app.add_middleware(ObservabilityMiddleware)
 
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(request: Request, exc: RequestValidationError):
