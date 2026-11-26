@@ -143,4 +143,12 @@ stage: gold
 	• ❌ 反例（Anti-Pattern）：同时保留 LLMErrorNormalizerMiddleware（将 OpenAI SDK 异常转译为 ModelServiceUnavailableError）和 RegistryExceptionMapper（再次配置 RateLimitError 映射规则），增加一层无实质收益的异步装饰器调用栈。死穴所在：违反单一事实来源原则，同一类三方异常的映射逻辑分散在切面与配置表两处，新增 SDK 时极易遗漏或产生状态码定义冲突。
 	• ✅ 正例（Best Practice）：仅保留 LocalJsonHealerMiddleware 与 ModelFailoverMiddleware 处理调用期热修复与主备切换；删除 LLMErrorNormalizerMiddleware，将所有未捕获的底层三方 SDK 异常直接穿透至节点 except 块，由 RegistryExceptionMapper 依据 DEFAULT_EXCEPTION_SPECS 统一映射为 FailureContext。核心收益：消除冗余装饰器栈，所有三方异常映射规则收口于单一声明式配置表，维护成本减半。
 
+### Q_9：如何识别职责“过度集中（God Object / 跨层越权）”信号，并通过“能力下沉”避免牵一发动全身？
 
+• 归属档案：[[QA_01_Architecture_And_DIP]]（粗粒度）
+• 核心疑惑：在系统演进过程中，为什么当我们试图让一个全局协调器（如状态机恢复节点 recovery_node）同时接管不同业务阶段的重放执行、参数重组与状态回填时，会导致“每加一个新功能就要改四五个文件”的联动爆炸？
+• 核心释义：职责过度集中（Over-Centralization）是指上层编排器越权承担了本该由底层组件自治消化的基础设施细节，从而退化为全知全能的“上帝对象”；能力下沉（Push-Down / Localization）则是将通用横切能力下移到距离调用点最近的边界层（如网关中间件）闭环解决。
+• 核心答案：核心诊断标准是“散弹式修改（Shotgun Surgery）”——当扩展一个单点业务节点，却被迫同时修改插件类、依赖容器、恢复节点和主图路由边时，说明全局恢复层承担了不该属于它的“阶段重放与状态映射”职责。架构演进中必须遵循“就近自治原则”：能在单次底层接口调用内部解决的技术性重试与主备模型切换，绝不上抛到全局业务工作流编排层。把模型切换下沉到 infra/middlewares/ 后，全局恢复层卸载了所有与阶段输入输出耦合的重放器，重新回归轻量化。
+• 真实正反例对比：
+	• ❌ 反例（Anti-Pattern）：为了让 knowledge:deep_learn 支持主模型限流切换，在 ModelFailoverRecovery 中引入 stage_executors 回调字典，在 container.py 编写 _replay_knowledge_deep_learn 重建引擎并手动封包状态，再到 recovery_graph.py 和 master_graph.py 中硬编码字典合并与专属前向推进分支。死穴所在：全局恢复层被迫知晓所有业务子图的内部构造与状态 Schema，职责高度集中，系统扩展成本随节点数呈线性恶化。
+	• ✅ 正例（Best Practice）：将“主模型挂掉切换备用模型”这一纯技术高可用能力下沉至 ModelFailoverMiddleware，直接在单次 generate_structured 调用内部完成切换与返回；删掉恢复层的所有阶段重放器与状态回填分支，让 recovery_node 仅处理极少数双模型全挂后的静态降级与业务反问。核心收益：彻底消除跨文件联动修改，新增任意业务子图或智能体无需在恢复层和主控图写一行适配代码。
