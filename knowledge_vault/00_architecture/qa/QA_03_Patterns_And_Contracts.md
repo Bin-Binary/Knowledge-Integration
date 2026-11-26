@@ -105,3 +105,13 @@ stage: gold
 • 真实正反例对比：
 	• ❌ 反例（Anti-Pattern）：RegistryExceptionMapper._build_metadata 写入 meta["user_friendly_hint"] = matched.user_hint，而 CompositeRecoveryManager.handle_failure 读取 context.metadata.get("user_hint")；同时部分节点残留 failure_ctx.category.value 访问已降级为 str 的分类字段。死穴所在：字典键名错位不会在编译期报错，而是导致运行时降级话术静默失效；枚举残留属性访问则会在异常路径触发二次崩溃。
 	• ✅ 正例（Best Practice）：以 ClassifiableErrorProtocol 的属性名 user_friendly_hint 为全链路唯一标准键名，统一写入与读取 context.metadata["user_friendly_hint"]；删除 FailureCategory 枚举并在全图节点统一使用纯字符串 failure_ctx.category 点分路由键。核心收益：消除跨层字典取值的静默空值隐患与双轨制来回返工，确保业务异常的定制化提示语 100% 透传至终端用户。
+
+### Q_14：什么是装饰器洋葱模型（Onion Model），以及多切面嵌套顺序反了会引发什么架构灾难？
+
+• 归属档案：[[QA_03_Patterns_And_Contracts]]（细粒度）
+• 核心疑惑：在为大模型客户端同时挂载“本地正则清洗切面（LocalJsonHealerMiddleware）”与“异构灾备切换切面（ModelFailoverMiddleware）”时，为什么必须严格规定谁在里层、谁在外层，包反了会导致什么严重后果？
+• 核心释义：洋葱模型（Onion Model / Decorator Chain）是指多个实现同一协议的中间件层层包裹核心对象；请求从最外层逐层穿透至最内层核心执行，而返回值或异常则从最内层逐层向外冒泡经过各层拦截处理，形如剥洋葱。
+• 核心答案：必须遵循“低成本就地修复在最内层，高成本跨网关切换在最外层”的嵌套顺序。具体在当前架构中，必须采用 ModelFailoverMiddleware(外层) -> LocalJsonHealerMiddleware(内层) -> HybridLangChainAdapter(核心) 的嵌套结构。原因有二：其一，当主模型 GLM-V5.1 仅因输出了 <think> 标签或 Markdown 代码块报错时，内层的 LocalJsonHealerMiddleware 会在毫秒级就地清洗并返回合法对象，外层的 ModelFailoverMiddleware 根本不会感知到异常，从而避免白白浪费 Token 切换到备用模型 DeepSeek；其二，当主模型真正挂掉（如 429 限流）触发外层切换至 DeepSeek 时，如果 DeepSeek 本身也包裹了内层 LocalJsonHealerMiddleware，则备用模型的输出同样自动享有零成本本地清洗能力。若内外层包反，轻微格式污染就会直接触发昂贵的异构模型重跑。
+• 真实正反例对比：
+	• ❌ 反例（Anti-Pattern）：在 /app/llm_factory.py 中写成 LocalJsonHealerMiddleware(ModelFailoverMiddleware(primary=raw_intent, backup=raw_recovery))（清洗切面在外，灾备切面在内，且灾备模型未包清洗切面）。死穴所在：当主模型输出带 Markdown 代码块的合法 JSON 时，内层 HybridLangChainAdapter 抛出 StructuredOutputError 会直接被中层的 ModelFailoverMiddleware 拦截并立刻重跑备用模型，导致外层的零成本本地正则清洗形同虚设，白白浪费备用模型额度和响应时间。
+	• ✅ 正例（Best Practice）：在 build_llm_adapter 中先为每个单角色基础适配器包裹内层清洗切面 LocalJsonHealerMiddleware(raw_adapter)，再在 build_adapter_pool 中用外层 ModelFailoverMiddleware(primary=intent_healed, backup=recovery_healed) 进行组合。核心收益：轻微格式污染在内层毫秒级零成本消化；真正网络/限流故障由外层透明切换备用模型，且备用模型输出同样受内层清洗保护。
