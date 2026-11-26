@@ -10,11 +10,13 @@ from schemas.internal_knowledge.labeling import Labeling
 from schemas.internal_knowledge.relating_concepts import RelatingConcepts
 from schemas.internal_knowledge.ontology import Ontology
 
+
 class StorageReceipt(ImmutableSchema):
     """存储后端落盘回执（内聚辅助结构，支持多异构存储同时写入的状态追踪）"""
     backend_type: str = Field(..., description="存储后端标识（如 neo4j, milvus, local_fs）")
     saved_locations: List[str] = Field(default_factory=list, description="落盘物理路径或记录ID")
     success: bool = Field(default=True, description="是否写入成功")
+
 
 class PipelineEnvelope(ImmutableSchema):
     """全链路统一传输载体（贯穿 运用 <-> 采集 -> 组织 -> 存储）"""
