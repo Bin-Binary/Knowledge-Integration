@@ -5,6 +5,8 @@ from typing import Dict, Optional, List, Any, Tuple, Pattern
 
 from schemas import RouteContext, Message, IntentResult, IntentCatalog
 from protocols import IntentRecognizerProtocol, StructuredLLMProtocol
+from infra import emit_component_status
+from infra.exceptions import LowConfidenceIntentError
 
 logger = logging.getLogger(__name__)
 
@@ -20,12 +22,14 @@ class HybridIntentRecognizer(IntentRecognizerProtocol):
         catalog: IntentCatalog,
         llm_client: Optional[StructuredLLMProtocol] = None,
         context_window_turns: int = 5,
+        min_confidence: float = 0.6,
     ) -> None:
         self._catalog = catalog
         self._command_map = catalog.command_map
         self._llm_client = llm_client
         self._context_window_turns = context_window_turns
         self._static_cache: Dict[str, IntentResult] = {}
+        self._min_confidence = min_confidence
         # 启动期预编译动态 System Prompt，复用 IntentResult.to_prompt_guide()
         self._compiled_system_prompt = self._build_system_prompt(catalog)
         # 启动时预编译所有正则规则，避免运行期重复编译开销
@@ -122,11 +126,21 @@ class HybridIntentRecognizer(IntentRecognizerProtocol):
 
     async def _llm_classify(self, ctx: RouteContext) -> Optional[IntentResult]:
         messages = self._build_llm_messages(ctx)
+        emit_component_status("理解问题意图...\n")
+        
+        # 1. 若底层 LLM 触发超时、限流或 JSON 解析失败，异常会直接穿透出去，由 Mapper 兜底映射
         result = await self._llm_client.generate_structured(messages, IntentResult)
-        if isinstance(result, IntentResult):
-            return result
-        logger.warning("[HybridRecognizer] LLM returned non-IntentResult; discarding.")
-        return None
+        
+        if not isinstance(result, IntentResult):
+            logger.warning("[HybridRecognizer] LLM returned non-IntentResult; discarding.")
+            return None
+
+        # 2. 业务校验不通过：直接抛出自描述业务异常，触发图节点的恢复分支
+        conf = result.confidence if result.confidence is not None else 0.0
+        if conf < self._min_confidence or result.intent == "unknown":
+            raise LowConfidenceIntentError(intent=result.intent, confidence=conf)
+
+        return result
     
     def _build_llm_messages(self, ctx: RouteContext) -> List[Dict[str, str]]:
         system_msg = {"role": "system", "content": self._compiled_system_prompt}
