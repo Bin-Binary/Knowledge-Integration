@@ -1,9 +1,13 @@
 # /protocols/agent.py
 from typing import Protocol, runtime_checkable, AsyncIterator, List, Any
 
-from schemas.context import RouteContext
-from schemas.decision import RouteDecision
-from schemas.execution import AgentResponse, AgentStep
+from schemas import(
+    RouteContext,
+    RouteDecision,
+    AgentResponse, 
+    AgentStep,
+    AgentToken,
+) 
 
 @runtime_checkable
 class AgentProtocol(Protocol):
@@ -24,6 +28,6 @@ class AgentProtocol(Protocol):
         self, 
         context: RouteContext, 
         decision: RouteDecision
-    ) -> AsyncIterator[AgentStep | AgentResponse]:
+    ) -> AsyncIterator[AgentStep | AgentToken | AgentResponse]:
         """流式吐出每一步的 Thought/Action/Observation，最后吐出 AgentResponse"""
         ...
