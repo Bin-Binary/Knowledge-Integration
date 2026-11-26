@@ -1,7 +1,7 @@
 # /schemas/base.py
 import json
 from pydantic import BaseModel, ConfigDict
-from typing import  ClassVar, Any, List, Optional, Set, Dict, Type, Union, Tuple, get_args, get_origin
+from typing import  ClassVar, Any, List, Optional, Set, Dict, Type, Union, Tuple, Literal, get_args, get_origin
 from enum import Enum
 
 class SelfIntrospectable:
@@ -168,6 +168,19 @@ class LLMOutputSchema(BaseModel, SelfIntrospectable):
         populate_by_name=True,
         str_strip_whitespace=False
     )
+
+class AgentToken(ImmutableSchema):
+    """打字机文本增量块"""
+    content: str
+
+class StreamEvent(ImmutableSchema):
+    """对外统一 SSE 事件信封（隔离 LangGraph 底层细节）"""
+    event: Literal["status", "step", "token", "approval_required", "done", "error"]
+    data: Dict[str, Any]
+
+    def to_sse_frame(self) -> str:
+        """序列化为标准 SSE 帧格式"""
+        return f"event: {self.event}\ndata: {self.model_dump_json()}\n\n"
 
 class BoundaryRequestSchema(BaseModel, SelfIntrospectable):
     """外部API边界请求基类：只读保护，但宽容处理上游新增的冗余字段"""
