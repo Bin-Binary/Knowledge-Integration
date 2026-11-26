@@ -4,14 +4,6 @@ from typing import Optional, Dict, Any
 from pydantic import Field, field_validator
 from schemas.base import ImmutableSchema, LLMOutputSchema
 
-class FallbackTrigger(str, Enum):
-    """触发回退/降级的标准原因枚举"""
-    NONE = "none"
-    LOW_CONFIDENCE = "low_confidence"
-    TIMEOUT_OR_ERROR = "timeout_or_error"
-    CONTEXT_TRUNCATED = "context_truncated"
-    NODE_UNAVAILABLE = "node_unavailable"
-
 class IntentResult(LLMOutputSchema):
     """意图识别器标准化输出（继承 LLMOutputSchema 自动忽略大模型多吐出的冗余字段）"""
     intent: str = Field(..., description="识别出的标准化意图标签")
@@ -32,7 +24,7 @@ class IntentResult(LLMOutputSchema):
 
 class FallbackPlan(ImmutableSchema):
     """回退执行计划"""
-    trigger: FallbackTrigger
+    trigger: str = Field(..., description="触发回退/降级的原因")
     fallback_node: str = Field(..., description="降级目标节点 ID")
     clarification_prompt: Optional[str] = Field(default=None, description="反问澄清话术")
     retry_budget: int = Field(default=0, ge=0, le=3)
