@@ -85,7 +85,7 @@ stage: gold
     ```
 
 
-Q_13：如何消除异常标准化映射器中的 if isinstance 硬编码与业务枚举耦合，实现开闭原则？
+### Q_13：如何消除异常标准化映射器中的 if isinstance 硬编码与业务枚举耦合，实现开闭原则？
 
 • 归属档案：[[QA_03_Patterns_And_Contracts]]（细粒度）
 • 核心疑惑：异常标准化映射器（Mapper）需要同时处理自研业务异常与各类第三方 SDK 异常（如 openai、httpx、pydantic），如何避免每次接入新 SDK 或新增错误类型时都去修改 Mapper 源码和中心化枚举？
@@ -94,3 +94,14 @@ Q_13：如何消除异常标准化映射器中的 if isinstance 硬编码与业�
 • 真实正反例对比：
 	• ❌ 反例（Anti-Pattern）：在 DefaultExceptionMapper._classify_and_format 中堆砌 if isinstance(curr, httpx.TimeoutException): return FailureCategory.MODEL_SERVICE_UNAVAILABLE, ...，并在装配层通过 setattr(exc, "_injected_hint", ...) 动态篡改第三方异常实例。死穴所在：违反开闭原则，映射器强耦合第三方库与中心枚举，且 setattr 遇到带 __slots__ 的异常类会直接抛出 AttributeError。
 	• ✅ 正例（Best Practice）：AgentBusinessError 实现 ClassifiableErrorProtocol 返回点分错误码；RegistryExceptionMapper 仅依赖标准库与协议，通过 register_spec(ExceptionMappingSpec(...)) 将匹配结果封装为只读内部载体 _MatchResult 提取元数据与提示语。核心收益：映射器代码永久冻结且零三方库依赖，新增业务异常只需继承基类直接 raise，新增三方异常只需在 DEFAULT_EXCEPTION_SPECS 追加一条不可变配置。
+
+
+### Q_14：为什么业务异常与配置规则在跨模块传递时，必须统一元数据契约键名并避免多套分类双轨制？
+
+• 归属档案：[[QA_03_Patterns_And_Contracts]]（细粒度）
+• 核心疑惑：在异常捕获（AgentBusinessError / ExceptionMappingSpec）、标准化映射（RegistryExceptionMapper）与下游降级恢复（CompositeRecoveryManager）的跨层流转中，为什么字段键名不统一（如 user_hint vs user_friendly_hint）以及保留旧枚举双轨制会导致反复修改多处代码与静默降级失效？
+• 核心释义：契约单一规范化（Canonical Contract）是指跨组件传递的半结构化字典（如 FailureContext.metadata）与状态字段（如 category），必须在协议定义阶段就锁定唯一的命名与类型规范，上下游所有生产者与消费者严格对齐同一套命名。
+• 核心答案：必须做到“协议字段名全链路唯一对齐”与“彻底废除旧分类体系”。在本次重构中，上游业务异常与配置表使用了 user_hint 作为字段名，映射器写入元数据字典时使用了 user_friendly_hint，而下游恢复管理器却去读取 metadata.get("user_hint")，导致业务异常自带的友好引导话术在运行时静默丢失、退化为冷冰冰的系统默认报错；同时，若不彻底清除旧的 FailureCategory 枚举（下划线命名），上游产出点分字符串 model.rate_limited 而旧节点仍访问 .category.value，就会引发运行时 AttributeError。因此，重构数据契约时必须执行全链路端到端键名核对与旧枚举全局清零。
+• 真实正反例对比：
+	• ❌ 反例（Anti-Pattern）：RegistryExceptionMapper._build_metadata 写入 meta["user_friendly_hint"] = matched.user_hint，而 CompositeRecoveryManager.handle_failure 读取 context.metadata.get("user_hint")；同时部分节点残留 failure_ctx.category.value 访问已降级为 str 的分类字段。死穴所在：字典键名错位不会在编译期报错，而是导致运行时降级话术静默失效；枚举残留属性访问则会在异常路径触发二次崩溃。
+	• ✅ 正例（Best Practice）：以 ClassifiableErrorProtocol 的属性名 user_friendly_hint 为全链路唯一标准键名，统一写入与读取 context.metadata["user_friendly_hint"]；删除 FailureCategory 枚举并在全图节点统一使用纯字符串 failure_ctx.category 点分路由键。核心收益：消除跨层字典取值的静默空值隐患与双轨制来回返工，确保业务异常的定制化提示语 100% 透传至终端用户。
