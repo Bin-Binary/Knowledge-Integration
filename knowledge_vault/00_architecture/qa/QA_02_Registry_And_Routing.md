@@ -92,3 +92,43 @@ Q_10：在 LangGraph 状态机中，恢复节点（recovery_node）成功自愈�
 • 真实正反例对比：
 	• ❌ 反例（Anti-Pattern）：_route_after_recovery 只要看到 is_recovered=True 就无条件 return last_node（退回 INTENT_NODE），且各节点在 except 块中通过 prev_failure.retry_count 读取重试次数。死穴所在：退回原节点会用故障主模型重新执行并覆盖掉已自愈的 intent_result，同时自愈成功清空 failure_context 后会导致 prev_failure 为 None，使累计重试计数归零并触发无限死循环。
 	• ✅ 正例（Best Practice）：recovery_node 查表将 outcome.recovered_data 写入 state["intent_result"] 并清空 failure_context；_route_after_recovery 检测到 recovered_data is not None 且 last_node == INTENT_NODE 时直接返回 ROUTING_NODE 前向推进；所有节点异常捕获时统一读取 state.get("_recovery_attempts", 0)。核心收益：自愈产物零覆盖、不走回头路，且跨阶段全局恢复次数受编排层防火墙严格熔断保护。       
+
+
+### Q_11：为什么传统静态工厂函数在参数或插件扩展时会导致“散弹式修改”，如何通过“装饰器自发现 + 自动签名依赖注入”彻底冻结工厂代码？
+
+* **归属档案**：[[QA_02_Registry_And_Routing]]（中观粒度）
+* **核心疑惑**：在使用传统工厂模式（如 `create_default_knowledge_engine`、`assemble_master_graph`）装配多插件系统时，为什么每次新增一个组件或调整某个子插件的构造函数参数，都要被迫在工厂文件、调用链和配置层之间来回修改，极其痛苦？
+* **核心释义**：**自发现注册表 + 签名自动依赖注入（Auto-DI via Signature Introspection）**，是指通过装饰器在类定义处声明元信息，启动期自动扫描包路径完成注册，并利用 `inspect.signature` 反射读取目标类的 `__init__` 形参名，从共享依赖池（`shared_deps`）中按需自动匹配喂参，彻底消除工厂里的显式实例化与参数分发字典。
+* **核心答案**：传统工厂模式把**“组件发现”、“参数透传”**与**“业务组装”**混在了一起，导致工厂成了所有子组件构造函数的参数中转站（Parameter Trampoline）——底层插件加一个 `workspace_root` 参数，外层三层工厂就得跟着改三遍签名与字典映射。正确的演进路径是**“保留极薄的外观工厂门面（Facade Factory） + 内部全权委托注册表 Auto-DI”**：工厂只负责构建基础共享依赖池（`shared_deps = {"llm_client": ..., "storage": ..., "workspace_root": ...}`），随后调用 `Registry.build_handlers(shared_deps=shared_deps)` 自动扫描并实例化所有注册插件。若不这样改造，工厂文件将随系统演进无限膨胀，且每次参数变动都会引发跨文件联动报错。
+* **真实正反例对比**：
+  * ❌ **反例（Anti-Pattern）**：在 `/components/internal_knowledge/factory.py` 中手动 `from ... import ShellRepoAcquirer` 触发装饰器注册，并在 `build_knowledge_organizer` 中硬编码字典分发参数：
+    ```python
+    organizer = build_knowledge_organizer(
+        plugin_kwargs={
+            "llm_hybrid": {"llm_client": llm_client},
+            "llm_label": {"llm_client": llm_client},
+            "llm_relation": {"llm_client": llm_client},
+        }
+    )
+    ```
+    **死穴所在**：每新增一个插件或给某个插件多传一个 `storage` 参数，就必须回头修改工厂代码与 `plugin_kwargs` 硬编码映射，严重违反开闭原则（OCP）。
+  * ✅ **正例（Best Practice）**：使用 `@AcquisitionPluginRegistry.register(...)` 与 `@RecoveryPluginRegistry.register(...)` 声明插件；工厂层仅组装无状态的共享依赖池 `shared_deps`，由注册表内部反射参数签名自动注入：
+    ```python
+    sig = inspect.signature(target_cls.__init__)
+    init_kwargs = {
+        param: shared_deps[param]
+        for param in sig.parameters
+        if param != "self" and param in shared_deps
+    }
+    instance = target_cls(**init_kwargs)
+    ```
+
+### Q_12：当数据路由同时依赖“协议类型”与“资源细粒度特征”时，如何避免单一路由键导致的分发错乱？
+
+* **归属档案**：[[QA_02_Registry_And_Routing]]（中观粒度）
+* **核心疑惑**：在知识采集分发场景中，为什么仅按采集协议（`SourceScheme.FILE`）作为路由键注册采集器，会导致 `.md`、`.py` 等普通文件被错误分发给专门解析 `.sh` 脚本的 `ShellRepoAcquirer`？
+* **核心释义**：**复合路由键（Composite Routing Key）与通配符降级（Wildcard Fallback）**，是指使用多维元组（如 `(scheme, suffix)`）精确标识路由匹配条件，并在查表时执行“精确键 `(scheme, suffix)` 优先 -> 协议通配符 `(scheme, "*")` 兜底”的两级匹配策略。
+* **核心答案**：当业务分发逻辑存在正交的多维特征（例如外层是传输/存储协议 `SourceScheme`，内层是文件扩展名 `.sh`/`.py`/`.md`）时，强行压扁为单维枚举键必然引发路由冲突。调度器（`CompositeKnowledgeAcquirer`）必须支持以 `(SourceScheme, str)` 元组作为注册键，同时在调度查找时自动按 `(uri.scheme, ext) -> (uri.scheme, "*")` 顺序回退，并将通用切片工具（如 `generate_info_id`、`apply_window_bounds`）抽离为无状态工具函数供各处理器复用。
+* **真实正反例对比**：
+  * ❌ **反例（Anti-Pattern）**：在 `ShellRepoAcquirer` 上标注 `@BaseKnowledgeAcquirer.register(SourceScheme.FILE)`，独占整个本地文件协议，同时在类里定义未生效的 `supported_extensions = {".sh"}` 属性。**死穴所在**：`WorkspaceFileGapRouter` 扫出的所有本地 `.md`/`.py` 文件均带有 `SourceScheme.FILE`，全被误路由进 Shell 语法解析器导致切片错乱或丢失。
+  * ✅ **正例（Best Practice）**：在 `CompositeKnowledgeAcquirer` 中按复合键注册：`register(SourceScheme.FILE, ".sh", ShellScriptHandler())` 与 `register(SourceScheme.FILE, "*", GenericTextFileHandler())`，查表时优先精确匹配后缀、未命中时自动降级到 `"*"` 通用处理器。**核心收益**：实现协议与文件类型的正交精准路由，新增专有解析器（如 `.py` AST 解析器）只需注册 `(SourceScheme.FILE, ".py")` 即可平滑接管，绝不影响其他文件类型。
