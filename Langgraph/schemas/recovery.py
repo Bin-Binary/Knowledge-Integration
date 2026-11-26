@@ -1,22 +1,14 @@
-from enum import Enum
+# /schemas/recovery.py
 from typing import Any, Dict, Optional
 from pydantic import Field
 
-from schemas.base import ImmutableSchema
-
-
-class FailureCategory(str, Enum):
-    """标准化故障分类枚举"""
-    OUTPUT_FORMAT_ERROR = "output_format_error"  # 模型输出污染（如思维链/Markdown导致JSON解析失败）
-    VALIDATION_ERROR = "validation_error"        # Pydantic Schema 业务字段校验不通过
-    LLM_CALL_TIMEOUT_ERROR = "llm_call_timeout_error"  # 模型调用超时异常
-    UNKNOWN_ERROR = "unknown_error"              # 未知运行时异常
+from schemas.base import ImmutableSchema, DocumentedEnum
 
 class FailureContext(ImmutableSchema):
     """故障现场快照（只读契约，在节点与 Recovery 组件间传递）"""
     trace_id: str = Field(..., description="全链路追踪ID")
     failed_stage: str = Field(..., description="发生故障的图节点名称，如 intent_recognition / routing")
-    category: FailureCategory = Field(..., description="归一化故障分类")
+    category: str = Field(default="unknown_error", description="归一化故障分类或点分错误码（如 model.unavailable）")
     error_message: str = Field(..., description="原始异常描述信息")
     raw_output: Optional[str] = Field(default=None, description="大模型返回的原始文本（用于格式自愈修复）")
     target_schema_name: Optional[str] = Field(default=None, description="期望修复还原的目标 Schema 名称，如 IntentResult")
