@@ -74,24 +74,24 @@ stage: gold
      * **多图实例池解决拓扑异构**：面对不同租户或安全等级需要不同节点组合时，启动期调用同一个 `build_master_agent_graph(...)` 编译并缓存多张图实例，请求入口按上下文路由至对应图实例，不在主图内部写业务 `if/else`。
 
 
-Q_9：配置驱动装配时，如何划分 .json 运维参数与 .py 架构拓扑的边界，避免装配容器膨胀？
+### Q_9：配置驱动装配时，如何划分 `.json` 运维参数与 `.py` 架构拓扑的边界，避免装配容器膨胀？
 
-• 归属档案：[[QA_02_Registry_And_Routing]]（中观粒度）
-• 核心疑惑：当系统同时包含系统参数（超时、阈值）、业务目录（意图与正则规则）以及多插件责任链装配（异常映射规则、恢复插件执行顺序）时，应该全部塞进 JSON 配置文件，还是全部写在装配容器代码中？
-• 核心答案：必须执行“动静分离与依赖单向化”：将运维数值/文案开关放入 config/*.json（由 AgentSystemConfig 校验）；将业务规则数据（如斜杠指令、正则、意图示例）拆分为独立的 config/intent_catalog.json；将与代码类强绑定、存在严格先后依赖的控制流拓扑（如 RECOVERY_PIPELINE_ORDER 责任链顺序和 ACTIVE_EXCEPTION_SPECS 异常类映射）放入应用装配层的纯 .py 声明文件中（/app/resilience_pipeline.py）。若把责任链顺序放进 JSON，运维误调顺序会导致兜底插件提前截断修复插件，且失去 IDE 类型检查；若全硬编码进 container.py，则每次增删插件都要改动核心装配代码。
-• 真实正反例对比：
-	• ❌ 反例（Anti-Pattern）：在 /app/container.py 中硬编码 CompositeRecoveryManager(handlers=[JsonHealRecoveryManager(...), ...]) 并手动传参，或者将 ["llm_json_repair", "model_degrade"] 的执行拓扑暴露到运维 agent_settings.json 中。死穴所在：前者导致 container.py 随插件增多不断膨胀；后者让纯字符串配置承载强逻辑顺序依赖，极易因配置误改引发责任链短路失效。
-	• ✅ 正例（Best Practice）：在 config/agent_settings.json 中仅保留 max_error_length、fallback_intent 等运维参数；在 /app/resilience_pipeline.py 中用元组声明 RECOVERY_PIPELINE_ORDER；在 container.py 中调用 RecoveryPluginRegistry.build_handlers(enabled_names=RECOVERY_PIPELINE_ORDER, shared_deps=...) 利用 inspect.signature 自动匹配构造函数参数完成依赖注入。核心收益：config/ 保持零代码依赖，container.py 代码行数永久冻结，新增插件只需加装饰器并在 .py 清单中注册名称。
+* **归属档案**：[[QA_02_Registry_And_Routing]]（中观粒度）
+* **核心疑惑**：当系统同时包含系统参数（超时、阈值）、业务目录（意图与正则规则）以及多插件责任链装配（异常映射规则、恢复插件执行顺序）时，应该全部塞进 JSON 配置文件，还是全部写在装配容器代码中？
+* **核心答案**：必须执行**“动静分离与依赖单向化”**：将运维数值/文案开关放入 `config/*.json`（由 `AgentSystemConfig` 校验）；将业务规则数据（如斜杠指令、正则、意图示例）拆分为独立的 `config/intent_catalog.json`；将与代码类强绑定、存在严格先后依赖的控制流拓扑（如 `RECOVERY_PIPELINE_ORDER` 责任链顺序和 `ACTIVE_EXCEPTION_SPECS` 异常类映射）放入应用装配层的纯 `.py` 声明文件中（`/app/resilience_pipeline.py`）。若把责任链顺序放进 JSON，运维误调顺序会导致兜底插件提前截断修复插件，且失去 IDE 类型检查；若全硬编码进 `container.py`，则每次增删插件都要改动核心装配代码。
+* **真实正反例对比**：
+  * ❌ **反例（Anti-Pattern）**：在 `/app/container.py` 中硬编码 `CompositeRecoveryManager(handlers=[JsonHealRecoveryManager(...), ...])` 并手动传参，或者将 `["llm_json_repair", "model_degrade"]` 的执行拓扑暴露到运维 `agent_settings.json` 中。**死穴所在**：前者导致 `container.py` 随插件增多不断膨胀；后者让纯字符串配置承载强逻辑顺序依赖，极易因配置误改引发责任链短路失效。
+  * ✅ **正例（Best Practice）**：在 `config/agent_settings.json` 中仅保留 `max_error_length`、`fallback_intent` 等运维参数；在 `/app/resilience_pipeline.py` 中用元组声明 `RECOVERY_PIPELINE_ORDER`；在 `container.py` 中调用 `RecoveryPluginRegistry.build_handlers(enabled_names=RECOVERY_PIPELINE_ORDER, shared_deps=...)` 利用 `inspect.signature` 自动匹配构造函数参数完成依赖注入。**核心收益**：`config/` 保持零代码依赖，`container.py` 代码行数永久冻结，新增插件只需加装饰器并在 `.py` 清单中注册名称。
 
 
-Q_10：在 LangGraph 状态机中，恢复节点（recovery_node）成功自愈后应如何设计出口路由与防死循环计数？
+### Q_10：在 LangGraph 状态机中，恢复节点（`recovery_node`）成功自愈后应如何设计出口路由与防死循环计数？
 
-• 归属档案：[[QA_02_Registry_And_Routing]]（中观粒度）
-• 核心疑惑：当 recovery_node 已经直接还原出当前阶段的合法业务对象（如 IntentResult）后，出口条件边如果统一重放原故障节点（如退回 intent_recognition），为什么会引发死循环与数据覆盖？
-• 核心答案：必须区分“产物已直接还原（前向推进）”与“仅环境恢复（重放原阶段）”两条路由语义，并在编排层设置状态防火墙统一维护全局熔断计数。当 outcome.is_recovered == True 且 outcome.recovered_data is not None 时，说明目标产物已回填至状态机，_route_after_recovery 必须直接将流程推进到原故障节点的下一站（如 intent_recognition 直接推进至 routing）；同时由外层防火墙 _wrap_recovery_node 统一递增 _recovery_attempts 并记录 _last_failed_node（支持 agent_execution:* 等动态子阶段前缀归一化），各业务节点捕获异常时统一读取全局 _recovery_attempts 传入 FailureContext.retry_count。
-• 真实正反例对比：
-	• ❌ 反例（Anti-Pattern）：_route_after_recovery 只要看到 is_recovered=True 就无条件 return last_node（退回 INTENT_NODE），且各节点在 except 块中通过 prev_failure.retry_count 读取重试次数。死穴所在：退回原节点会用故障主模型重新执行并覆盖掉已自愈的 intent_result，同时自愈成功清空 failure_context 后会导致 prev_failure 为 None，使累计重试计数归零并触发无限死循环。
-	• ✅ 正例（Best Practice）：recovery_node 查表将 outcome.recovered_data 写入 state["intent_result"] 并清空 failure_context；_route_after_recovery 检测到 recovered_data is not None 且 last_node == INTENT_NODE 时直接返回 ROUTING_NODE 前向推进；所有节点异常捕获时统一读取 state.get("_recovery_attempts", 0)。核心收益：自愈产物零覆盖、不走回头路，且跨阶段全局恢复次数受编排层防火墙严格熔断保护。       
+* **归属档案**：[[QA_02_Registry_And_Routing]]（中观粒度）
+* **核心疑惑**：当 `recovery_node` 已经直接还原出当前阶段的合法业务对象（如 `IntentResult`）后，出口条件边如果统一重放原故障节点（如退回 `intent_recognition`），为什么会引发死循环与数据覆盖？
+* **核心答案**：必须区分**“产物已直接还原（前向推进）”**与**“仅环境恢复（重放原阶段）”**两条路由语义，并在编排层设置状态防火墙统一维护全局熔断计数。当 `outcome.is_recovered == True` 且 `outcome.recovered_data is not None` 时，说明目标产物已回填至状态机，`_route_after_recovery` 必须直接将流程推进到原故障节点的**下一站**（如 `intent_recognition` 直接推进至 `routing`）；同时由外层防火墙 `_wrap_recovery_node` 统一递增 `_recovery_attempts` 并记录 `_last_failed_node`（支持 `agent_execution:*` 等动态子阶段前缀归一化），各业务节点捕获异常时统一读取全局 `_recovery_attempts` 传入 `FailureContext.retry_count`。
+* **真实正反例对比**：
+  * ❌ **反例（Anti-Pattern）**：`_route_after_recovery` 只要看到 `is_recovered=True` 就无条件 `return last_node`（退回 `INTENT_NODE`），且各节点在 `except` 块中通过 `prev_failure.retry_count` 读取重试次数。**死穴所在**：退回原节点会用故障主模型重新执行并覆盖掉已自愈的 `intent_result`，同时自愈成功清空 `failure_context` 后会导致 `prev_failure` 为 `None`，使累计重试计数归零并触发无限死循环。
+  * ✅ **正例（Best Practice）**：`recovery_node` 查表将 `outcome.recovered_data` 写入 `state["intent_result"]` 并清空 `failure_context`；`_route_after_recovery` 检测到 `recovered_data is not None` 且 `last_node == INTENT_NODE` 时直接返回 `ROUTING_NODE` 前向推进；所有节点异常捕获时统一读取 `state.get("_recovery_attempts", 0)`。**核心收益**：自愈产物零覆盖、不走回头路，且跨阶段全局恢复次数受编排层防火墙严格熔断保护。
 
 
 ### Q_11：为什么传统静态工厂函数在参数或插件扩展时会导致“散弹式修改”，如何通过“装饰器自发现 + 自动签名依赖注入”彻底冻结工厂代码？
