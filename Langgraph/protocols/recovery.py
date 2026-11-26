@@ -1,6 +1,23 @@
 from typing import Any, Dict, Optional, Protocol, runtime_checkable
 from schemas.recovery import FailureContext, RecoveryOutcome
 
+@runtime_checkable
+class ClassifiableErrorProtocol(Protocol):
+    """自描述异常协议：纯原语 str 契约，完全不依赖任何具体业务枚举"""
+
+    @property
+    def error_code(self) -> str:
+        """点分命名空间错误路由键，如 'model.unavailable' / 'output.format_error'"""
+        ...
+
+    @property
+    def user_friendly_hint(self) -> Optional[str]:
+        """可选的用户友好降级提示"""
+        ...
+
+    def to_failure_metadata(self) -> Dict[str, Any]:
+        """导出诊断上下文元数据"""
+        ...
 
 @runtime_checkable
 class ExceptionMapperProtocol(Protocol):
@@ -22,7 +39,7 @@ class ExceptionMapperProtocol(Protocol):
 
 @runtime_checkable
 class ExceptionRecoveryProtocol(Protocol):
-    """4. 异常恢复与回退组件标准协议（供自愈节点使用）"""
+    """异常恢复统一协议（单插件与组合责任链共享同一契约：无法修复时返回 None）"""
 
-    async def handle_failure(self, context: FailureContext) -> RecoveryOutcome:
+    async def handle_failure(self, context: FailureContext) -> Optional[RecoveryOutcome]:
         ...
