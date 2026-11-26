@@ -82,3 +82,12 @@ stage: gold
     finally:
         qdrant_client.close()
     ```
+
+Q_22：在 LangChain 适配器与本地正则清洗切面中，如何规避列表首元素访问与正则字符类防呆陷阱？
+
+• 归属档案：[[QA_04_Micro_Tricks_And_Storage]]（精细粒度）
+• 核心疑惑：在为 json_mode 自动注入 JSON 提示词以及编写 Markdown 代码块剥离正则时，哪些隐蔽的 Python 语法细节会导致运行时 AttributeError 或匹配语义偏差？
+• 核心答案：在处理消息列表 List[Dict[str, str]] 时，检查首条系统消息必须显式使用下标 safe_messages[0]；在编写匹配跨行任意字符的正则时，应使用标准非贪婪表达式 [\s\(\S\)]*?，避免在字符类方括号 [] 内放入多余的转义括号 \(\)。
+• 真实正反例对比：
+	• ❌ 反例（Anti-Pattern）：在 _ensure_json_keyword 中对列表直接调用 if safe_messages and safe_messages.get("role") == "system": safe_messages["content"] += json_hint；在剥离 Markdown 代码块时使用 re.compile(r"```(?:json)?\s*([\s\(\S\)]*?)\s*```")。死穴所在：前者对 list 调用 .get() 会在 json_mode 且缺失 "json" 关键词的分支触发运行时 AttributeError 崩溃；后者在字符类 [...] 内混入字面量左右括号，语义冗余且易引起误解。
+	• ✅ 正例（Best Practice）：显式访问首元素 if safe_messages and safe_messages[0].get("role") == "system": safe_messages[0]["content"] += json_hint；使用规范正则 re.compile(r"```(?:json)?\s*([\s\S]*?)\s*```", re.IGNORECASE) 配合 </think> 标签剥离与大括号滑动窗口提取候选 JSON。核心收益：消除隐蔽的运行时类型异常，确保本地 L1 格式自愈在零 Token 开销下稳定生效。
