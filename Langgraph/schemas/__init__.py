@@ -9,6 +9,8 @@ from .base import (
     ImmutableSchema,
     LLMOutputSchema,
     SelfIntrospectable,
+    AgentToken,
+    StreamEvent,
 )
 from .context import (
     Message,
@@ -17,7 +19,6 @@ from .context import (
 )
 from .decision import (
     FallbackPlan,
-    FallbackTrigger,
     IntentResult,
     RouteDecision,
 )
@@ -40,7 +41,6 @@ from .plan import (
     PlanStep,
 )
 from .recovery import (
-    FailureCategory,
     FailureContext,
     RecoveryOutcome,
 )
@@ -52,6 +52,7 @@ __all__ = [
     "ImmutableSchema",
     "LLMOutputSchema",
     "SelfIntrospectable",
+    "AgentToken",
     # api
     "ChatTurnRequest",
     "ChatTurnResponse",
