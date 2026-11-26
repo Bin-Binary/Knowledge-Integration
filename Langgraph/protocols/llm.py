@@ -1,5 +1,5 @@
 # protocols/llm.py
-from typing import Protocol, runtime_checkable, Type, TypeVar, List, Dict, Any
+from typing import Protocol, runtime_checkable, AsyncIterator, Type, TypeVar, List, Dict, Any
 from pydantic import BaseModel
 
 T = TypeVar("T", bound=BaseModel)
@@ -22,3 +22,14 @@ class StructuredLLMProtocol(Protocol):
             **kwargs: 可选推理参数透传（如 temperature, max_tokens, timeout 等）
         """
         ...
+
+@runtime_checkable
+class StreamingLLMProtocol(Protocol):
+    """流式自然语言输出协议：专用于面向用户的最终答复生成"""
+
+    def astream_text(
+        self,
+        messages: List[Dict[str, str]],
+        **kwargs: Any,
+    ) -> AsyncIterator[str]:
+        ...        
