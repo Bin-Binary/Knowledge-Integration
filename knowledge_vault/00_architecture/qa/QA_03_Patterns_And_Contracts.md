@@ -115,3 +115,26 @@ stage: gold
 • 真实正反例对比：
 	• ❌ 反例（Anti-Pattern）：在 /app/llm_factory.py 中写成 LocalJsonHealerMiddleware(ModelFailoverMiddleware(primary=raw_intent, backup=raw_recovery))（清洗切面在外，灾备切面在内，且灾备模型未包清洗切面）。死穴所在：当主模型输出带 Markdown 代码块的合法 JSON 时，内层 HybridLangChainAdapter 抛出 StructuredOutputError 会直接被中层的 ModelFailoverMiddleware 拦截并立刻重跑备用模型，导致外层的零成本本地正则清洗形同虚设，白白浪费备用模型额度和响应时间。
 	• ✅ 正例（Best Practice）：在 build_llm_adapter 中先为每个单角色基础适配器包裹内层清洗切面 LocalJsonHealerMiddleware(raw_adapter)，再在 build_adapter_pool 中用外层 ModelFailoverMiddleware(primary=intent_healed, backup=recovery_healed) 进行组合。核心收益：轻微格式污染在内层毫秒级零成本消化；真正网络/限流故障由外层透明切换备用模型，且备用模型输出同样受内层清洗保护。
+
+### Q_15：为什么应摒弃 `ABC` 抽象基类与 `ClassVar` 全局注册表，改用“零继承组合引擎 + 实例级注册表”？
+
+* **归属档案**：[[QA_03_Patterns_And_Contracts]]（细粒度）
+* **核心疑惑**：在构建两级质量评估器（`BaseQualityEvaluator`）或协议采集器（`BaseKnowledgeAcquirer`）时，使用 `ABC` 抽象基类配合 `ClassVar` 类级别注册表和 `__init_subclass__` 隔离，为什么不如“组合式通用引擎 + 实例级注册”简洁健壮？
+* **核心释义**：**组合式泛化引擎（Composable Generic Engine）**是指将通用执行骨架（如“前置长度过滤 -> L1 规则快筛 -> L2 语义打分 -> 边界钳制”）封装为不依赖继承的独立类，直接实现 `Protocol`，并通过构造函数接收纯函数回调（Callable）与实例级策略字典。
+* **核心答案**：必须遵循**“组合优于继承（Composition over Inheritance）”**与**“消除隐式类状态”**原则。基于 `ABC` 的模板方法模式强迫业务类继承特定基类并重写多个受保护钩子（`_extract_text`、`_resolve_routing_key`），不仅增加了继承层级负担，且将策略注册表放在 `ClassVar` 上会引入模块导入顺序副作用，导致同一进程内无法实例化规则集不同的多个评估器或采集器（如“严格模式”与“宽松模式”）。改用 `TwoStageQualityEvaluator` 与 `CompositeKnowledgeAcquirer` 后，业务组件只需直接实现 `Protocol` 并组合通用引擎，规则注册完全收敛在实例的 `self._rules` 中。
+* **真实正反例对比**：
+  * ❌ **反例（Anti-Pattern）**：定义 `class BaseQualityEvaluator(ABC, QualityEvaluatorProtocol[ItemT])`，内部使用 `_heuristic_registry: ClassVar` 和 `__init_subclass__` 隔离字典，业务类 `InformationQualityEvaluator` 必须继承该基类并用 `@InformationQualityEvaluator.register_heuristic(...)` 挂载规则。**死穴所在**：引入不必要的继承耦合与元类/子类化魔法，无法在运行时隔离构建不同规则配置的同类型实例，且单元测试容易受全局类状态残留污染。
+  * ✅ **正例（Best Practice）**：封装零继承的 `TwoStageQualityEvaluator[ItemT]`，在 `__init__` 中接收 `semantic_scorer`、`text_extractor`、`routing_key_resolver` 和实例级 `heuristic_rules` 字典；`InformationQualityEvaluator` 直接实现 `QualityEvaluatorProtocol[Information]` 并内部组合 `self._engine = TwoStageQualityEvaluator(...)`。**核心收益**：全项目彻底告别 `ABC` 继承，快筛规则退化为纯粹无状态函数，实例间 100% 隔离且极易单元测试。
+
+### Q_16：在 Pydantic 数据契约中，何时应保留封闭枚举，何时应改用泛型枚举（`Generic[EnumT]`）或纯原语 `str`？
+
+* **归属档案**：[[QA_03_Patterns_And_Contracts]]（细粒度）
+* **核心疑惑**：面对系统中不同的分类字段（如状态机结果 `ResolutionOutcome`、图谱关系类型 `RelatingConcepts.relationship_type`、错误路由键 `FailureContext.category`），如何判断哪种字段该用封闭枚举，哪种该用泛型枚举或纯字符串？
+* **核心释义**：**分类契约三层选型法**：根据分类集合的**变更频率**与**约束强度**，在“封闭枚举（Closed Enum）”、“泛型枚举（Generic Enum）”与“纯原语字符串（Primitive `str`）”之间做精准匹配。
+* **核心答案**：遵循以下三条边界判定铁律：
+  1. **系统架构拓扑或有限状态机边界（极低变更频率）→ 保留封闭枚举**：如 `TargetDomain`（`knowledge` / `execution`）和 `ResolutionOutcome`（`PENDING` / `SUCCESS` / `PARTIAL` / `FAILURE`），直接决定主控图拓扑边与闭环控制流，必须用封闭枚举实现启动期 Fail-Fast 防呆。
+  2. **需要 LLM 结构化输出强约束，但不同业务域需扩展专属词表 → 使用泛型枚举 `Generic[EnumT]`**：如 `RelatingConcepts[RelTypeT]`，核心层提供通用关系枚举，特定领域通过 `RelatingConcepts[CodeRelationType]` 注入专属枚举，兼顾强类型校验、提示词自省与开闭原则。
+  3. **跨层横向扩展的业务路由标签（高频新增）→ 使用纯原语 `str`**：如 `FailureContext.category`（点分命名空间 `model.rate_limited`）和 `FallbackPlan.trigger`，避免中心化枚举成为所有模块修改的瓶颈。
+* **真实正反例对比**：
+  * ❌ **反例（Anti-Pattern）**：将高频新增的异常分类定义为封闭枚举 `FailureCategory`，导致每次新增业务异常都要修改 `schemas/recovery.py`；或者在图谱边模型中硬编码单一枚举，导致代码库域无法扩展专属代码依赖关系类型。**死穴所在**：前者引发频繁修改中心契约文件的耦合痛苦；后者限制了领域模型的横向复用能力。
+  * ✅ **正例（Best Practice）**：状态机状态（`ResolutionOutcome`）与顶层架构域（`TargetDomain`）保留 `DocumentedEnum` 封闭枚举；图谱关系（`RelatingConcepts[RelTypeT]`）使用受 `DocumentedEnum` 约束的 `TypeVar` 实现泛型扩展；错误分类（`category`）使用纯原语点分 `str`。**核心收益**：在需要严格防呆的边界享受强类型保护，在需要横向扩展的业务点享受零修改自由度。
