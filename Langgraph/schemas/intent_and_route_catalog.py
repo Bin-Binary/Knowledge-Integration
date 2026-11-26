@@ -47,7 +47,6 @@ class IntentCatalog(ImmutableSchema):
             return "- `chitchat`: 日常对话与通用问答"
         return "\n".join(item.to_catalog_line() for item in self.intents)
 
-
 class RouteTargetSpec(ImmutableSchema):
     """单个意图的路由目标规格"""
     target_domain: TargetDomain = Field(
