@@ -83,3 +83,14 @@ stage: gold
                 handler = self._handlers[uri.scheme]  # 直接使用外部注入的实例
                 ...
     ```
+
+
+Q_13：如何消除异常标准化映射器中的 if isinstance 硬编码与业务枚举耦合，实现开闭原则？
+
+• 归属档案：[[QA_03_Patterns_And_Contracts]]（细粒度）
+• 核心疑惑：异常标准化映射器（Mapper）需要同时处理自研业务异常与各类第三方 SDK 异常（如 openai、httpx、pydantic），如何避免每次接入新 SDK 或新增错误类型时都去修改 Mapper 源码和中心化枚举？
+• 核心释义：协议自省（Protocol Introspection）结合声明式规则注册表，是指利用 @runtime_checkable 协议让领域异常携带纯原语路由键自描述，同时让第三方异常通过外部只读数据规格（Spec）动态注册到零三方依赖的映射器中。
+• 核心答案：核心策略是“协议自省直通 + 声明式 Spec 注册 + 删除封闭枚举”。保留纯原语契约 ClassifiableErrorProtocol（定义 error_code、user_friendly_hint 和 to_failure_metadata()），删除中心化的 FailureCategory 枚举并统一改用点分命名空间字符串（如 model.rate_limited、intent.low_confidence）。自研基类 AgentBusinessError 实现该协议后自动直通；第三方异常则通过纯标准库的 ExceptionMappingSpec 声明在 infra/default_exception_specs.py 中，由 RegistryExceptionMapper.register_specs() 无副作用注册。若不这样做，底层映射器将反向依赖所有三方库且每次扩展都必须修改核心代码。
+• 真实正反例对比：
+	• ❌ 反例（Anti-Pattern）：在 DefaultExceptionMapper._classify_and_format 中堆砌 if isinstance(curr, httpx.TimeoutException): return FailureCategory.MODEL_SERVICE_UNAVAILABLE, ...，并在装配层通过 setattr(exc, "_injected_hint", ...) 动态篡改第三方异常实例。死穴所在：违反开闭原则，映射器强耦合第三方库与中心枚举，且 setattr 遇到带 __slots__ 的异常类会直接抛出 AttributeError。
+	• ✅ 正例（Best Practice）：AgentBusinessError 实现 ClassifiableErrorProtocol 返回点分错误码；RegistryExceptionMapper 仅依赖标准库与协议，通过 register_spec(ExceptionMappingSpec(...)) 将匹配结果封装为只读内部载体 _MatchResult 提取元数据与提示语。核心收益：映射器代码永久冻结且零三方库依赖，新增业务异常只需继承基类直接 raise，新增三方异常只需在 DEFAULT_EXCEPTION_SPECS 追加一条不可变配置。
