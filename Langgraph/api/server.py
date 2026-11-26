@@ -1,4 +1,3 @@
-# /api/server.py
 import sys
 from pathlib import Path
 
@@ -8,13 +7,15 @@ import time
 import asyncio
 import logging
 from contextlib import asynccontextmanager
-from typing import Any, Dict, Optional, Protocol, runtime_checkable
+from typing import Any, AsyncIterator, Dict, Optional, Protocol, runtime_checkable
 
 from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from langchain_core.messages import AIMessage
 
-from schemas import ChatTurnRequest, ChatTurnResponse
+from schemas.base import StreamEvent
+from schemas.api import ChatTurnRequest, ChatTurnResponse
 from protocols import RawPayloadRepairerProtocol
 from app import AgentApplication
 from api.middlewares import register_middlewares_and_handlers
@@ -43,6 +44,16 @@ class AgentRuntimeProtocol(Protocol):
         trace_id: Optional[str] = None,
         is_verbose: Optional[bool] = None,
     ) -> dict:
+        ...
+
+    def astream_turn(
+        self,
+        session_id: str,
+        user_message: str,
+        user_profile: Optional[Dict[str, Any]] = None,
+        trace_id: Optional[str] = None,
+        is_verbose: Optional[bool] = None,
+    ) -> AsyncIterator[StreamEvent]:
         ...
 
 
@@ -104,6 +115,109 @@ async def chat_turn_endpoint(payload: ChatTurnRequest, request: Request):
         intent=intent_obj.model_dump() if intent_obj else None,
         route_decision=route_obj.model_dump() if route_obj else None,
         reply=reply_text,
+    )
+
+
+@router.post("/v1/agent/chat/stream", tags=["Agent"])
+async def chat_stream_endpoint(payload: ChatTurnRequest, request: Request):
+    """流式对话端点（SSE 打字机协议）：不破坏原有同步接口，正交扩展实时交互能力"""
+    trace_id = request.state.trace_id
+    start_time = time.perf_counter()
+    agent_app: AgentRuntimeProtocol = request.app.state.agent_app
+    timeout_sec = agent_app.sys_cfg.server.request_timeout_seconds
+
+    logger.info(
+        "[StreamRequestIn] trace_id=%s session_id=%s msg_len=%d",
+        trace_id,
+        payload.session_id,
+        len(payload.user_message),
+    )
+
+    async def event_generator() -> AsyncIterator[str]:
+        first_token_logged = False
+        try:
+            async with asyncio.timeout(timeout_sec):
+                async for ev in agent_app.astream_turn(
+                    session_id=payload.session_id,
+                    user_message=payload.user_message,
+                    user_profile=payload.user_profile,
+                    trace_id=trace_id,
+                ):
+                    if await request.is_disconnected():
+                        logger.info(
+                            "[StreamClientDisconnected] trace_id=%s session_id=%s",
+                            trace_id,
+                            payload.session_id,
+                        )
+                        break
+
+                    if not first_token_logged and ev.event == "token":
+                        ttft_ms = round((time.perf_counter() - start_time) * 1000, 2)
+                        logger.info(
+                            "[StreamFirstToken] trace_id=%s session_id=%s ttft_ms=%s",
+                            trace_id,
+                            payload.session_id,
+                            ttft_ms,
+                        )
+                        first_token_logged = True
+
+                    yield f"event: {ev.event}\ndata: {ev.model_dump_json()}\n\n"
+
+        except TimeoutError:
+            logger.error(
+                "[StreamTimeout] trace_id=%s session_id=%s timeout=%ss",
+                trace_id,
+                payload.session_id,
+                timeout_sec,
+            )
+            timeout_ev = StreamEvent(
+                event="error",
+                data={
+                    "trace_id": trace_id,
+                    "error_code": "STREAM_EXECUTION_TIMEOUT",
+                    "message": "Agent streaming response timed out.",
+                },
+            )
+            yield f"event: {timeout_ev.event}\ndata: {timeout_ev.model_dump_json()}\n\n"
+
+        except Exception as exc:
+            # 捕获所有未预期异常并打印完整堆栈，防止 ASGI 连接非正常中断
+            logger.error(
+                "[StreamUnhandledError] trace_id=%s session_id=%s error=%s",
+                trace_id,
+                payload.session_id,
+                exc,
+                exc_info=True,
+            )
+            err_ev = StreamEvent(
+                event="error",
+                data={
+                    "trace_id": trace_id,
+                    "error_code": "STREAM_INTERNAL_ERROR",
+                    "message": f"流式执行异常: {exc}",
+                },
+            )
+            yield f"event: {err_ev.event}\ndata: {err_ev.model_dump_json()}\n\n"
+
+        finally:
+            total_ms = round((time.perf_counter() - start_time) * 1000, 2)
+            logger.info(
+                "[StreamRequestOut] trace_id=%s session_id=%s total_ms=%s",
+                trace_id,
+                payload.session_id,
+                total_ms,
+            )
+
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "X-Trace-Id": trace_id,
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
     )
 
 
