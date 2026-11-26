@@ -122,4 +122,15 @@ stage: gold
             return [h.payload["artifact_id"] for h in hits]  # 拿到锚点后再由能力层执行双链水合
     ```
 
+Q_7：为什么大模型高可用（异构灾备切换）必须下沉到网关切面，而不能放在状态机恢复层？
+
+• 归属档案：[[QA_01_Architecture_And_DIP]]（粗粒度）
+• 核心疑惑：在多模型灾备场景下（如主模型 GLM-V5.1 限流时自动切换备用模型 DeepSeek-v4-Flash-SZ），为什么将其实现为 LangGraph 状态机恢复节点（recovery_node）的插件会导致代码严重膨胀，而下沉为 LLM Adapter 切面（Middleware）却能实现新节点零改动？
+• 核心释义：网关级透明切面（Middleware / Decorator）是指在调用底层外部服务的客户端外层包裹装饰器，在不改变接口签名和上层业务感知的前提下，透明完成重试、熔断、格式清洗或主备切换。
+• 核心答案：必须遵循关注点分离（SoC）与正交解耦原则——基础设施高可用（重试、异构模型切换、本地正则清洗）属于网关/客户端层职责，必须在调用点内部毫秒级闭环；状态机恢复层（Recovery Graph）只负责业务级语义自愈（如低置信度反问澄清）与最终静态降级。若将模型切换放在状态机层，状态机必须感知每个业务节点的输入构造、中间产物结构及回填路由，每新增一个业务子图就要同步修改恢复插件、装配容器与图路由边，严重违反开闭原则（OCP）且会中断已完成的前置多步迭代。
+• 真实正反例对比：
+	• ❌ 反例（Anti-Pattern）：在状态机恢复层实现 ModelFailoverRecovery 插件，并在 /app/container.py 注入 stage_executors 重建知识引擎，同时在 recovery_graph.py 和 master_graph.py 中硬编码回填 knowledge:deep_learn 的状态增量。死穴所在：业务节点拓扑与基础设施高可用强耦合，新增任意子图都必须修改 4 个核心架构文件，且子图内部第 N 步限流会导致前 N-1 步成果全部作废重跑。
+	• ✅ 正例（Best Practice）：编写实现 StructuredLLMProtocol 与 StreamingLLMProtocol 的 ModelFailoverMiddleware，在 /app/llm_factory.py 中以洋葱模型包裹在 LocalJsonHealerMiddleware(HybridLangChainAdapter) 外层。核心收益：业务组件（HybridIntentRecognizer、WorkspaceGapRouter）与图路由层零修改、零感知，单次 LLM 调用失败时在毫秒级内部切换 DeepSeek 继续执行，只有双模型全挂时才冒泡至 recovery_node 走静态降级。
+
+
 
