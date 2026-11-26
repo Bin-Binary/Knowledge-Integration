@@ -122,7 +122,7 @@ stage: gold
             return [h.payload["artifact_id"] for h in hits]  # 拿到锚点后再由能力层执行双链水合
     ```
 
-Q_7：为什么大模型高可用（异构灾备切换）必须下沉到网关切面，而不能放在状态机恢复层？
+### Q_7：为什么大模型高可用（异构灾备切换）必须下沉到网关切面，而不能放在状态机恢复层？
 
 • 归属档案：[[QA_01_Architecture_And_DIP]]（粗粒度）
 • 核心疑惑：在多模型灾备场景下（如主模型 GLM-V5.1 限流时自动切换备用模型 DeepSeek-v4-Flash-SZ），为什么将其实现为 LangGraph 状态机恢复节点（recovery_node）的插件会导致代码严重膨胀，而下沉为 LLM Adapter 切面（Middleware）却能实现新节点零改动？
@@ -132,5 +132,15 @@ Q_7：为什么大模型高可用（异构灾备切换）必须下沉到网关�
 	• ❌ 反例（Anti-Pattern）：在状态机恢复层实现 ModelFailoverRecovery 插件，并在 /app/container.py 注入 stage_executors 重建知识引擎，同时在 recovery_graph.py 和 master_graph.py 中硬编码回填 knowledge:deep_learn 的状态增量。死穴所在：业务节点拓扑与基础设施高可用强耦合，新增任意子图都必须修改 4 个核心架构文件，且子图内部第 N 步限流会导致前 N-1 步成果全部作废重跑。
 	• ✅ 正例（Best Practice）：编写实现 StructuredLLMProtocol 与 StreamingLLMProtocol 的 ModelFailoverMiddleware，在 /app/llm_factory.py 中以洋葱模型包裹在 LocalJsonHealerMiddleware(HybridLangChainAdapter) 外层。核心收益：业务组件（HybridIntentRecognizer、WorkspaceGapRouter）与图路由层零修改、零感知，单次 LLM 调用失败时在毫秒级内部切换 DeepSeek 继续执行，只有双模型全挂时才冒泡至 recovery_node 走静态降级。
 
+
+### Q_8：为什么需要消除中间层与标准化映射器之间的异常转换重叠，建立单一事实来源？
+
+• 归属档案：[[QA_01_Architecture_And_DIP]]（粗粒度）
+• 核心疑惑：当调用链路中已经存在统一的 RegistryExceptionMapper 负责将第三方异常映射为标准错误码时，为什么在 LLM 调用切面中再写一层 LLMErrorNormalizerMiddleware 会导致双轨制维护与架构冗余？
+• 核心释义：单一事实来源（Single Source of Truth, SSOT）是指某一类映射规则或领域知识在系统中仅在一个权威位置维护，避免多处重复转换导致语义割裂或同步遗漏。
+• 核心答案：必须区分“调用链路中的热修复（Middleware）”与“节点边界的事后快照（Mapper）”的职责边界。LocalJsonHealerMiddleware 能够原地清洗并返回合法业务对象，是不可替代的运行时热修复；而单纯把 RateLimitError、APITimeoutError 等 SDK 异常转译为业务异常的 LLMErrorNormalizerMiddleware，其转换规则与 RegistryExceptionMapper 完全重合。保留双层转译会导致同一异常写两遍映射逻辑，一旦新增第三方 SDK 就需两处同步修改。因此应删除单纯转译型中间件，将所有底层异常的归一化收敛到 RegistryExceptionMapper 配置表中。
+• 真实正反例对比：
+	• ❌ 反例（Anti-Pattern）：同时保留 LLMErrorNormalizerMiddleware（将 OpenAI SDK 异常转译为 ModelServiceUnavailableError）和 RegistryExceptionMapper（再次配置 RateLimitError 映射规则），增加一层无实质收益的异步装饰器调用栈。死穴所在：违反单一事实来源原则，同一类三方异常的映射逻辑分散在切面与配置表两处，新增 SDK 时极易遗漏或产生状态码定义冲突。
+	• ✅ 正例（Best Practice）：仅保留 LocalJsonHealerMiddleware 与 ModelFailoverMiddleware 处理调用期热修复与主备切换；删除 LLMErrorNormalizerMiddleware，将所有未捕获的底层三方 SDK 异常直接穿透至节点 except 块，由 RegistryExceptionMapper 依据 DEFAULT_EXCEPTION_SPECS 统一映射为 FailureContext。核心收益：消除冗余装饰器栈，所有三方异常映射规则收口于单一声明式配置表，维护成本减半。
 
 
