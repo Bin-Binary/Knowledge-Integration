@@ -219,3 +219,30 @@ stage: gold
 * **正反例总结**：
   * **反例**：强制继承跨层基类，并在单次 LLM 调用前置逻辑中使用 `raise ... from exc` 转译异常，导致外层协议直接遮蔽内层的 `RateLimitError`，使重试机制失效。
   * **正例**：组件内部异常零继承、仅靠鸭子类型实现协议；对于原生模型/网络异常直接透传占链头，仅在纯业务规则不满足时才抛出 `KnowledgePipelineError`，兼顾自包含与精准恢复。
+
+### Q_20：为什么只读问答链路调用 `engine.fast_retrieve(envelope)` 后，下游拿到的 `rag_context` 只有干巴巴的卡片 ID 列表而没有正文？
+* **归属档案**：[[QA_03_Patterns_And_Contracts]]（细粒度）
+* **核心疑惑**：`storage.retrieve(envelope)` 执行成功并召回了 8 条知识 ID，但下游执行节点收到的背景资料却是 `"ont_xxx\n\n---\n\nlbl_yyy"`，完全没有知识内容。
+* **核心答案**：`storage.retrieve(envelope)` 的职责边界是**“检索索引并返回排序后的知识 ID 列表填充 `resolution.resolutions`”**，它刻意不做磁盘正文水合（以支持上层做 ID 级去重或重排）。但在 `InternalKnowledgeEngine.fast_retrieve` 对外暴露的只读检索门面中，如果直接 `return await self.storage.retrieve(envelope)` 而不调用 `storage.load_contents(res.resolutions)` 水合正文写回 `resultant_situation`，出站封包器（`_pack_retrieval_to_state`）就会把字符串 ID 当成正文拼装进上下文。
+* **真实正反例对比**：
+  * ❌ **反例（Anti-Pattern）**：
+    ```python
+    class InternalKnowledgeEngine(InternalKnowledgeEngineProtocol):
+        async def fast_retrieve(self, envelope: PipelineEnvelope) -> PipelineEnvelope:
+            return await self.storage.retrieve(envelope)  # resolutions 里只有 ["ont_xxx", "lbl_yyy"]！
+    ```
+    *死穴所在*：下游 `executor` 看到一堆无意义的哈希 ID，根本不知道知识库里写了什么规则，导致基于知识库的问答退化为盲猜。
+  * ✅ **正例（Best Practice）**：
+    ```python
+    class InternalKnowledgeEngine(InternalKnowledgeEngineProtocol):
+        async def fast_retrieve(self, envelope: PipelineEnvelope) -> PipelineEnvelope:
+            retrieved_env = await self.storage.retrieve(envelope)
+            res = retrieved_env.problem_resolution
+            if res and res.resolutions and not res.resultant_situation:
+                hydrated = await self.storage.load_contents(res.resolutions)
+                if hydrated.strip():
+                    updated_res = res.model_copy(update={"resultant_situation": hydrated})
+                    return retrieved_env.model_copy(update={"problem_resolution": updated_res})
+            return retrieved_env
+    ```
+    *核心收益*：保持 `storage.retrieve` 与 `storage.load_contents` 底层职责分离的同时，确保上层只读检索门面直接交付完整的 Markdown 知识正文。
