@@ -126,6 +126,8 @@ def _build_core_dependencies(
             workspace_root=knowledge_cfg.workspace_root,
             quality_threshold=knowledge_cfg.quality_threshold,
             max_concurrency=knowledge_cfg.max_concurrency,
+            organize_timeout_seconds=knowledge_cfg.organize_timeout_seconds,
+
         )
         if knowledge_cfg.enabled
         else None
