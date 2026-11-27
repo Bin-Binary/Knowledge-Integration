@@ -91,3 +91,64 @@ Q_22：在 LangChain 适配器与本地正则清洗切面中，如何规避列�
 • 真实正反例对比：
 	• ❌ 反例（Anti-Pattern）：在 _ensure_json_keyword 中对列表直接调用 if safe_messages and safe_messages.get("role") == "system": safe_messages["content"] += json_hint；在剥离 Markdown 代码块时使用 re.compile(r"```(?:json)?\s*([\s\(\S\)]*?)\s*```")。死穴所在：前者对 list 调用 .get() 会在 json_mode 且缺失 "json" 关键词的分支触发运行时 AttributeError 崩溃；后者在字符类 [...] 内混入字面量左右括号，语义冗余且易引起误解。
 	• ✅ 正例（Best Practice）：显式访问首元素 if safe_messages and safe_messages[0].get("role") == "system": safe_messages[0]["content"] += json_hint；使用规范正则 re.compile(r"```(?:json)?\s*([\s\S]*?)\s*```", re.IGNORECASE) 配合 </think> 标签剥离与大括号滑动窗口提取候选 JSON。核心收益：消除隐蔽的运行时类型异常，确保本地 L1 格式自愈在零 Token 开销下稳定生效。
+
+### Q_23：为什么 Pydantic 动态结构化输出模型不能硬编码静态类名和固定 `max_length`，而应使用 `create_model`？
+* **归属档案**：[[QA_04_Micro_Tricks_And_Storage]]（精细粒度）
+* **核心疑惑**：算子类的 `__init__` 已经接收了 `max_concepts` 或 `max_edges_per_window` 参数，为什么运行时 LLM 返回的结果数量依然被死死限制在默认值（如 3 或 8）？
+* **核心释义**：**Pydantic `create_model` 动态工厂**用于在运行时根据实例参数动态构造带唯一类名的 `BaseModel` 子类，使字段级校验约束（如 `max_length`）与实例化配置动态绑定。
+* **核心答案**：如果在模块顶层定义一个静态的 `class _LabelBatchOutput(LLMOutputSchema)` 并写死 `Field(..., max_length=3)`，那么无论实例化 `LLMLabelExtractor(max_concepts=6)` 时传入什么参数，结构化输出校验层都会按 3 条截断。同时，使用 `create_model` 动态生成模型时，**类名必须携带参数后缀**（如 `f"_RelationBatchOutput_Max{self.max_edges_per_window}"`），防止系统中存在多个不同配置的算子实例时发生 Pydantic V2 内部 Schema 命名空间缓存冲突。
+* **真实正反例对比**：
+  * ❌ **反例（Anti-Pattern）**：
+    ```python
+    class _RelationBatchOutput(LLMOutputSchema):
+        edges: List[_RelationEdgeItem] = Field(default_factory=list, max_length=8)  # 死值截断
+
+    # 或者动态生成时使用固定同名，多实例时 JSON Schema $ref 冲突
+    self._output_schema = create_model("_RelationBatchOutput", ...)
+    ```
+    *死穴所在*：外部传入的容量参数形同虚设；多实例并发初始化同名动态模型时引发 Schema 定义覆盖。
+  * ✅ **正例（Best Practice）**：
+    ```python
+    schema_name = f"_RelationBatchOutput_Max{self.max_edges_per_window}"
+    self._output_schema = create_model(
+        schema_name,
+        __base__=LLMOutputSchema,
+        edges=(List[_RelationEdgeItem], Field(default_factory=list, max_length=self.max_edges_per_window)),
+    )
+    ```
+    *核心收益*：实例化配置参数与 LLM 结构化输出校验约束 100% 同步生效，且多实例并发安全隔离。
+
+### Q_24：在本地文件系统与文本解析场景下，如何做好路径穿越沙箱、上下文居中截取与 `mtime` 增量索引缓存？
+* **归属档案**：[[QA_04_Micro_Tricks_And_Storage]]（精细粒度）
+* **核心疑惑**：如何防止外部传入的 `SourceURI` 或恶意 `artifact_id` 越权读写工作区/知识库目录之外的文件，同时避免长切片截断关键证据以及全盘扫描 Markdown 文件导致的检索性能退化？
+* **核心答案**：围绕文件安全与文本处理落地三项微观防御技巧：
+  1. **双重路径沙箱校验**：文件读取时通过 `resolved.is_relative_to(workspace_root)` 锁死工作区边界；文件写入时校验 `artifact_id` 禁止包含 `/`、`\`、`..` 且 `PurePosixPath(clean_id).name == clean_id`。
+  2. **命中词居中窗口截取**：`LLMRelationBuilder._build_window_context` 分配切片字符预算时，不盲目截取 `text[:per_info_chars]`，而是定位目标概念词首次出现的位置 `hit_pos`，围绕命中点向左右各取一半预算并做触底补偿，防止关键证据在文本中后段被截断。
+  3. **`mtime_ns` 增量内存索引**：`LocalMarkdownStorage` 为每张卡片缓存 `(mtime_ns, doc_tokens, summary_tokens, bottom_links)`，写入/晋升时通过回调精准失效，外部手动修改文件时通过纳秒级修改时间戳自动刷新，将检索耗时从全盘磁盘 I/O 降至内存级。
+* **真实正反例对比**：
+  * ❌ **反例（Anti-Pattern）**：
+    ```python
+    # 1. 无沙箱校验，传入 ../../etc/passwd 直接越界解析
+    return (root / uri.subpath).resolve()
+    # 2. 盲目截取开头，概念出现在第 2000 字符时证据全丢
+    snippets.append(text[:per_info_chars])
+    # 3. 每次检索全盘 read_text + 正则分词
+    for md_file in layer_dir.glob("*.md"):
+        content = md_file.read_text(encoding="utf-8")
+    ```
+    *死穴所在*：存在目录穿越安全漏洞；长文本关系推理因上下文截断产生幻觉；知识库规模上千后检索延迟急剧恶化。
+  * ✅ **正例（Best Practice）**：
+    ```python
+    # 1. 强制工作区沙箱锁死
+    if enforce_workspace_jail and not resolved.is_relative_to(root):
+        raise KnowledgePipelineError(message="禁止访问工作区之外的路径", stage="acquisition")
+    # 2. 围绕命中词居中截取并向左补偿
+    start = max(0, hit_pos - per_info_chars // 2)
+    end = min(len(text), start + per_info_chars)
+    if end - start < per_info_chars:
+        start = max(0, end - per_info_chars)
+    # 3. 基于 stat().st_mtime_ns 的线程安全内存索引缓存
+    if cached is not None and cached.mtime_ns == stat.st_mtime_ns:
+        return cached
+    ```
+    *核心收益*：兼顾系统安全性、长文档关系推理召回率与本地 Markdown 知识库的高并发检索性能。
