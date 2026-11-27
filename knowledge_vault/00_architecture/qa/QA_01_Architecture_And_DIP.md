@@ -213,3 +213,31 @@ stage: gold
         raise KnowledgePipelineError(message="所有关系推理窗口均调用失败", stage="organization")
     ```
     *核心收益*：基础设施波动能精准触发模型恢复节点自愈，而局部增强阶段（3.3 建边 / 3.4 聚拢）失败又能触发 `KnowledgeOrganizer` 的 `P1-2` 保护，保住前面已消耗 Token 提取的 `Labeling` 概念节点顺利落盘。
+
+### Q_12：当业务组件从“分层目录”向“高内聚独立组件”演进时，领域数据模型、专属协议与领域异常应该放在项目根目录还是收敛进组件内部？
+* **归属档案**：[[QA_01_Architecture_And_DIP]]（粗粒度）
+* **核心疑惑**：目前 `schemas/internal_knowledge`、`protocols/internal_knowledge` 和 `KnowledgePipelineError` 都放在全局根目录（`schemas/`、`protocols/`、`infra/`）下，导致 `internal_knowledge` 组件反而要反向依赖基础设施里的业务异常，且跨项目复用时文件散落四处。
+* **核心释义**：
+  * **稳定性依赖原则（SDP）**：组件只能依赖比自己更稳定的通用底座（如 `ImmutableSchema`、`StructuredLLMProtocol`），严禁让底层基础设施反向知晓具体业务领域的异常或状态。
+  * **组件自包含（Self-Contained Vertical Slice）**：仅服务于单一领域的子协议、数据载体与业务异常应内聚在组件目录内，实现“拷走即用”。
+* **核心答案**：全局根目录只应保留**跨多个业务组件共享的通用契约与极薄底座**（如 `ImmutableSchema`、`StructuredLLMProtocol`、`AppBaseError`）；所有**仅被 `internal_knowledge` 内部子算子实现的协议**（如 `LabelExtractorProtocol`）、**领域数据模型**（如 `PipelineEnvelope`、`Ontology`）以及**领域专属异常**（`KnowledgePipelineError`），在架构演进时都应当收口进 `components/internal_knowledge/` 内部。全局异常映射器只需通过鸭子类型属性（`error_code`、`user_friendly_hint`）识别异常，无需导入具体领域异常类，从而彻底消除循环与反向依赖。
+* **真实正反例对比**：
+  * ❌ **反例（Anti-Pattern）**：
+    ```python
+    # 1. 把知识库专属阶段异常定义在全局基础设施 infra/exceptions.py 中
+    class KnowledgePipelineError(Exception):
+        def __init__(self, message: str, stage: Literal["acquisition", "organization", ...]): ...
+
+    # 2. 只有 internal_knowledge 内部使用的子协议散落在全局 protocols/internal_knowledge.py
+    ```
+    *死穴所在*：基础设施层 `infra` 被迫耦合了“知识采集/组织”等业务阶段概念；外部若想单独提取 `internal_knowledge` 组件，必须跨 4 个顶层目录手动翻找依赖文件。
+  * ✅ **正例（Best Practice）**：
+    ```python
+    # 组件内部自包含目录结构（V2 演进目标）：
+    # components/internal_knowledge/
+    #   ├── exceptions.py   (定义 KnowledgePipelineError，仅继承通用基类)
+    #   ├── protocols.py    (定义内部子算子协议 LabelExtractorProtocol 等)
+    #   ├── schemas/        (定义 PipelineEnvelope / Ontology 等领域模型，仅继承根 ImmutableSchema)
+    #   └── __init__.py     (统一对外暴露门面)
+    ```
+    *核心收益*：实现垂直切片高内聚，依赖方向严格单向指向底层稳定底座，组件具备零胶水独立打包与迁移能力。
