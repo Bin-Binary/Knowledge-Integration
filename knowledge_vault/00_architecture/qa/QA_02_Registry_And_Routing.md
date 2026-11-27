@@ -264,3 +264,56 @@ stage: gold
     ```
     *核心收益*：显式路径学习跳过全盘扫描直接秒级采集，多轮探索遇到已穷尽数据源时立即优雅收敛。
 
+
+### Q_18：如何在不增加额外 LLM 调用的前提下，消除 L1 切片的占位废话摘要，并防止大模型把 `set -ex` 等通用编程语法当成业务概念沉淀？
+* **归属档案**：[[QA_02_Registry_And_Routing]]（中观粒度）
+* **核心疑惑**：L1 切片默认生成的 `"[shell_script] 来自 file://... 的原始符号切片"` 毫无信息量，且 3.2 概念抽取器经常把 Bash 的 `set -ex`、`getopts` 等通用语言特性当成核心概念落盘，污染业务知识库。
+* **核心释义**：**单次推理附带摘要（Piggybacked Summarization）**是指利用 `LLMLabelExtractor` 本身已阅读全文的推理窗口，在结构化输出模型中顺带增加 `slice_summary` 字段，实现 **0 次额外 API 调用、0 秒额外延迟**的高密业务摘要提取。
+* **核心答案**：
+  1. **零成本顺带摘要**：绝不能为了生成切片摘要再单独加一轮 LLM 请求（在慢模型下会额外增加 30+ 秒延迟）。直接在 `LLMLabelExtractor` 的动态结构化输出 Schema 中增加 `slice_summary` 字段，通过 `Labeling.rich_semantics["slice_summary"]` 经由 `GraphBatchContext.info_summaries` 回填至 L1 卡片；同时在 `InformationArtifact._render_body` 中规定“仅当摘要非空时才渲染摘要区块”，彻底消灭机械拼接废话。
+  2. **业务特异性负向过滤铁律**：在 `LLMLabelExtractor` 的 System Prompt 中明确禁止提取任何编程语言或工具的通用语法特性（如 `set -ex`、`try-except`、常规参数解析），要求所有概念必须锚定具体业务组件、路径规范、状态流转和异常降级策略，否则返回空列表 `[]`。
+* **真实正反例对比**：
+  * ❌ **反例（Anti-Pattern）**：
+    ```python
+    # 1. 视图层机械拼接无意义占位摘要
+    return f"[{self.core.topic}] 来自 `{src_desc}` 的原始符号切片。"
+    # 2. Prompt 未限制通用语法，导致沉淀出大量 `lbl_strict_execution_mode` (set -ex) 等通用编程常识
+    ```
+    *死穴所在*：L1 卡片充斥模板废话，L2 概念库被通用编程语言语法稀释，下游检索时真正有价值的业务规则被噪声淹没。
+  * ✅ **正例（Best Practice）**：
+    ```python
+    # LLMLabelExtractor 动态模型顺带输出 slice_summary，Prompt 严禁通用语法噪音
+    self._output_schema = create_model(
+        schema_name,
+        __base__=LLMOutputSchema,
+        slice_summary=(str, Field(default="", description="30~60字精准概括当前片段的核心业务逻辑")),
+        concepts=(List[_ExtractedConceptItem], Field(default_factory=list, max_length=self.max_concepts)),
+    )
+    ```
+    *核心收益*：零额外 Token 与耗时成本获得高密度业务摘要，沉淀的知识卡片 100% 聚焦私有业务规则与长尾避坑细节。
+
+### Q_19：为什么知识库经常沉淀出 `set -ex`、`getopts` 等通用编程常识，以及如何从“采集源头 + 评分准入 + 抽取 Prompt”三端联动提纯高价值业务知识？
+* **归属档案**：[[QA_02_Registry_And_Routing]]（中观粒度）
+* **核心疑惑**：对 Shell/Python 代码进行知识提取时，模型经常抽出 `lbl_strict_execution_mode`（`set -ex` 严格执行模式）或 `lbl_argument_parsing`（参数解析）这类通用语言语法概念，不仅对业务毫无帮助，反而稀释了真正核心的业务分支与长尾避坑知识。
+* **核心释义**：**通用常识污染（General Knowledge Pollution）**是指大模型受预训练分布惯性驱动，倾向于提炼教科书式的通用技术术语，而非锚定当前具体业务系统、私有组件契约和特殊环境变量分支的领域知识。
+* **核心答案**：要让知识库只沉淀“脱离了当前业务代码就查不到”的硬核领域知识，必须实行**端到端三层提纯治理**：
+  1. **采集源头去噪（`ShellScriptHandler`）**：避免将文件顶部通用头文件（如 `set -ex`、版权注释、空变量默认初始化）无差别重复拼接到每一个函数切片前面，消除高频重复诱导。
+  2. **评估准入拦截（`heuristics/code_rules.py`）**：对于仅包含变量空值初始化（`sftp_base_dir=""`）和基础声明、缺乏具体业务常量或分支逻辑的文件头样板切片，拦截或交由低分过滤，不进入概念抽取。
+  3. **抽取 Prompt 业务特异性铁律（`LLMLabelExtractor`）**：在 System Prompt 中明确设立负向红线——**严禁提取任何编程语言或工具的通用语法特性**，强制要求概念命名与定义必须锚定具体业务组件名、目录路径规范、状态流转条件和降级策略；若切片仅含通用样板代码，强制返回空列表 `[]`。
+* **真实正反例对比**：
+  * ❌ **反例（Anti-Pattern）**：
+    ```python
+    # 1. 每个函数切片前都强行拼接顶部 `set -ex`，诱导模型反复看到并提取它
+    # 2. LLMLabelExtractor Prompt 只写“请提取核心概念”，结果产出：
+    #    canonical_name="严格执行模式", semantic_slug="strict_execution_mode"
+    ```
+    *死穴所在*：知识库里堆满“Bash 遇到非零返回码会退出”之类的通用编程常识，真正关键的 `uvp 组件强制设 platform=noarch`、`smoke 流水线三级取包回退顺序` 等业务规则反而被淹没。
+  * ✅ **正例（Best Practice）**：
+    ```python
+    # LLMLabelExtractor System Prompt 增加严格业务锚定与负向排除规则：
+    "2. **严禁通用语法噪音**：绝对禁止提取编程语言或工具的通用语法特性（如 Bash 的 `set -ex`、`getopts` 参数解析、"
+    "常规条件判断、标准库用法等），只提取与具体业务系统、专用组件、路径规范、状态流转和降级策略强绑定的领域知识。"
+    "若片段仅为通用样板代码或无业务规则，concepts 直接返回空列表 `[]`。"
+    ```
+    *核心收益*：大幅削减无用概念节点数量与建边计算量，确保知识库沉淀的每一张卡片都是高含金量的私有业务资产与长尾避坑指南。
+
