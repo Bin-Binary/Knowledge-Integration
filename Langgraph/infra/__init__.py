@@ -4,11 +4,21 @@ from .observability import (
     reset_observability_context, 
     setup_global_observability_logging,
     log_execution,
+    emit_component_status,
 
 )
 
 from .adapters import(
-    LangChainStructuredAdapter
+    LangChainStructuredAdapter,
+    HybridLangChainAdapter
+)
+
+from .exceptions import(
+    LowConfidenceIntentError,
+    StructuredOutputError,
+    KnowledgePipelineError,
+    ModelServiceUnavailableError,
+    
 )
 
 __all__ = [
@@ -17,6 +27,14 @@ __all__ = [
     "reset_observability_context", 
     "setup_global_observability_logging",
     "log_execution",
+    "emit_component_status",
     # 模型适配
     "LangChainStructuredAdapter",
+    "HybridLangChainAdapter",
+    # 异常定义
+    "LowConfidenceIntentError",
+    "StructuredOutputError",
+    "KnowledgePipelineError",
+    "ModelServiceUnavailableError",
+    
 ]
