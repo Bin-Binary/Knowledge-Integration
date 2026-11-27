@@ -246,3 +246,32 @@ stage: gold
             return retrieved_env
     ```
     *核心收益*：保持 `storage.retrieve` 与 `storage.load_contents` 底层职责分离的同时，确保上层只读检索门面直接交付完整的 Markdown 知识正文。
+
+### Q_21：为什么 L1 原始切片视图（`InformationArtifact`）不能硬编码编程语言后缀列表来加代码围栏，而应该由采集器通过元数据或协议驱动？
+* **归属档案**：[[QA_03_Patterns_And_Contracts]]（细粒度）
+* **核心疑惑**：在渲染 `.sh` 或 `.py` 文件切片为 Markdown 时，如果直接把 `# 注释` 输出在普通正文里，会被 Markdown 解析器误渲染成一级标题（`<h1>`）；但如果直接在 `InformationArtifact` 里写死 `_CODE_FENCE_EXTS = {"sh", "py", "ts", ...}`，又会造成什么架构问题？
+* **核心释义**：**元数据驱动视图渲染（Metadata-Driven View Rendering）**是指由最懂源文件格式的“采集处理器（Producer）”在采集期声明渲染提示（如 `metadata["fence_lang"]`），而“视图层（Consumer）”只认通用结构协议，严禁反向枚举具体业务语言列表。
+* **核心答案**：`InformationArtifact` 属于领域无关的核心物化视图层。一旦在其中硬编码语言后缀集合，就会导致**领域特化向核心 Schema 倒灌**——未来每新增一种文件格式（如 GLSL Shader、Dockerfile、SQL），都必须回来修改核心视图代码，违反开闭原则（OCP）。正确的做法是让视图层仅识别 `SourceScheme.REPO` 通用后缀或上游透传的渲染提示，彻底隔离语言细节与排版逻辑。
+* **真实正反例对比**：
+  * ❌ **反例（Anti-Pattern）**：
+    ```python
+    # components/internal_knowledge/schemas/artifacts/info_artifact.py
+    _CODE_FENCE_EXTS = {"sh", "bash", "py", "ts", "go", "java", "sql", ...}  # 随语言扩展不断膨胀
+    def _resolve_code_fence_lang(self) -> Optional[str]:
+        return suffix if suffix in _CODE_FENCE_EXTS else None
+    ```
+    *死穴所在*：核心物化视图沦为编程语言后缀大杂烩，每支持一种新文件类型都要修改 `schemas/` 层源码。
+  * ✅ **正例（Best Practice）**：
+    ```python
+    # 视图层保持零语言特化，仅识别通用 REPO 协议后缀或采集器传入的元数据提示
+    def _resolve_code_fence_lang(self) -> Optional[str]:
+        meta = getattr(self.core, "metadata", None)
+        if isinstance(meta, dict) and isinstance(meta.get("fence_lang"), str):
+            return meta["fence_lang"].strip().lower()
+        uri = self.core.source
+        if not uri or uri.scheme != SourceScheme.REPO:
+            return None
+        suffix = Path(uri.subpath or uri.location).suffix.lstrip(".").lower()
+        return suffix if suffix.isalnum() else ""
+    ```
+    *核心收益*：`schemas/` 核心视图层永远冻结稳定，“谁解析、谁声明格式”，新增任意领域采集器对视图层 100% 零侵入。
