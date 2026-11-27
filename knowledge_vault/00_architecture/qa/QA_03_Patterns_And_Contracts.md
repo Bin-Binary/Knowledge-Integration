@@ -138,3 +138,32 @@ stage: gold
 * **真实正反例对比**：
   * ❌ **反例（Anti-Pattern）**：将高频新增的异常分类定义为封闭枚举 `FailureCategory`，导致每次新增业务异常都要修改 `schemas/recovery.py`；或者在图谱边模型中硬编码单一枚举，导致代码库域无法扩展专属代码依赖关系类型。**死穴所在**：前者引发频繁修改中心契约文件的耦合痛苦；后者限制了领域模型的横向复用能力。
   * ✅ **正例（Best Practice）**：状态机状态（`ResolutionOutcome`）与顶层架构域（`TargetDomain`）保留 `DocumentedEnum` 封闭枚举；图谱关系（`RelatingConcepts[RelTypeT]`）使用受 `DocumentedEnum` 约束的 `TypeVar` 实现泛型扩展；错误分类（`category`）使用纯原语点分 `str`。**核心收益**：在需要严格防呆的边界享受强类型保护，在需要横向扩展的业务点享受零修改自由度。
+
+### Q_17：为什么在存储检索（1-Hop GraphRAG 邻域扩展）和跨层物化落盘时，必须严格校验生命周期可见性与数据结构字段契约？
+* **归属档案**：[[QA_03_Patterns_And_Contracts]]（细粒度）
+* **核心疑惑**：为什么 `LocalMarkdownStorage` 在检索时把命中卡片底部的双链 ID 直接加入召回列表，却在加载正文时静默丢失？以及为什么 3.2 阶段提炼的 `rich_semantics` 在落盘时退化成了默认占位文本？
+* **核心答案**：跨层协同必须严守**双向契约一致性**：
+  1. **生命周期可见性一致**：生产环境检索通常配置 `allowed_retrieval_stages=(GOLD, RELEASE)`，当主节点已晋升至 `release/` 而其引用的原始切片仍在 `debug/` 时，1-Hop 邻域扩展必须先校验 `linked_id in accessible_ids`，否则不可见节点会挤占 `top_k` 名额且水合正文为空。
+  2. **跨阶段模型字段契约一致**：生产方与消费方必须共享公开字段名（如 `Labeling.rich_semantics` 与 `Ontology.complex_id`），消费方在合并多切片同 ID 实体时（`_prepare_items`）应做集合并集聚合，而非简单丢弃后续实例的语义补充。
+* **真实正反例对比**：
+  * ❌ **反例（Anti-Pattern）**：
+    ```python
+    # 1. 邻域扩展不校验目标节点是否在允许的生命周期目录内
+    for linked_id in bottom_links.get("溯源切片", [])[:2]:
+        if linked_id not in final_ids and len(final_ids) < self.top_k:
+            final_ids.append(linked_id)
+
+    # 2. LabelingArtifactWriter 读取不存在的私有属性，且去重时丢弃后续切片语义
+    sem = getattr(item, "_rich_semantics", {}) or {}
+    ```
+    *死穴所在*：未晋升的 `debug` 切片挤占 `top_k` 召回配额却读不出内容；`_rich_semantics` 拼写失配导致大模型提炼的 `core_definition` 和 `trigger_criteria` 全部丢失。
+  * ✅ **正例（Best Practice）**：
+    ```python
+    # 1. 仅纳入当前 allowed_retrieval_stages 扫描范围内真实存在的关联节点
+    if linked_id in accessible_ids and linked_id not in final_ids and len(final_ids) < self.top_k:
+        final_ids.append(linked_id)
+
+    # 2. 兼容读取 rich_semantics 并在 _prepare_items 中聚合多切片 trigger_criteria 与 boundaries
+    sem = getattr(lbl, "rich_semantics", None) or getattr(lbl, "_rich_semantics", None) or {}
+    ```
+    *核心收益*：杜绝检索配额浪费与上下文空洞，保证多切片同名概念的业务判据完整沉淀到 L2 知识卡片中。
