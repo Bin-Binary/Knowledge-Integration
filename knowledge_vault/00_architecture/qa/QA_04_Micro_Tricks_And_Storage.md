@@ -152,3 +152,35 @@ Q_22：在 LangChain 适配器与本地正则清洗切面中，如何规避列�
         return cached
     ```
     *核心收益*：兼顾系统安全性、长文档关系推理召回率与本地 Markdown 知识库的高并发检索性能。
+
+### Q_25：集成测试暴露出的上层调用潜在问题（如漏传必填 ID、并发客户端线程安全），应该通过组件代码自己加固，还是写成接口文档说明？
+* **归属档案**：[[QA_04_Micro_Tricks_And_Storage]]（精细粒度）
+* **核心疑惑**：烟雾测试时发现调用方构造 `ResolveProblem` 容易漏传 `problem_id` 触发 `ValidationError`，以及外部传入的 `llm_client` 必须支持异步并发，这类问题该改代码防呆还是写进 Docstring？
+* **核心答案**：遵循**“能靠代码防呆在运行期直接消除的，绝不留给文档说明；只有涉及调用方外部基础设施约束的，才沉淀为接口契约”**原则：
+  1. **组件自身防呆加固**：对于数据结构默认值、便捷构造入口（如 `ResolveProblem.problem_id` 自动生成 `uuid` 默认值，或提供 `PipelineEnvelope.from_problem(query)` 工厂方法）以及顶层门面导出，必须由组件自己修改代码实现“零心智负担防呆”，绝不能指望调用方靠看注释避坑。
+  2. **接口说明（Docstring 契约）**：对于组件通过 DIP 接收的外部基础设施要求（如传入的 `llm_client` 必须底层异步非阻塞且并发安全）以及异常分流规则（原生模型异常透传 vs `KnowledgePipelineError` 业务异常），组件无法替外部创建连接池，必须明确写入入口函数与核心协议的 Docstring 契约中。
+* **真实正反例对比**：
+  * ❌ **反例（Anti-Pattern）**：
+    ```python
+    class ResolveProblem(ImmutableSchema):
+        problem_id: str  # 强制要求外部每次手动生成传参，只在注释里写“注意：必须传唯一 ID”
+        problem: str
+    ```
+    *死穴所在*：烟雾测试中连续两次因为漏传 `problem_id` 触发 `ValidationError`，在真实多节点调用中极易引发运行时崩溃。
+  * ✅ **正例（Best Practice）**：
+    ```python
+    # 1. 组件自己加固防呆：提供默认值与一键构造工厂
+    class ResolveProblem(ImmutableSchema):
+        problem_id: str = Field(default_factory=lambda: f"prob_{uuid4().hex[:12]}")
+        problem: str
+
+    # 2. 外部约束写入入口契约 Docstring：
+    def create_default_knowledge_engine(llm_client: StructuredLLMProtocol, ...) -> InternalKnowledgeEngineProtocol:
+        """
+        Args:
+            llm_client: 必须支持异步非阻塞并发调用（内部通过 asyncio.gather 并发请求）。
+        Raises:
+            原样透传 RateLimitError/APITimeoutError 供外层恢复节点重试；业务中断抛出 KnowledgePipelineError。
+        """
+    ```
+    *核心收益*：把内部使用门槛降为零，同时把跨系统边界的并发与异常契约显式化，兼顾开发体验与系统健壮性。
