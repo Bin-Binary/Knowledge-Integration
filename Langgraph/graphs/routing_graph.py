@@ -46,8 +46,7 @@ def create_routing_node(
                 "recovery_outcome": None,
             }
         except Exception as exc:
-            prev_failure = state.get("failure_context")
-            current_retry = prev_failure.retry_count if prev_failure else 0
+            current_retry = state.get("_recovery_attempts", 0)
             failure_ctx = map_exception(
                 exc,
                 trace_id=trace_id,
@@ -58,7 +57,7 @@ def create_routing_node(
             )
             logger.warning(
                 "[RoutingNode] Caught [%s]: %s",
-                failure_ctx.category.value,
+                failure_ctx.category,
                 failure_ctx.error_message,
             )
             return {
