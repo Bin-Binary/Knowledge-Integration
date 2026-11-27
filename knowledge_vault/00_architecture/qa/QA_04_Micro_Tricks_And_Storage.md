@@ -205,3 +205,32 @@ Q_22：在 LangChain 适配器与本地正则清洗切面中，如何规避列�
         organize_timeout_seconds: Optional[float] = Field(default=480.0, gt=0)
     ```
     *核心收益*：杜绝双份配置类漂移，配合 `extra="forbid"` 在应用启动期 0 秒暴露任何拼写或字段缺失错误。
+
+### Q_27：当 L1 切片文件在 `debug/` 缓冲区触发增量覆盖刷新（`_on_debug_file_exists`）时，如何防止历史提炼的概念双链、业务摘要或已完成状态被意外抹除？
+* **归属档案**：[[QA_04_Micro_Tricks_And_Storage]]（精细粒度）
+* **核心疑惑**：源文件更新或部分重跑触发 `InformationArtifactWriter._on_debug_file_exists` 重新渲染整张 Markdown 卡片时，如果本轮未重新执行 3.2 特征提取，直接用新上下文渲染会导致旧卡片里已有的 `一句话摘要`、`提炼概念` 丢失，甚至把已消除的 `## 遗留问题` 重新加回来。
+* **核心答案**：在重写支持就地刷新的 L1 切片卡片时，必须执行**“新旧元数据双向继承合并（Non-Destructive Merge）”**，并基于合并后的最终状态动态决定是否渲染待办区块：
+  1. **底部双链合并**：使用 `extract_bottom_links(existing_md)` 提取旧文件中的 `提炼概念` 与 `归属架构`，与本轮 `ctx` 中的新链接做有序去重合并。
+  2. **摘要防空回退**：优先使用本轮 `ctx.info_summaries.get(item.info_id)`；若本轮为空，则通过正则从 `existing_md` 中提取原有的一句话摘要继承保留。
+  3. **动态隐藏已完成待办**：在 `InformationArtifact._render_body` 中检查合并后的 `derived_labels`，只要已存在提炼概念且无显式自定义遗留问题，自动隐藏 `## 遗留问题` 区块。
+* **真实正反例对比**：
+  * ❌ **反例（Anti-Pattern）**：
+    ```python
+    # 直接用当前批次上下文覆盖渲染，忽略旧文件已沉淀的摘要和历史概念
+    art = InformationArtifact(
+        core=item,
+        one_line_summary=ctx.info_summaries.get(item.info_id),  # 本轮未抽摘要时直接变成 None！
+        derived_labels=link_updates.get("提炼概念", []),        # 丢失历史轮次提炼的概念！
+    )
+    ```
+    *死穴所在*：局部重跑采集时，把之前耗费大量大模型 Token 提炼出的概念链接和业务摘要全部覆盖清空。
+  * ✅ **正例（Best Practice）**：
+    ```python
+    old_links = self.extract_bottom_links(existing_md)
+    merged_labels = list(dict.fromkeys([*old_links.get("提炼概念", []), *link_updates.get("提炼概念", [])]))
+    summary = ctx.info_summaries.get(item.info_id)
+    if not summary:
+        m = _OLD_SUMMARY_RE.search(existing_md)
+        summary = m.group(1).strip() if m else None
+    ```
+    *核心收益*：实现真正的幂等增量刷新——源码正文与最新更改保持同步，同时历史沉淀的语义摘要与图谱拓扑零丢失。
