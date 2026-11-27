@@ -2,10 +2,13 @@
 import asyncio
 from typing import Any, Dict, List, Optional
 
-from schemas.internal_knowledge.information import Information, Labeling, RelatingConcepts
-from protocols.internal_knowledge import LabelExtractorProtocol, RelationBuilderProtocol
+from components.internal_knowledge.schemas.information import Information
+from components.internal_knowledge.schemas.labeling import Labeling
+from components.internal_knowledge.schemas.relating_concepts import RelatingConcepts
+from components.internal_knowledge.protocols import LabelExtractorProtocol, RelationBuilderProtocol
 from components.internal_knowledge.organization.registry import OrganizationPluginRegistry, OrgStage
 from components.internal_knowledge.organization.organizer import KnowledgeOrganizer
+
 
 class _CompositeLabelExtractor(LabelExtractorProtocol):
     """内部复合适配器：并发调度多个 3.2 特征提取器，按 label_id 自动去重合并"""
@@ -46,39 +49,48 @@ class _CompositeRelationBuilder(RelationBuilderProtocol):
                     merged[edge.relation_id] = edge
         return list(merged.values())
 
+
 def build_knowledge_organizer(
     *,
-    evaluator_name: Optional[str] = None,          # 不传则自动选 is_default=True 的评估器
-    clusterer_name: Optional[str] = None,          # 不传则自动选 is_default=True 的聚类器
-    enabled_extractors: Optional[List[str]] = None,# 不传则自动激活所有 3.2 提取器
-    enabled_builders: Optional[List[str]] = None,  # 不传则自动激活所有 3.3 建边器
+    evaluator_name: Optional[str] = None,
+    clusterer_name: Optional[str] = None,
+    enabled_extractors: Optional[List[str]] = None,
+    enabled_builders: Optional[List[str]] = None,
     plugin_kwargs: Optional[Dict[str, Dict[str, Any]]] = None,
+    shared_deps: Optional[Dict[str, Any]] = None,
     quality_threshold: float = 0.5,
     max_concurrency: int = 5,
 ) -> KnowledgeOrganizer:
-    """一键自动发现并装配四阶知识组织器"""
-    # 1. 自动扫描当前 organization 包下的所有插件模块，触发装饰器注册
-    OrganizationPluginRegistry.discover("components.internal_knowledge.organization")
+    """一键自动发现并装配四阶知识组织器（支持 shared_deps 自动签名依赖注入）"""
+    OrganizationPluginRegistry.discover("components.internal_knowledge.organization.plugins")
     kw = plugin_kwargs or {}
 
-    # 2. 单选阶段仲裁（3.1 评估 & 3.4 聚类）
+    # 1. 单选阶段仲裁（3.1 评估 & 3.4 聚类）
     evaluator = OrganizationPluginRegistry.resolve_single(
         OrgStage.EVALUATE,
         active_name=evaluator_name,
-        init_kwargs=kw.get(evaluator_name or "llm_hybrid"),
+        shared_deps=shared_deps,
+        init_kwargs=kw.get(evaluator_name or "heuristic_llm"),
     )
     clusterer = OrganizationPluginRegistry.resolve_single(
         OrgStage.CLUSTER,
         active_name=clusterer_name,
+        shared_deps=shared_deps,
         init_kwargs=kw.get(clusterer_name or "connected_component"),
     )
 
-    # 3. 多算子合并阶段装配（3.2 提特征 & 3.3 建边）
+    # 2. 多算子合并阶段装配（3.2 提特征 & 3.3 建边）
     extractors = OrganizationPluginRegistry.resolve_composite(
-        OrgStage.EXTRACT, enabled_names=enabled_extractors, kwargs_map=kw
+        OrgStage.EXTRACT,
+        enabled_names=enabled_extractors,
+        shared_deps=shared_deps,
+        kwargs_map=kw,
     )
     builders = OrganizationPluginRegistry.resolve_composite(
-        OrgStage.RELATE, enabled_names=enabled_builders, kwargs_map=kw
+        OrgStage.RELATE,
+        enabled_names=enabled_builders,
+        shared_deps=shared_deps,
+        kwargs_map=kw,
     )
 
     return KnowledgeOrganizer(
