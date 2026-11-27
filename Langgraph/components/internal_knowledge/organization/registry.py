@@ -1,108 +1,170 @@
 # /components/internal_knowledge/organization/registry.py
-import asyncio
 import importlib
+import inspect
+import logging
 import pkgutil
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, ClassVar, Dict, List, Optional, Type
+from typing import Any, Callable, Dict, List, Optional, Set, Type, TypeVar
 
-from schemas.internal_knowledge.information import Information
-from schemas.internal_knowledge.labeling import Labeling
-from schemas.internal_knowledge.relating_concepts import RelatingConcepts
-from schemas.internal_knowledge.ontology import Ontology
-from protocols.evaluation import QualityEvaluatorProtocol
-from protocols.internal_knowledge import (
-    LabelExtractorProtocol,
-    RelationBuilderProtocol,
-    OntologyClustererProtocol,
-)
+logger = logging.getLogger(__name__)
+
+T = TypeVar("T")
 
 
 class OrgStage(str, Enum):
-    """组织阶段四阶算子归属标识"""
-    EVALUATE = "3.1_evaluate"    # 质量评估（单选模式：同一时间只激活一个）
-    EXTRACT = "3.2_extract"      # 特征提取（支持多算子累加合并）
-    RELATE = "3.3_relate"        # 关系建模（支持多算子累加合并）
-    CLUSTER = "3.4_cluster"      # 本体聚拢（单选模式：同一时间只激活一个）
+    """知识组织四阶加工流水线阶段枚举"""
+
+    EVALUATE = "3.1_evaluate"
+    EXTRACT = "3.2_extract"
+    RELATE = "3.3_relate"
+    CLUSTER = "3.4_cluster"
+
+
+@dataclass(frozen=True)
+class _OrgPluginEntry:
+    stage: OrgStage
+    name: str
+    cls: Type[Any]
+    is_default: bool
 
 
 class OrganizationPluginRegistry:
-    """【组织】环节统一插件注册中心：
-    1. 自动扫描并归类 3.1 ~ 3.4 四个阶段的所有算子实现。
-    2. 解决同阶段多实现冲突：
-       - 单选阶段 (EVALUATE / CLUSTER)：通过 active_profiles 配置指定启用哪一个（未指定则取默认或第一个）。
-       - 累加阶段 (EXTRACT / RELATE)：自动组合所有已启用的算子并发执行并去重合并结果。
-    """
+    """知识组织四阶算子插件注册中心（支持自动扫描发现 + 按构造函数签名自动依赖注入）"""
 
-    # 结构: { OrgStage: { plugin_name: {"cls": Type, "is_default": bool} } }
-    _plugins: ClassVar[Dict[OrgStage, Dict[str, Dict[str, Any]]]] = {
+    _registry: Dict[OrgStage, Dict[str, _OrgPluginEntry]] = {
         stage: {} for stage in OrgStage
     }
+    _discovered_packages: Set[str] = set()
 
     @classmethod
-    def register(cls, stage: OrgStage, name: str, *, is_default: bool = False):
-        """统一装饰器：声明算子归属阶段、唯一名称及是否为该阶段默认实现"""
-        def wrapper(target_cls: Type[Any]) -> Type[Any]:
-            if name in cls._plugins[stage]:
-                raise ValueError(f"组织插件注册冲突：阶段 [{stage.value}] 已存在名为 '{name}' 的实现")
-            cls._plugins[stage][name] = {
-                "cls": target_cls,
-                "is_default": is_default,
-            }
-            return target_cls
-        return wrapper
+    def register(
+        cls,
+        stage: OrgStage,
+        name: str,
+        is_default: bool = False,
+    ) -> Callable[[Type[T]], Type[T]]:
+        """类装饰器：将算子实现注册到指定组织阶段"""
+
+        def _decorator(plugin_cls: Type[T]) -> Type[T]:
+            stage_bucket = cls._registry.setdefault(stage, {})
+            stage_bucket[name] = _OrgPluginEntry(
+                stage=stage,
+                name=name,
+                cls=plugin_cls,
+                is_default=is_default,
+            )
+            logger.debug(
+                "[OrganizationPluginRegistry] 注册插件: stage=%s, name=%s, cls=%s, is_default=%s",
+                stage.value,
+                name,
+                plugin_cls.__name__,
+                is_default,
+            )
+            return plugin_cls
+
+        return _decorator
 
     @classmethod
-    def discover(cls, package_path: str) -> None:
-        """递归自动扫描指定包下的所有子模块，触发装饰器注册"""
-        pkg = importlib.import_module(package_path)
-        for _, module_name, is_pkg in pkgutil.walk_packages(pkg.__path__, prefix=f"{package_path}."):
-            importlib.import_module(module_name)
+    def discover(cls, package_name: str) -> None:
+        """幂等扫描指定包下的所有子模块，自动触发 @register 装饰器"""
+        if package_name in cls._discovered_packages:
+            return
+        pkg = importlib.import_module(package_name)
+        pkg_paths = getattr(pkg, "__path__", None)
+        if pkg_paths:
+            for mod in pkgutil.iter_modules(pkg_paths):
+                if not mod.name.startswith("_"):
+                    importlib.import_module(f"{package_name}.{mod.name}")
+        cls._discovered_packages.add(package_name)
+
+    @classmethod
+    def _instantiate(
+        cls,
+        entry: _OrgPluginEntry,
+        shared_deps: Optional[Dict[str, Any]] = None,
+        init_kwargs: Optional[Dict[str, Any]] = None,
+    ) -> Any:
+        """根据插件 __init__ 参数签名，从 shared_deps 与显式 init_kwargs 自动按需注入依赖"""
+        deps = shared_deps or {}
+        explicit = init_kwargs or {}
+        sig = inspect.signature(entry.cls.__init__)
+
+        call_kwargs: Dict[str, Any] = {}
+        accepts_var_kwargs = any(
+            p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()
+        )
+
+        if accepts_var_kwargs:
+            call_kwargs.update(deps)
+            call_kwargs.update(explicit)
+        else:
+            for param_name, param in sig.parameters.items():
+                if param_name == "self":
+                    continue
+                if param_name in explicit:
+                    call_kwargs[param_name] = explicit[param_name]
+                elif param_name in deps:
+                    call_kwargs[param_name] = deps[param_name]
+
+        return entry.cls(**call_kwargs)
 
     @classmethod
     def resolve_single(
         cls,
         stage: OrgStage,
         active_name: Optional[str] = None,
+        shared_deps: Optional[Dict[str, Any]] = None,
         init_kwargs: Optional[Dict[str, Any]] = None,
     ) -> Any:
-        """【单选仲裁器】（用于 3.1 评估 / 3.4 聚类）：
-        优先级：显式传入 active_name > 标记为 is_default=True 的插件 > 注册表中的第一个插件。
-        """
-        candidates = cls._plugins[stage]
-        if not candidates:
-            raise RuntimeError(f"阶段 [{stage.value}] 尚未注册任何可用算子")
+        """解析并实例化单选阶段算子（3.1 评估 / 3.4 聚类）"""
+        stage_bucket = cls._registry.get(stage, {})
+        if not stage_bucket:
+            raise LookupError(f"组织阶段 [{stage.value}] 未注册任何可用插件")
 
-        chosen_name = active_name
-        if not chosen_name:
-            defaults = [k for k, v in candidates.items() if v["is_default"]]
-            chosen_name = defaults[0] if defaults else next(iter(candidates))
+        entry: Optional[_OrgPluginEntry] = None
+        if active_name and active_name in stage_bucket:
+            entry = stage_bucket[active_name]
+        elif active_name:
+            # 若传入的名称未匹配，优先回退到该阶段的默认插件（兼容历史别名如 connected_component）
+            entry = next((e for e in stage_bucket.values() if e.is_default), None)
+            if entry is None:
+                raise LookupError(
+                    f"组织阶段 [{stage.value}] 未找到插件 '{active_name}'，且无默认兜底插件"
+                )
+        else:
+            entry = next((e for e in stage_bucket.values() if e.is_default), None) or next(
+                iter(stage_bucket.values())
+            )
 
-        if chosen_name not in candidates:
-            raise KeyError(f"阶段 [{stage.value}] 未找到名为 '{chosen_name}' 的算子，可选: {list(candidates.keys())}")
-
-        target_cls = candidates[chosen_name]["cls"]
-        return target_cls(**(init_kwargs or {}))
+        return cls._instantiate(entry, shared_deps=shared_deps, init_kwargs=init_kwargs)
 
     @classmethod
     def resolve_composite(
         cls,
         stage: OrgStage,
         enabled_names: Optional[List[str]] = None,
+        shared_deps: Optional[Dict[str, Any]] = None,
         kwargs_map: Optional[Dict[str, Dict[str, Any]]] = None,
     ) -> List[Any]:
-        """【多算子装配器】（用于 3.2 提特征 / 3.3 建边）：
-        若 enabled_names 为 None，则默认激活该阶段下所有已注册算子；否则仅实例化指定列表。
-        """
-        candidates = cls._plugins[stage]
-        if not candidates:
-            return []
+        """解析并实例化多算子合并阶段（3.2 特征提取 / 3.3 关系建模）"""
+        stage_bucket = cls._registry.get(stage, {})
+        if not stage_bucket:
+            raise LookupError(f"组织阶段 [{stage.value}] 未注册任何可用插件")
 
-        target_names = enabled_names if enabled_names is not None else list(candidates.keys())
-        kwargs_map = kwargs_map or {}
+        kw = kwargs_map or {}
+        if enabled_names is not None:
+            entries = []
+            for name in enabled_names:
+                if name not in stage_bucket:
+                    raise LookupError(f"组织阶段 [{stage.value}] 未找到指定插件 '{name}'")
+                entries.append(stage_bucket[name])
+        else:
+            entries = [e for e in stage_bucket.values() if e.is_default] or list(
+                stage_bucket.values()
+            )
 
-        instances = []
-        for name in target_names:
-            if name not in candidates:
-                raise KeyError(f"阶段 [{stage.value}] 未找到名为 '{name}' 的算子")
-            instances.append(candidates[name]["cls"](**kwargs_map.get(name, {})))
-        return instances
+        return [
+            cls._instantiate(e, shared_deps=shared_deps, init_kwargs=kw.get(e.name))
+            for e in entries
+        ]
