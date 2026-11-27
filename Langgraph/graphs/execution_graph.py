@@ -1,16 +1,17 @@
-# graphs/execution_graph.py
 import logging
-from typing import Any, Callable, Dict, Optional
-from langchain_core.messages import AIMessage
+from typing import Any, Callable, Dict, Optional, Tuple
 
-# 100% 依赖抽象协议门面，彻底切断与 components 具体实现层的任何耦合
+from langchain_core.messages import AIMessage
+from langgraph.config import get_stream_writer
+
 from protocols import AgentResolverProtocol, ExceptionMapperProtocol
-from schemas import(
+from schemas import (
     RouteContext,
     RouteDecision,
     AgentResponse,
     AgentStatus,
-
+    AgentStep,
+    AgentToken,
 )
 from graphs.state import MasterAgentState, extract_domain_context_from_state
 from infra import log_execution
@@ -18,43 +19,90 @@ from infra import log_execution
 logger = logging.getLogger(__name__)
 
 
+def _unpack_execution_inputs(
+    state: MasterAgentState,
+) -> Tuple[str, str, RouteDecision, RouteContext]:
+    """公共入站拆包：提取追踪信息、路由决策与只读业务上下文"""
+    trace_id = state.get("trace_id", "unknown_trace")
+    session_id = state.get("session_id", "unknown_session")
+    current_input, safe_history = extract_domain_context_from_state(state)
+
+    decision: Optional[RouteDecision] = state.get("route_decision")
+    if decision is None:
+        raise ValueError("Execution node invoked without route_decision in state.")
+
+    context = RouteContext(
+        session_id=session_id,
+        current_input=current_input,
+        safe_history=safe_history,
+        rag_context=state.get("rag_context"),
+        window_metrics=state.get("window_metrics"),
+        session_state=state.get("session_state"),
+        user_profile=state.get("user_profile", {}),
+    )
+    return trace_id, current_input, decision, context
+
+
+def _pack_execution_updates(response: AgentResponse) -> Dict[str, Any]:
+    """公共出站封包：将 AgentResponse 转换为图状态增量更新"""
+    updates: Dict[str, Any] = {
+        "messages": [AIMessage(content=response.final_answer)],
+        "final_response": response.final_answer,
+        "failure_context": None,
+        "recovery_outcome": None,
+    }
+    if response.updated_state is not None:
+        updates["session_state"] = response.updated_state
+    return updates
+
+
+def _handle_execution_error(
+    state: MasterAgentState,
+    exc: Exception,
+    map_exception: ExceptionMapperProtocol,
+    trace_id: str,
+    current_input: str,
+    target_node: str,
+) -> Dict[str, Any]:
+    """公共异常接管：映射为 FailureContext 交由 recovery_node 自愈"""
+    current_retry = state.get("_recovery_attempts", 0)
+
+    failure_ctx = map_exception(
+        exc,
+        trace_id=trace_id,
+        failed_stage=f"agent_execution:{target_node}",
+        target_schema_name="AgentResponse",
+        user_query=current_input,
+        retry_count=current_retry,
+    )
+
+    logger.warning(
+        "[ExecutionNode] Caught [%s] in '%s': %s",
+        failure_ctx.category,
+        target_node,
+        failure_ctx.error_message,
+    )
+
+    return {
+        "failure_context": failure_ctx,
+        "recovery_outcome": None,
+    }
+
+
 def create_execution_node(
     resolver: AgentResolverProtocol,
     map_exception: ExceptionMapperProtocol,
 ) -> Callable[[MasterAgentState], Any]:
-    """
-    统一执行节点工厂：
-    1. 入站拆包：将 MasterAgentState 转换为只读 RouteContext；
-    2. 协议调度：通过 AgentResolverProtocol 查找并执行对应的 AgentProtocol；
-    3. 出站封包：将 AgentResponse 的 final_answer 与 updated_state 回写至主图状态；
-    4. 异常接管：通过 ExceptionMapperProtocol 将执行异常转化为 FailureContext 交由 recovery_node 自愈。
-    """
+    """统一非流式执行节点工厂"""
 
     @log_execution("agent_execution_node")
     async def agent_execution_node(state: MasterAgentState) -> Dict[str, Any]:
-        trace_id = state.get("trace_id", "unknown_trace")
-        session_id = state.get("session_id", "unknown_session")
-        current_input, safe_history = extract_domain_context_from_state(state)
-
-        decision: Optional[RouteDecision] = state.get("route_decision")
-        if decision is None:
-            raise ValueError("Execution node invoked without route_decision in state.")
-
-        context = RouteContext(
-            session_id=session_id,
-            current_input=current_input,
-            safe_history=safe_history,
-            rag_context=state.get("rag_context"),
-            window_metrics=state.get("window_metrics"),
-            session_state=state.get("session_state"),
-            user_profile=state.get("user_profile", {}),
-        )
+        trace_id, current_input, decision, context = _unpack_execution_inputs(state)
 
         try:
             agent = resolver.get(decision.target_node)
             response: AgentResponse = await agent.run(context, decision)
 
-            # 若 Agent 主动返回业务级 FAILED 终态，抛出异常交由统一自愈体系处理
             if response.status == AgentStatus.FAILED:
                 raise RuntimeError(
                     response.error_message
@@ -67,43 +115,56 @@ def create_execution_node(
                 response.status.value,
                 len(response.steps),
             )
-
-            updates: Dict[str, Any] = {
-                "messages": [AIMessage(content=response.final_answer)],
-                "final_response": response.final_answer,
-                "failure_context": None,
-                "recovery_outcome": None,
-            }
-
-            # 若业务 Agent 触发了会话状态机迁移（如进入多轮填槽锁），同步回写 session_state
-            if response.updated_state is not None:
-                updates["session_state"] = response.updated_state
-
-            return updates
+            return _pack_execution_updates(response)
 
         except Exception as exc:
-            prev_failure = state.get("failure_context")
-            current_retry = prev_failure.retry_count if prev_failure else 0
-
-            failure_ctx = map_exception(
-                exc,
-                trace_id=trace_id,
-                failed_stage=f"agent_execution:{decision.target_node}",
-                target_schema_name="AgentResponse",
-                user_query=current_input,
-                retry_count=current_retry,
+            return _handle_execution_error(
+                state, exc, map_exception, trace_id, current_input, decision.target_node
             )
-
-            logger.warning(
-                "[ExecutionNode] Caught [%s] in '%s': %s",
-                failure_ctx.category.value,
-                decision.target_node,
-                failure_ctx.error_message,
-            )
-
-            return {
-                "failure_context": failure_ctx,
-                "recovery_outcome": None,
-            }
 
     return agent_execution_node
+
+
+def create_streaming_execution_node(
+    resolver: AgentResolverProtocol,
+    map_exception: ExceptionMapperProtocol,
+) -> Callable[[MasterAgentState], Any]:
+    """流式执行节点工厂：消费 AgentProtocol.stream() 并通过 LangGraph custom stream 实时向外推送"""
+
+    @log_execution("agent_streaming_execution_node")
+    async def agent_streaming_execution_node(state: MasterAgentState) -> Dict[str, Any]:
+        writer = get_stream_writer()
+        trace_id, current_input, decision, context = _unpack_execution_inputs(state)
+
+        try:
+            agent = resolver.get(decision.target_node)
+            final_response: Optional[AgentResponse] = None
+
+            async for item in agent.stream(context, decision):
+                if isinstance(item, AgentToken):
+                    writer({"type": "token", "content": item.content})
+                elif isinstance(item, AgentStep):
+                    writer({"type": "step", "thought": item.thought, "action": item.action})
+                elif isinstance(item, AgentResponse):
+                    final_response = item
+
+            if final_response is None or final_response.status == AgentStatus.FAILED:
+                raise RuntimeError(
+                    (final_response.error_message if final_response else None)
+                    or f"Streaming agent '{decision.target_node}' failed or terminated without AgentResponse."
+                )
+
+            logger.info(
+                "[StreamingExecutionNode] Agent=%s | Status=%s | Steps=%d",
+                decision.target_node,
+                final_response.status.value,
+                len(final_response.steps),
+            )
+            return _pack_execution_updates(final_response)
+
+        except Exception as exc:
+            return _handle_execution_error(
+                state, exc, map_exception, trace_id, current_input, decision.target_node
+            )
+
+    return agent_streaming_execution_node
