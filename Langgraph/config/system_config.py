@@ -17,6 +17,16 @@ def detect_project_root(fallback_path: Optional[Path] = None) -> Path:
             return parent
     return fallback_path.resolve() if fallback_path else current.parent
 
+class ExceptionHandlingConfig(BaseModel):
+    default_category: str = Field(default="system.unknown_error")
+    max_error_length: int = Field(default=1000, ge=100)
+    enable_sanitization: bool = Field(default=True)
+    max_failover_attempts: int = Field(default=1, ge=0)
+    fallback_intent: str = Field(default="general_qa")
+    default_fallback_message: str = Field(
+        default="抱歉，系统处理您的请求时遇到了一点小问题，请稍后再试。"
+    )
+
 class ServerConfig(BaseModel):
     """HTTP 网关与 ASGI 服务器运行配置（不可变）"""
     model_config = ConfigDict(frozen=True, extra="forbid")
@@ -99,6 +109,9 @@ class InternalKnowledgeConfig(BaseModel):
     workspace_root: str = Field(default=".", min_length=1, description="工作区根目录（绝对路径）")
     quality_threshold: float = Field(default=0.5, ge=0.0, le=1.0, description="知识检索/沉淀质量准入阈值")
     max_concurrency: int = Field(default=5, ge=1, le=32, description="知识引擎并发任务上限")
+    max_iterations: int = Field(default=3, ge=1, le=10, description="知识闭环最大探索迭代轮次")
+    organize_timeout_seconds: Optional[float] = Field(default=480.0, gt=0)
+
 
     @field_validator("vault_root", "workspace_root", mode="before")
     @classmethod
@@ -122,6 +135,9 @@ class AgentSystemConfig(BaseModel):
     llm_profiles: Dict[str, LLMProfileConfig]
     intent_recognition: IntentComponentConfig = Field(default_factory=IntentComponentConfig)
     internal_knowledge: InternalKnowledgeConfig = Field(default_factory=InternalKnowledgeConfig)
+    exception_handling: ExceptionHandlingConfig = Field(
+        default_factory=ExceptionHandlingConfig
+    )
 
     @classmethod
     def load_from_json(cls, json_path: str | Path) -> "AgentSystemConfig":
