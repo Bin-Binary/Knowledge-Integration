@@ -167,3 +167,55 @@ stage: gold
     sem = getattr(lbl, "rich_semantics", None) or getattr(lbl, "_rich_semantics", None) or {}
     ```
     *核心收益*：杜绝检索配额浪费与上下文空洞，保证多切片同名概念的业务判据完整沉淀到 L2 知识卡片中。
+
+### Q_18：一个高内聚业务组件的顶层 `__init__.py` 是否应该只暴露 Protocol 协议，还是同时暴露入口工厂与传输载体？
+* **归属档案**：[[QA_03_Patterns_And_Contracts]]（细粒度）
+* **核心疑惑**：既然对外要遵循依赖倒置（DIP），那么 `components/internal_knowledge/__init__.py` 是不是应该只暴露 `InternalKnowledgeEngineProtocol` 纯协议，或者只暴露一个纯函数？
+* **核心释义**：**组件对外门面（Component Facade）**是指组件向外部调用方公开的最小可用 API 集合，外部调用方严禁绕过 `__init__.py` 深层导入组件内部子模块。
+* **核心答案**：不能只暴露协议（否则调用方拿不到构造实例的入口和入参模型），也不能只暴露无状态纯函数（纯函数无法持有存储连接池、信号量与 `mtime` 缓存索引）。最标准的对外门面应通过 `__init__.py` 的 `__all__` 精准暴露**“对外三件套”**：① **类型契约**（`InternalKnowledgeEngineProtocol`）；② **组装入口函数**（`create_default_knowledge_engine`）；③ **核心交互载体与业务异常**（`PipelineEnvelope`、`ResolveProblem`、`SourceURI`、`KnowledgePipelineError`），而将内部所有具体实现类（如 `KnowledgeOrganizer`、`LocalMarkdownStorage`）隐藏在子包中。
+* **真实正反例对比**：
+  * ❌ **反例（Anti-Pattern）**：
+    ```python
+    # 1. 上层调用方直接深层耦合内部文件物理路径
+    from components.internal_knowledge.internal_knowledge_engine import InternalKnowledgeEngine
+    from components.internal_knowledge.acquisition.composite_acquirer import CompositeKnowledgeAcquirer
+
+    # 2. 或者 __init__.py 只导出 Protocol，导致调用方无法实例化引擎
+    __all__ = ["InternalKnowledgeEngineProtocol"]
+    ```
+    *死穴所在*：一旦内部重命名 `internal_knowledge_engine.py` 为 `engine.py`，上层全线报 `ImportError`；仅导出 Protocol 则导致调用方无从下手。
+  * ✅ **正例（Best Practice）**：
+    ```python
+    # components/internal_knowledge/__init__.py 统一门面收口
+    from .factory import create_default_knowledge_engine
+    from protocols.internal_knowledge import InternalKnowledgeEngineProtocol
+    from schemas.internal_knowledge.pipeline_envelope import PipelineEnvelope
+    from schemas.internal_knowledge.resolve_problem import ResolveProblem, ResolutionOutcome
+    from schemas.internal_knowledge.source_uri import SourceURI, SourceScheme
+    from infra.exceptions import KnowledgePipelineError
+
+    __all__ = [
+        "create_default_knowledge_engine",
+        "InternalKnowledgeEngineProtocol",
+        "PipelineEnvelope",
+        "ResolveProblem",
+        "ResolutionOutcome",
+        "SourceURI",
+        "SourceScheme",
+        "KnowledgePipelineError",
+    ]
+    ```
+    *核心收益*：外部调用方只需一行 `from components.internal_knowledge import ...` 即可完成全链路接入，内部文件结构重构对外部 100% 透明。
+
+### Q_19：为什么组件内聚业务异常无需继承基础设施基类，以及 `RegistryExceptionMapper` 的异常链遍历机制对异常转译有何启示？
+* **归属档案**：[[QA_03_Patterns_And_Contracts]]（细粒度）
+* **核心疑惑**：既然底层定义了 `AgentBusinessError`，组件内部的 `KnowledgePipelineError` 是否必须继承它？在组件内部使用 `raise ... from exc` 转译异常时，又该如何避免遮蔽底层模型的恢复策略？
+* **核心释义**：
+  * **自描述异常直通**：`RegistryExceptionMapper` 在匹配异常链时，优先检查是否实现结构化鸭子类型协议（`error_code`、`user_friendly_hint`、`to_failure_metadata()`），不强制依赖特定继承树。
+  * **异常链外向内匹配**：遍历 `__cause__` / `__context__` 时采取“自外向内”原则，**最先命中的规则直接胜出**。
+* **核心答案**：
+  1. **零继承解耦**：组件异常可直接继承原生 `Exception` 并实现上述鸭子类型成员，即可被 `RegistryExceptionMapper` 识别，无需反向依赖底层基类。
+  2. **异常链遮蔽规避**：由于外层异常会优先短路匹配，若在组件内用 `raise ... from exc` 包装底层异常，会导致内层的限流或超时异常（如 429/504）无法触发模型恢复分支。因此，需模型自愈的底层异常严禁转译包装；仅在业务语义阻断时才允许抛出业务异常。
+* **正反例总结**：
+  * **反例**：强制继承跨层基类，并在单次 LLM 调用前置逻辑中使用 `raise ... from exc` 转译异常，导致外层协议直接遮蔽内层的 `RateLimitError`，使重试机制失效。
+  * **正例**：组件内部异常零继承、仅靠鸭子类型实现协议；对于原生模型/网络异常直接透传占链头，仅在纯业务规则不满足时才抛出 `KnowledgePipelineError`，兼顾自包含与精准恢复。
