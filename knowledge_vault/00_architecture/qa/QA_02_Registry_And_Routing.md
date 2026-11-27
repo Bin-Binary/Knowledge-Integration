@@ -181,3 +181,86 @@ stage: gold
     raw_relations = await self.relation_builder.build(candidate_labels_with_all_refs, valid_infos)
     ```
     *核心收益*：`LLMRelationBuilder` 得以聚合同一概念在所有关联文档中的上下文，围绕概念词居中截取证据，并准确识别跨章节 Hub 核心节点建立全局语义边。
+
+### Q_15：为什么领域快筛规则（如代码/对话/网页正则）不能直接写在评估器插件类里，而必须拆分为独立的 `heuristics/` 规则包？
+* **归属档案**：[[QA_02_Registry_And_Routing]]（中观粒度）
+* **核心疑惑**：在为 `InformationQualityEvaluator` 增加代码正向快筛规则时，如果直接把正则和判断函数写在 `plugins/info_evaluator.py` 里，会有什么隐患？
+* **核心释义**：**策略外置与装配注入（Externalized Strategy Injection）**是指将“调度执行骨架（插件主类）”与“领域规则集合（纯函数字典）”物理分离，插件只负责执行调度，规则包随业务领域横向增删。
+* **核心答案**：评估器插件（`InformationQualityEvaluator`）的职责是**连接通用两级评估引擎（`TwoStageQualityEvaluator`）与大模型语义打分（`_semantic_score`）**。如果把代码、Chat、Web 甚至未来图像作画的启发式规则全塞进同一个插件文件里，插件就会沦为不断膨胀的“上帝文件”，违反单一职责（SRP）与开闭原则（OCP）。正确的做法是将纯无状态规则按领域外置到独立的 `heuristics/` 目录（如 `code_rules.py`、`general_rules.py`），通过字典路由表导入注入插件，实现**新增领域规则零修改插件源码**。
+* **真实正反例对比**：
+  * ❌ **反例（Anti-Pattern）**：
+    ```python
+    # components/internal_knowledge/organization/plugins/info_evaluator.py
+    def _heuristic_code_and_file(info: Information) -> Optional[float]: ...
+    def _heuristic_chat(info: Information) -> Optional[float]: ...
+    def _heuristic_web(info: Information) -> Optional[float]: ...
+    # 以后每加一种新领域（如 Markdown、图像作画），都要打开修改 info_evaluator.py！
+    ```
+    *死穴所在*：插件主类随业务领域横向扩展而持续膨胀，规则与 LLM 调用逻辑混杂，单测和复用成本急剧上升。
+  * ✅ **正例（Best Practice）**：
+    ```python
+    # 1. 领域规则独立归档：organization/heuristics/code_rules.py & general_rules.py
+    # 2. 插件主类仅组合导入规则路由表，保持极简纯净：
+    from components.internal_knowledge.organization.heuristics import DEFAULT_INFO_HEURISTIC_RULES
+
+    class InformationQualityEvaluator(QualityEvaluatorProtocol[Information]):
+        def __init__(self, llm_client: StructuredLLMProtocol, extra_rules: Optional[Dict[Hashable, HeuristicRuleFn[Information]]] = None) -> None:
+            merged_rules = {**DEFAULT_INFO_HEURISTIC_RULES, **(extra_rules or {})}
+            self._engine = TwoStageQualityEvaluator[Information](..., heuristic_rules=merged_rules)
+    ```
+    *核心收益*：插件主类永远冻结在极简状态，新增任何领域的快筛规则只需在 `heuristics/` 下新增纯函数模块并注册进默认字典即可，彻底杜绝类膨胀。
+
+### Q_16：为什么内网慢推理模型下运行多切片知识组织时，经常只落盘了 L1（`information`）却丢失了 L2/L3/L4，且如何用双向快筛避免无谓超时？
+* **归属档案**：[[QA_02_Registry_And_Routing]]（中观粒度）
+* **核心疑惑**：10 条代码切片进入 `KnowledgeOrganizer` 后，所有请求都返回了 `200 OK`，但最终存储目录里只有 `debug/information/` 有文件，而 `labeling`、`relating`、`ontology` 全为空。
+* **核心释义**：
+  * **双向启发式快筛（Two-Way Heuristic Fast-Path）**：第一级规则引擎不仅要做“负向拦截噪声（0.0~0.1）”，还必须对结构化切片器产出的高确定性实体做“正向直通高分（0.85）”，跳过昂贵的第二级 LLM 语义打分。
+  * **`P1-2` 阶段超时部分持久化**：当总组织超时（`asyncio.TimeoutError`）触发时，外层引擎捕获异常并保底将已采集的 `raw_infos` 落盘，避免前置采集白费（注意 `str(TimeoutError)` 为空，日志需打印 `type(exc).__name__`）。
+* **核心答案**：内网部署的思考/大模型单次结构化输出常需 15~50 秒。当 3.1 评估阶段只有负向拦截规则时，10 条代码切片会全部排队调用 LLM 打分（耗尽 60+ 秒），导致后续 3.2 概念抽取跑到一半就触碰 `organize_timeout_seconds` 被整体取消，从而触发 `P1-2` 降级仅落盘 L1 切片。必须同时做两项治理：① 在 `heuristics/code_rules.py` 中增加正向结构化代码直通规则（把 3.1 评估耗时从 60 秒降至 0.001 秒）；② 在 `config/agent_settings.json` 中显式配置 `organize_timeout_seconds`（如 `480.0`）匹配慢模型吞吐窗口。
+* **真实正反例对比**：
+  * ❌ **反例（Anti-Pattern）**：
+    ```python
+    # _heuristic_code_and_file 仅做负向拦截，正常代码全部返回 None 走 LLM 打分
+    if len(meaningful_tokens) < 4:
+        return 0.1
+    return None  # 10 条函数切片全部排长队调 LLM，耗尽阶段超时预算！
+    ```
+    *死穴所在*：已经被 `ShellScriptHandler` 精确切出的函数体还要花 60 秒让 LLM 评估“是否有价值”，挤占了后面概念抽取与建边的存活时间。
+  * ✅ **正例（Best Practice）**：
+    ```python
+    # 规则外置至 organization/heuristics/code_rules.py，实现双向快筛（负向拦截 + 正向直通）
+    has_code_logic = bool(_CODE_STRUCTURE_RE.search(joined))
+    if (has_code_logic and len(meaningful_tokens) >= 12) or has_rich_docs:
+        return 0.85  # 确定性高分直通，0 LLM 调用
+    ```
+    *核心收益*：3.1 评估阶段秒级完成且不膨胀插件主类，把 100% 的大模型算力预算留给高价值的 3.2 概念抽取与 3.3 关系建边。
+
+### Q_17：当用户问题中已经包含明确本地文件路径，或单文件切片数超过 `top_k` 时，如何防止缺口路由器全盘扫描和引擎反复重采死循环？
+* **归属档案**：[[QA_02_Registry_And_Routing]]（中观粒度）
+* **核心疑惑**：用户输入 `"学习 D:/code-repo/ds-build/llm-wiki/cmc.sh"` 时，系统依然扫描了工作区 120 个文件并调用 LLM 路由（耗时 13 秒）；且当文件被切为 10 条而检索 `top_k=8` 时，第二轮迭代又会重复采集一模一样的 10 条切片。
+* **核心答案**：
+  1. **缺口路由显式路径快筛**：在 `WorkspaceFileGapRouter.route` 调用 `_infer_target_uris`（LLM 推理）前，先用正则提取文本中已存在的本地文件路径直接构造 `SourceURI`，0.001 秒直通（跳过全盘扫描与 LLM 路由）；同时 `workspace_root` 必须配置为目标知识仓库而非后端服务运行目录 `"."`。
+  2. **引擎防空转短路（`seen_info_ids`）**：在 `InternalKnowledgeEngine.execute` 循环中记录已处理的 `info_id` 集合；若新一轮 `acquisition.acquire` 产出的切片无任何新增 `info_id`（`not fresh_ids`），说明数据源已穷尽，立即跳出组织与落盘进入 `_semantic_fallback` 收敛。
+* **真实正反例对比**：
+  * ❌ **反例（Anti-Pattern）**：
+    ```python
+    # 1. route() 每次无脑全盘 rglob("*") 扫描 120 个文件再发给 LLM 猜路径
+    # 2. Engine.execute() 不检查新增切片差集，因为 top_k=8 漏掉 2 条而反复重采同一个文件
+    current_env = await self.acquisition.acquire(current_env)
+    current_env = await self.organization.organize(current_env)
+    ```
+    *死穴所在*：白白浪费 10+ 秒扫描无关代码库；遇到长文件（切片数 > `top_k`）时陷入“召回 8 条 ➔ 判定缺 2 条 ➔ 全量重采 10 条”的无限空转。
+  * ✅ **正例（Best Practice）**：
+    ```python
+    # 1. WorkspaceFileGapRouter.route() 前置正则快筛真实存在的文件路径
+    raw_uris = self._extract_explicit_local_uris(f"{clean_gap}\n{clean_context}")
+    if not raw_uris:
+        raw_uris = await self._infer_target_uris(gap_description=clean_gap, problem_context=clean_context)
+
+    # 2. InternalKnowledgeEngine.execute() 检测无新增切片直接语义汇总收敛
+    fresh_ids = {info.info_id for info in current_env.raw_infos} - seen_info_ids
+    if not fresh_ids:
+        return await self._semantic_fallback(current_env, reason="数据源已全量采集，无新增切片")
+    ```
+    *核心收益*：显式路径学习跳过全盘扫描直接秒级采集，多轮探索遇到已穷尽数据源时立即优雅收敛。
+
