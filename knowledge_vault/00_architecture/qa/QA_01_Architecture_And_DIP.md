@@ -152,3 +152,64 @@ stage: gold
 • 真实正反例对比：
 	• ❌ 反例（Anti-Pattern）：为了让 knowledge:deep_learn 支持主模型限流切换，在 ModelFailoverRecovery 中引入 stage_executors 回调字典，在 container.py 编写 _replay_knowledge_deep_learn 重建引擎并手动封包状态，再到 recovery_graph.py 和 master_graph.py 中硬编码字典合并与专属前向推进分支。死穴所在：全局恢复层被迫知晓所有业务子图的内部构造与状态 Schema，职责高度集中，系统扩展成本随节点数呈线性恶化。
 	• ✅ 正例（Best Practice）：将“主模型挂掉切换备用模型”这一纯技术高可用能力下沉至 ModelFailoverMiddleware，直接在单次 generate_structured 调用内部完成切换与返回；删掉恢复层的所有阶段重放器与状态回填分支，让 recovery_node 仅处理极少数双模型全挂后的静态降级与业务反问。核心收益：彻底消除跨文件联动修改，新增任意业务子图或智能体无需在恢复层和主控图写一行适配代码。
+
+### Q_10：为什么存储治理适合用 ABC 模板方法，而采集、组织与运用环节必须坚持“零继承 Protocol + 组合模式”？
+* **归属档案**：[[QA_01_Architecture_And_DIP]]（粗粒度）
+* **核心疑惑**：既然全链路都在强调“零继承 Protocol 与组合优于继承”，为什么 `BaseKnowledgeStorage` 和 `BaseMarkdownArtifactWriter` 依然使用了 `ABC` 抽象基类，而 `BaseKnowledgeApplicator` 却需要重构剥离 `ABC`？
+* **核心释义**：
+  * **好莱坞原则（模板方法）**：由父类死锁不可逾越的控制流骨架与安全红线，子类只负责填空底层介质动作。
+  * **组合装饰器（Decorator/Composite）**：通过包裹实现了相同 `Protocol` 的内部组件来增强行为，支持无限层嵌套而不产生类爆炸。
+* **核心答案**：架构模式的选择取决于**变化点在“骨架流程”还是在“底层动作”**。存储治理（`BaseKnowledgeStorage` / `BaseMarkdownArtifactWriter`）拥有全系统级刚性安全红线——所有自动化产物必须死锁在 `debug/` 缓冲区、命中 `release/` 或 `gold/` 必须进 `.patch_queue.jsonl`、且必须生成 `StorageReceipt`——用 `ABC` 模板方法能从语法层面防止新存储后端绕过治理规则；而运用（`Application`）、采集（`Acquisition`）和组织（`Organization`）的控制流高度动态，未来随时会扩展多级链式组合求解器（如规则快答 ➔ LLM 求解），若用 `ABC` 继承会导致内外层重复播报状态与重复校验，必须采用“零继承 `Protocol` + 组合守卫装饰器”。
+* **真实正反例对比**：
+  * ❌ **反例（Anti-Pattern）**：
+    ```python
+    # 让所有求解器强制继承 ABC 基类
+    class BaseKnowledgeApplicator(ABC, KnowledgeApplicationProtocol):
+        async def resolve(self, envelope: PipelineEnvelope) -> PipelineEnvelope:
+            emit_component_status("【运用】开始诊断...")
+            res = await self._evaluate_and_solve(...)
+            return envelope.model_copy(update={"problem_resolution": ResolveProblem.model_validate(...)})
+    ```
+    *死穴所在*：一旦未来引入组合求解器（先走本地缓存规则求解，未命中再调用 `LLMKnowledgeApplicator`），内外两层都继承自 `BaseKnowledgeApplicator`，会导致状态播报打印两次、Pydantic 重校验重复执行，且无法接入第三方无继承适配器。
+  * ✅ **正例（Best Practice）**：
+    ```python
+    # 独立求解器零继承实现协议，外层通过组合守卫装饰器统一收口校验与日志
+    class LLMKnowledgeApplicator(KnowledgeApplicationProtocol):
+        async def resolve(self, envelope: PipelineEnvelope) -> PipelineEnvelope: ...
+
+    class GuardedKnowledgeApplicator(KnowledgeApplicationProtocol):
+        def __init__(self, inner: KnowledgeApplicationProtocol) -> None:
+            self._inner = inner
+        async def resolve(self, envelope: PipelineEnvelope) -> PipelineEnvelope:
+            # 统一前置校验、委托执行、ResolveProblem.model_validate 闭环重校验
+            ...
+    ```
+    *核心收益*：彻底消灭继承树耦合，支持任意层级的求解器串联组合，同时保持对上层 `InternalKnowledgeEngine` 的纯协议透明性。
+
+### Q_11：底层大模型/网络原生异常与业务封装异常（`KnowledgePipelineError`）在全链路中应如何分流，才能不破坏全局异常恢复节点？
+* **归属档案**：[[QA_01_Architecture_And_DIP]]（粗粒度）
+* **核心疑惑**：既然系统预定义了 `KnowledgePipelineError`，为什么不能在所有组件的 `try...except Exception` 中把捕获到的异常全部包装成 `KnowledgePipelineError` 统一抛出？
+* **核心释义**：**声明式异常映射器（`DEFAULT_EXCEPTION_SPECS`）**通过匹配原生异常类型（如 `RateLimitError`、`APITimeoutError`）精确分派恢复策略（如 429 退避重试、504 切换备用模型）。
+* **核心答案**：必须实行**“原生基础设施异常直接透传 + 业务规则阻断/降级汇总抛出 `KnowledgePipelineError`”的双轨分流机制**。如果在单次推理或路由组件（如 `GapRouter`、`LLMLabelExtractor`、`LLMKnowledgeApplicator`）内部用宽泛的 `except Exception` 吞掉原生异常并强行改写为 `KnowledgePipelineError`，会把具体的 `model.rate_limited`（429）或 `model.unavailable`（504）掩盖成笼统的业务错误码，导致上层专门的模型恢复节点彻底失明；只有当发生纯业务规则阻断（如缺失上下文、路径越界、工作区未匹配到文件）或容错批处理 100% 全军覆没（如关系建模所有窗口均调用失败）时，才应抛出 `KnowledgePipelineError` 触发局部保底落盘或引导用户。
+* **真实正反例对比**：
+  * ❌ **反例（Anti-Pattern）**：
+    ```python
+    # 在 CompositeKnowledgeAcquirer._resolve_target_uris 中无差别捕获原生异常
+    try:
+        routed_uris = await self._gap_router.route(...)
+    except Exception as exc:
+        raise KnowledgePipelineError(message=f"路由失败: {exc}", stage="gap_routing") from exc
+    ```
+    *死穴所在*：大模型触发 `RateLimitError` (429) 时被改写为 `knowledge.gap_routing_error`，外层 `registry_exception_mapper` 无法识别限流状态码，导致恢复节点放弃退避重试而直接向用户报错中断。
+  * ✅ **正例（Best Practice）**：
+    ```python
+    # 单次前置调用让原生异常直接冒泡；批处理后置阶段仅在 100% 窗口全灭时抛业务降级信号
+    routed_uris = await self._gap_router.route(...)  # 原生 RateLimitError/APITimeoutError 直接透传
+    if not routed_uris:
+        raise KnowledgePipelineError(message="未匹配到文件", stage="gap_routing")  # 纯业务阻断抛业务异常
+
+    # LLMRelationBuilder.build() 中单窗口失败返回 None，全窗口全灭抛出业务异常触发 Organizer 部分落盘保护
+    if total_windows > 0 and failed_windows == total_windows:
+        raise KnowledgePipelineError(message="所有关系推理窗口均调用失败", stage="organization")
+    ```
+    *核心收益*：基础设施波动能精准触发模型恢复节点自愈，而局部增强阶段（3.3 建边 / 3.4 聚拢）失败又能触发 `KnowledgeOrganizer` 的 `P1-2` 保护，保住前面已消耗 Token 提取的 `Labeling` 概念节点顺利落盘。
