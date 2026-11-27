@@ -132,3 +132,52 @@ stage: gold
 * **真实正反例对比**：
   * ❌ **反例（Anti-Pattern）**：在 `ShellRepoAcquirer` 上标注 `@BaseKnowledgeAcquirer.register(SourceScheme.FILE)`，独占整个本地文件协议，同时在类里定义未生效的 `supported_extensions = {".sh"}` 属性。**死穴所在**：`WorkspaceFileGapRouter` 扫出的所有本地 `.md`/`.py` 文件均带有 `SourceScheme.FILE`，全被误路由进 Shell 语法解析器导致切片错乱或丢失。
   * ✅ **正例（Best Practice）**：在 `CompositeKnowledgeAcquirer` 中按复合键注册：`register(SourceScheme.FILE, ".sh", ShellScriptHandler())` 与 `register(SourceScheme.FILE, "*", GenericTextFileHandler())`，查表时优先精确匹配后缀、未命中时自动降级到 `"*"` 通用处理器。**核心收益**：实现协议与文件类型的正交精准路由，新增专有解析器（如 `.py` AST 解析器）只需注册 `(SourceScheme.FILE, ".py")` 即可平滑接管，绝不影响其他文件类型。
+
+### Q_13：为什么基于 `@Registry.register` 装饰器的插件体系必须配套 `__init__.py` 自动扫描，否则会导致静默路由丢失？
+* **归属档案**：[[QA_02_Registry_And_Routing]]（中观粒度）
+* **核心疑惑**：已经在 `ShellScriptHandler`、`GenericTextFileHandler` 和各组织插件类上添加了 `@register` 装饰器，为什么工厂装配时注册中心里的路由表依然是空的？
+* **核心释义**：**导入期副作用注册（Import-Time Decorator Registration）**是指装饰器代码仅在 Python 解释器实际执行 `import` 该模块文件时才运行，未导入的 `.py` 文件对解释器而言形同虚设。
+* **核心答案**：Python 不会因为 `import pkg` 就自动加载包目录内的子模块。如果 `acquisition/handlers/__init__.py` 和 `organization/plugins/__init__.py` 缺失或留空，运行时 `AcquisitionPluginRegistry.build_route_table()` 拿到的就是空字典，导致所有数据源因找不到处理器而失败。必须在插件包目录的 `__init__.py` 中使用 `pkgutil.iter_modules` + `importlib.import_module` 实现动态自动扫描，并在工厂入口处显式导入该包，才能实现“新增插件文件即自动注册、零手动配置”的真正开闭原则（OCP）。
+* **真实正反例对比**：
+  * ❌ **反例（Anti-Pattern）**：
+    ```python
+    # handlers/ 目录下没有 __init__.py，工厂里只导入了注册中心本身
+    from components.internal_knowledge.acquisition.registry import AcquisitionPluginRegistry
+    route_table = AcquisitionPluginRegistry.build_route_table(shared_deps=shared_deps)
+    ```
+    *死穴所在*：`shell_script_handler.py` 从未被导入，装饰器从未执行，`route_table` 为 `{}`，运行时全量报错“暂不支持 'file' 协议的数据源”。
+  * ✅ **正例（Best Practice）**：
+    ```python
+    # components/internal_knowledge/acquisition/handlers/__init__.py
+    import importlib, pkgutil
+    from pathlib import Path
+
+    for _mod in pkgutil.iter_modules([str(Path(__file__).resolve().parent)]):
+        if not _mod.name.startswith("_"):
+            importlib.import_module(f"{__name__}.{_mod.name}")
+    ```
+    *核心收益*：工厂只需 `import components.internal_knowledge.acquisition.handlers` 即可自动激活目录下全部处理器；未来新增 `python_ast_handler.py` 无需修改任何注册表或初始化文件。
+
+### Q_14：在 `KnowledgeOrganizer` 进行背压规模采样与 `LLMRelationBuilder` 关系推理之间，如何避免跨文档上下文丢失？
+* **归属档案**：[[QA_02_Registry_And_Routing]]（中观粒度）
+* **核心疑惑**：在 `KnowledgeOrganizer` 中对去重后的 `unique_labels` 按频次采样 Top-K 传给 `relation_builder.build()`，为什么会导致 `LLMRelationBuilder` 的跨文档高频节点补全（Hub Window）和上下文聚合全部失效？
+* **核心释义**：**引用降维丢失**是指多对一去重（`setdefault(lbl.label_id, lbl)`）时只保留了实体首次出现的单条外键（`info_id`），丢弃了该实体在其余文档切片中的共现引用关系。
+* **核心答案**：一个高频核心概念往往跨越多个文档切片（`Information`）出现，这是推导出跨章节语义关系的关键桥梁。如果 `KnowledgeOrganizer` 直接把去重后的 `sampled_labels`（每个 `Labeling` 仅携带首个 `info_id`）传给 `LLMRelationBuilder`，下游就无法知道该概念还在哪些片段中出现，导致每个概念的文档频次永远退化为 1。正确的做法是：**用去重后的 `unique_labels` 统计跨切片频次选出 Top-K `label_id` 集合，然后从全量未去重的 `all_extracted_labels` 中筛选出命中这些 ID 的全部 `Labeling` 记录传给 `relation_builder.build()`**。
+* **真实正反例对比**：
+  * ❌ **反例（Anti-Pattern）**：
+    ```python
+    # KnowledgeOrganizer.organize() 直接传去重后的子集
+    sampled_labels = sorted(unique_labels, key=lambda x: freq_counter[x.label_id], reverse=True)[:50]
+    raw_relations = await self.relation_builder.build(sampled_labels, valid_infos)
+    ```
+    *死穴所在*：`sampled_labels` 中每个 `label_id` 只有 1 条记录，`LLMRelationBuilder` 统计的 `label_to_info_ids` 长度全为 1，Hub Window 永远不会触发，跨文件证据也被截断。
+  * ✅ **正例（Best Practice）**：
+    ```python
+    # 采样确定 ID 集合后，回溯全量标注保留所有切片归属记录
+    sampled_id_set: Set[str] = {lbl.label_id for lbl in sampled_labels}
+    candidate_labels_with_all_refs: List[Labeling] = [
+        lbl for lbl in all_extracted_labels if lbl.label_id in sampled_id_set
+    ]
+    raw_relations = await self.relation_builder.build(candidate_labels_with_all_refs, valid_infos)
+    ```
+    *核心收益*：`LLMRelationBuilder` 得以聚合同一概念在所有关联文档中的上下文，围绕概念词居中截取证据，并准确识别跨章节 Hub 核心节点建立全局语义边。
