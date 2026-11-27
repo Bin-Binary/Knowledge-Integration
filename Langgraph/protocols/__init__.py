@@ -35,19 +35,10 @@ from .evaluation import (
     QualityEvaluatorProtocol,
 )
 
-# 4. 域内知识库全链路闭环协议
-from .internal_knowledge import (
-    GapRoutingProtocol,
-    InternalKnowledgeEngineProtocol,
-    KnowledgeAcquisitionProtocol,
-    KnowledgeApplicationProtocol,
-    KnowledgeOrganizationProtocol,
-    KnowledgeStorageProtocol,
-)
-
 # 5. 底层模型与基础设施协议
 from .llm import (
     StructuredLLMProtocol,
+    StreamingLLMProtocol
 )
 
 # 6.数据清洗协议
@@ -82,15 +73,9 @@ __all__ = [
     "ExceptionRecoveryProtocol",
     # Evaluation
     "QualityEvaluatorProtocol",
-    # Internal Knowledge
-    "KnowledgeApplicationProtocol",
-    "GapRoutingProtocol",
-    "KnowledgeAcquisitionProtocol",
-    "KnowledgeOrganizationProtocol",
-    "KnowledgeStorageProtocol",
-    "InternalKnowledgeEngineProtocol",
     # LLM
     "StructuredLLMProtocol",
+    "StreamingLLMProtocol",
     # Sanitization
     "InputSanitizerProtocol",
     "RawPayloadRepairerProtocol",
