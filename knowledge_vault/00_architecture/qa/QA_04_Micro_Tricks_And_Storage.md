@@ -184,3 +184,24 @@ Q_22：在 LangChain 适配器与本地正则清洗切面中，如何规避列�
         """
     ```
     *核心收益*：把内部使用门槛降为零，同时把跨系统边界的并发与异常契约显式化，兼顾开发体验与系统健壮性。
+
+### Q_26：为什么已经在 `config/system_config.py` 的 `InternalKnowledgeConfig` 中添加了新配置字段，启动服务时依然报 `AttributeError: 'InternalKnowledgeConfig' object has no attribute ...`？
+* **归属档案**：[[QA_04_Micro_Tricks_And_Storage]]（精细粒度）
+* **核心疑惑**：在 `config/system_config.py` 中给 `InternalKnowledgeConfig` 增加了 `organize_timeout_seconds` 字段，但 `uvicorn` 启动装配容器时仍然抛出 `AttributeError` 找不到该属性。
+* **核心答案**：在存在 `config/` 与 `schemas/` 双目录演进的项目中，极易出现**同名配置类双份定义**（例如 `schemas/config.py` 和 `config/system_config.py` 各有一份 `InternalKnowledgeConfig`），而 `config/__init__.py` 实际导出的是另一份。在清理双份定义收口为单一事实来源（SSOT）之前，修改配置结构必须先核对 `config/__init__.py` 的真实导入来源，并确保开启了 `ConfigDict(frozen=True, extra="forbid")` 的模型在所有定义处同步更新。
+* **真实正反例对比**：
+  * ❌ **反例（Anti-Pattern）**：
+    ```python
+    # config/system_config.py 和 schemas/system_config.py 各自定义了一份 InternalKnowledgeConfig
+    # 仅修改了其中一份，导致另一份被 config/__init__.py 导出的模型缺少新字段
+    ```
+    *死穴所在*：配置结构分裂，修改一处后运行时容器读取属性直接触发 `AttributeError` 崩溃。
+  * ✅ **正例（Best Practice）**：
+    ```python
+    # 1. 收敛单一事实来源（SSOT）：schemas/ 仅保留基础结构或由 config/system_config.py 统一定义并重导出
+    # 2. 在唯一权威的 InternalKnowledgeConfig 上声明不可变与禁额外字段契约：
+    class InternalKnowledgeConfig(BaseModel):
+        model_config = ConfigDict(frozen=True, extra="forbid")
+        organize_timeout_seconds: Optional[float] = Field(default=480.0, gt=0)
+    ```
+    *核心收益*：杜绝双份配置类漂移，配合 `extra="forbid"` 在应用启动期 0 秒暴露任何拼写或字段缺失错误。
