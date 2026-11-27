@@ -1,5 +1,5 @@
 # /schemas/internal_knowledge/labeling.py
-from typing import Optional
+from typing import Optional, Dict, Any
 from pydantic import Field
 from schemas.base import ImmutableSchema, DocumentedEnum
 
@@ -23,3 +23,5 @@ class Labeling(ImmutableSchema):
     category: NodeCategory = Field(default=NodeCategory.CONCEPT, description="概念节点的元分类, 方便过滤检索", json_schema_extra={"frontmatter": True})
     label: str = Field(..., min_length=1, description="对该实体的分类化描述或语义判断（如 <实体：Redis>）")
     timestamp: Optional[float] = Field(default=None, description="标注发生的时间戳", json_schema_extra={"frontmatter": True})
+    # 显式增加富语义，防止上游调用 envelope.model_copy()、model_dump() 或跨节点反序列化，这个私有属性会静默丢失，导致下游渲染不出核心定义与触发判据
+    rich_semantics: Dict[str, Any] = Field(default_factory=dict, exclude=True)    
