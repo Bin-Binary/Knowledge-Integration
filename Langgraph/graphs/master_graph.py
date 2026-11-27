@@ -10,12 +10,12 @@ from protocols import (
     ExceptionMapperProtocol,
     ExceptionRecoveryProtocol,
     IntentRecognizerProtocol,
-    InternalKnowledgeEngineProtocol,
     RouterProtocol,
     ContextWindowGuardProtocol,
     MemoryCommitterProtocol,  
     HumanApprovalGateProtocol,  
 )
+from components.internal_knowledge import InternalKnowledgeEngineProtocol
 from schemas import(
     TargetDomain,
     RouteDecision,
@@ -26,7 +26,10 @@ from graphs.state import MasterAgentState
 from graphs.intent_graph import create_intent_node
 from graphs.routing_graph import create_routing_node
 from graphs.knowledge_graph import build_knowledge_domain_subgraph
-from graphs.execution_graph import create_execution_node
+from graphs.execution_graph import (
+    create_execution_node,
+    create_streaming_execution_node,
+)
 from graphs.recovery_graph import create_recovery_node
 from graphs.persistence_graph import (
     create_context_guard_node,
@@ -220,6 +223,8 @@ def build_master_agent_graph(
     memory_committer: Optional[MemoryCommitterProtocol] = None,
     checkpointer: Optional[Any] = None,
     max_recovery_attempts: int = DEFAULT_MAX_RECOVERY_ATTEMPTS,
+    enable_streaming: bool = False, 
+    knowledge_max_iterations: int = 3,
 ) -> CompiledStateGraph:
     """
     【封版】生产环境主控状态图构建器（全依赖倒置 + 正交热插拔扩展槽 + 状态防火墙）：
@@ -256,6 +261,7 @@ def build_master_agent_graph(
             build_knowledge_domain_subgraph(
                 engine=knowledge_engine,
                 map_exception=map_exception,
+                max_iterations=knowledge_max_iterations
             ),
         )
 
@@ -265,10 +271,13 @@ def build_master_agent_graph(
             create_approval_gate_node(approval_gate, map_exception=map_exception),
         )
 
-    workflow.add_node(
-        EXECUTION_NODE,
-        create_execution_node(agent_resolver, map_exception=map_exception),
+    execution_node = (
+        create_streaming_execution_node(agent_resolver, map_exception=map_exception)
+        if enable_streaming
+        else create_execution_node(agent_resolver, map_exception=map_exception)
     )
+    workflow.add_node(EXECUTION_NODE, execution_node)
+
     workflow.add_node(
         RECOVERY_NODE,
         _wrap_recovery_node(
@@ -350,6 +359,10 @@ def build_master_agent_graph(
                 return RECOVERY_NODE
             if state.get("is_terminal", False):
                 return "finish_flow"
+            # 【风险修复 3】学习模式（deep_learn）已产出 final_response，直接收尾；
+            # 仅检索模式（fast_retrieve）产出 rag_context 供下游 agent 消费时才继续走执行节点。
+            if state.get("final_response"):
+                return "finish_flow"
             return post_knowledge_target
 
         workflow.add_conditional_edges(
@@ -392,19 +405,28 @@ def build_master_agent_graph(
         },
     )
 
-    # 8. 自愈节点出口边（恢复成功则重放原故障阶段，否则终止收尾）
-    retryable_nodes: dict[str, str] = {
+    # 8. 自愈节点出口边：
+    # - 若已直接还原出目标产物 (recovered_data is not None)，直接推进到该阶段的下一站！
+    # - 若仅修复了外部环境未产出血统数据 (recovered_data is None)，才重放原故障节点。
+    post_recovery_targets: dict[str, str] = {
         INTENT_NODE: INTENT_NODE,
         ROUTING_NODE: ROUTING_NODE,
         EXECUTION_NODE: EXECUTION_NODE,
         "finish_flow": finish_target,
     }
     if has_context_guard:
-        retryable_nodes[CONTEXT_GUARD_NODE] = CONTEXT_GUARD_NODE
+        post_recovery_targets[CONTEXT_GUARD_NODE] = CONTEXT_GUARD_NODE
     if has_knowledge:
-        retryable_nodes[KNOWLEDGE_NODE] = KNOWLEDGE_NODE
+        post_recovery_targets[KNOWLEDGE_NODE] = KNOWLEDGE_NODE
     if has_approval_gate:
-        retryable_nodes[APPROVAL_GATE_NODE] = APPROVAL_GATE_NODE
+        post_recovery_targets[APPROVAL_GATE_NODE] = APPROVAL_GATE_NODE
+
+    # 定义各阶段自愈产出血统结果后的“下一站推进映射”
+    advance_stage_map: dict[str, str] = {
+        CONTEXT_GUARD_NODE: INTENT_NODE,
+        INTENT_NODE: ROUTING_NODE,
+        ROUTING_NODE: EXECUTION_NODE,  # 若包含知识/审批，下面动态判断
+    }
 
     def _route_after_recovery(state: MasterAgentState) -> str:
         outcome = state.get("recovery_outcome")
@@ -413,12 +435,29 @@ def build_master_agent_graph(
             and getattr(outcome, "is_recovered", False)
             and not state.get("is_terminal", False)
         ):
-            last_node = state.get("_last_failed_node")
-            if last_node in retryable_nodes:
+            last_node = state.get("_last_failed_node") or ""
+            if last_node.startswith("agent_execution:"):
+                last_node = EXECUTION_NODE
+            elif last_node.startswith("knowledge:"):
+                last_node = KNOWLEDGE_NODE                
+            # 情况 A：自愈插件已直接产出了该阶段的合法结果（如 DeepSeek 代替 GLM 跑出了 IntentResult）
+            if getattr(outcome, "recovered_data", None) is not None:
+                if last_node == INTENT_NODE:
+                    return ROUTING_NODE
+                if last_node == ROUTING_NODE and state.get("route_decision") is not None:
+                    return _resolve_post_routing_stage(
+                        state["route_decision"],
+                        has_knowledge=has_knowledge,
+                        has_approval_gate=has_approval_gate,
+                    )
+
+            # 情况 B：自愈插件仅做了环境恢复（未直接产出结果），重放原故障节点
+            if last_node in post_recovery_targets:
                 return last_node
+
         return "finish_flow"
 
-    workflow.add_conditional_edges(RECOVERY_NODE, _route_after_recovery, retryable_nodes)
+    workflow.add_conditional_edges(RECOVERY_NODE, _route_after_recovery, post_recovery_targets)
 
     # 9. 记忆提交收尾边
     if has_memory_committer:
